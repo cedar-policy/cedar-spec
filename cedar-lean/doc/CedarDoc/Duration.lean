@@ -68,7 +68,11 @@ A string is _valid_ if and only if it satisfies both the grammar and the constra
 
 # Formal Specification
 
-We formalize the validity of an input string by the predicate `IsWfDuration` (well-formed syntax of the grammar) and the function `computeValue` (value function). All three numeric grammars phrase well-formedness the same way — the string is the rendering of well-formed components — but where the decimal grammar has a fixed sequence of fields, the duration grammar describes an ordered concatenation of *optional* components, so the specification is phrased over an explicit record of those components.
+Following the same declarative structure as the decimal specification, we separate three ideas:
+`IsWfDuration` directly transcribes the grammar, `value` gives the denotation of an already
+identified sign and component record, and `IsDurationValue str v` combines those witnesses to
+say that `str` denotes `v`. Cedar already has the executable `Duration.parse`, so the public
+grammar does not define a second operational string decoder.
 
 The building block is again `IsDigits`, the shared `Digit⁺` predicate introduced in the _Decimal Parsing_ chapter.
 
@@ -145,43 +149,58 @@ public def IsWfDuration (str : String) : Prop :=
     IsWfBody body
 ```
 
-The value function is defined independently of the parser. `extractTrailingQuantity` peels the natural-number token immediately preceding a given suffix. When the suffix is absent the component is simply not present, so it yields `some (0, s)`; when the suffix is present but its digits are missing or unparseable the string is malformed, so it yields `none` — the same failure structure as the parser's `parseUnit?` (shown in the next section):
+The component record also gives a direct value formula. `optionalNatOf` interprets an absent
+quantity as zero and a present quantity through the shared `natOf` reader:
 
-```anchor extractTrailingQuantity (module := Cedar.Thm.Ext.Duration.Grammar)
-public def extractTrailingQuantity (s : String) (suffix : String) : Option (Nat × String) :=
-  if s.endsWith suffix then
-    let rest := (s.dropEnd suffix.length).toString
-    let digits := rest.toList.reverse.takeWhile Char.isDigit |>.reverse
-    match toNat?' (String.ofList digits) with
-    | some n => some (n, (rest.dropEnd digits.length).toString)
-    | none => none
-  else
-    some (0, s)
+```anchor optionalNatOf (module := Cedar.Thm.Ext.Duration.Grammar)
+public def optionalNatOf : Option String → Nat
+  | none => 0
+  | some digits => natOf digits
 ```
 
-`computeBodyValue` extracts each component right-to-left (`ms`, `s`, `m`, `h`, `d`) and combines them into an unsigned millisecond total, failing (`none`) if any present component is unparseable:
+`toMillis` is then the grammar's unsigned weighted sum:
 
-```anchor computeBodyValue (module := Cedar.Thm.Ext.Duration.Grammar)
-public def computeBodyValue (body : String) : Option Int := do
-  let (ms, body) ← extractTrailingQuantity body "ms"
-  let (sec, body) ← extractTrailingQuantity body "s"
-  let (min, body) ← extractTrailingQuantity body "m"
-  let (hr, body) ← extractTrailingQuantity body "h"
-  let (day, _) ← extractTrailingQuantity body "d"
-  some (↑day * MILLISECONDS_PER_DAY +
-    ↑hr * MILLISECONDS_PER_HOUR +
-    ↑min * MILLISECONDS_PER_MINUTE +
-    ↑sec * MILLISECONDS_PER_SECOND +
-    ↑ms)
+```anchor toMillis (module := Cedar.Thm.Ext.Duration.Grammar)
+public def Components.toMillis (components : Components) : Int :=
+  (optionalNatOf components.days : Int) * MILLISECONDS_PER_DAY +
+  (optionalNatOf components.hours : Int) * MILLISECONDS_PER_HOUR +
+  (optionalNatOf components.minutes : Int) * MILLISECONDS_PER_MINUTE +
+  (optionalNatOf components.seconds : Int) * MILLISECONDS_PER_SECOND +
+  optionalNatOf components.milliseconds
 ```
 
-Finally `computeValue` splits off the sign and applies it to the body's value, propagating `none` when the body is structurally unparseable:
+The complete value formula applies the captured sign:
 
-```anchor computeValue (module := Cedar.Thm.Ext.Duration.Grammar)
-public def computeValue (str : String) : Option Int :=
-  let (isNegative, body) := isNegativeDuration str
-  computeSignedBodyValue isNegative body
+```anchor value (module := Cedar.Thm.Ext.Duration.Grammar)
+public def value (sign : String) (components : Components) : Int :=
+  signOf sign * components.toMillis
 ```
+
+Finally, the relational specification extends the same grammar witnesses with their denotation:
+
+```anchor IsDurationValue (module := Cedar.Thm.Ext.Duration.Grammar)
+public def IsDurationValue (str : String) (v : Int) : Prop :=
+  ∃ sign components,
+    str = sign ++ components.asString ∧
+    IsWfSign sign ∧
+    components.nonempty ∧
+    components.quantitiesWf ∧
+    v = value sign components
+```
+
+The existential supplies the decomposition, so the public value specification never has to peel
+suffixes or represent malformed intermediate states with `Option`. The proof layer privately
+relates the parser's right-to-left extraction to this weighted sum once.
+
+As with decimal, the syntax and value views agree: every well-formed rendering has a value, and
+every value witness contains a well-formed rendering.
+
+{docstring isWfDuration_iff_exists_value}
+
+Although the value specification is relational, it is still single-valued: every witness for the
+same string yields the same integer, including values outside the parser's `Int64` range.
+
+{docstring isDurationValue_unique}
 
 # Parser
 
@@ -249,15 +268,25 @@ none
 
 The parser is characterized by two complementary guarantees stated in terms of the previous formal definitions.
 
-_Soundness_ says that whenever parsing succeeds, the input was genuinely valid: it is well-formed and `computeValue` yields exactly the returned duration's value. (The range constraint is implicit — `d.val.toInt` is always in `Int64` range, since `d.val` is an `Int64`.)
+_Soundness_ says that whenever parsing succeeds, the grammar assigns the input exactly the
+returned duration's value. There is no separate well-formedness conjunct because
+`IsDurationValue` already includes the rendering and component constraints. (The range
+constraint is implicit — `d.val.toInt` is always in `Int64` range.)
 
 {docstring parse_sound}
 
-_Completeness_ is the converse: every well-formed string whose computed value is `some d.val.toInt` is accepted as that duration. (Again the range constraint is implicit — `d.val.toInt` is always in range.)
+_Completeness_ is the converse: every string the grammar assigns the value `d.val.toInt` is
+accepted as that duration.
 
 {docstring parse_complete}
 
-Together they also give a complete characterization of parsing failure — the parser rejects exactly those strings that are malformed or whose computed value overflows the `Int64` range:
+Together, soundness and completeness give a direct equivalence between the executable parser and
+the declarative relation:
+
+{docstring parse_eq_some_iff_isDurationValue}
+
+They also give a complete characterization of parsing failure — the parser rejects exactly
+malformed strings and well-formed strings whose value overflows the `Int64` range:
 
 {docstring parse_eq_none_iff}
 
@@ -268,18 +297,7 @@ Together they also give a complete characterization of parsing failure — the p
 ```anchor toString (module := Cedar.Spec.Ext.Datetime)
 public def Duration.toString (d : Duration) : String :=
   let neg := d.val < 0
-  let totalMs := d.val.toInt.natAbs
-  let days := totalMs / MILLISECONDS_PER_DAY.toNat
-  let rem := totalMs % MILLISECONDS_PER_DAY.toNat
-  let hours := rem / MILLISECONDS_PER_HOUR.toNat
-  let rem := rem % MILLISECONDS_PER_HOUR.toNat
-  let minutes := rem / MILLISECONDS_PER_MINUTE.toNat
-  let rem := rem % MILLISECONDS_PER_MINUTE.toNat
-  let seconds := rem / MILLISECONDS_PER_SECOND.toNat
-  let ms := rem % MILLISECONDS_PER_SECOND.toNat
-  let body := durationComponent days "d" ++ durationComponent hours "h" ++
-    durationComponent minutes "m" ++ durationComponent seconds "s" ++
-    durationComponent ms "ms"
+  let body := canonicalDurationBody d.val.toInt.natAbs
   if neg then "-" ++ body else body
 ```
 
@@ -306,4 +324,7 @@ Parsing the canonical string representation of any duration recovers the origina
 
 {docstring parse_toString_roundtrip}
 
-It is a direct corollary of completeness: canonical strings are just a special case of well-formed inputs. The canonical body always has all five components present (so it is trivially nonempty), and its computed value equals the duration's stored value, so `parse_complete` applies. The maximized representation guarantees that no single component's value ever exceeds the `Int64` range, so the roundtrip never overflows.
+Canonical strings are a special case of well-formed inputs. Their body has all five components
+present, and the weighted component sum equals the duration's stored value. The maximized
+representation guarantees that no single component's value exceeds the `Int64` range, so the
+roundtrip never overflows.

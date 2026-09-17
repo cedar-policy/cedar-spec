@@ -29,11 +29,11 @@ open IPAddr
 
 /-! # IPAddr grammar: definitions
 
-This file contains only the grammar-level definitions — the well-formedness predicates and the
-value function — as a direct, parser-independent transcription of the IP-address grammar accepted
-by `Cedar.Spec.Ext.IPAddr.parse`. The lemmas connecting these definitions to `IPAddr.parse` live in
-`Cedar.Thm.Ext.IPAddr.Lemmas`. The `Digit⁺` predicate `IsDigits` is shared with the decimal,
-duration, and datetime grammars and lives in `Cedar.Thm.Data.String`.
+This file contains only the grammar-level definitions: the well-formedness predicates, component
+value functions, and relational value specification. `IsWfIPNet` states the syntax,
+`v4Value`/`v6Value` give the denotation of identified components, and `IsIPNetValue str net`
+combines those same witnesses to say that `str` denotes `net`. The lemmas connecting these
+definitions to `IPAddr.parse` live in `Cedar.Thm.Ext.IPAddr.Lemmas`.
 
 The accepted syntax (transcribed from the spec parser) is, informally:
 
@@ -63,12 +63,6 @@ public def IsCanonicalNat (s : String) : Prop :=
   IsDigits s ∧ (s.startsWith "0" → s = "0")
 -- ANCHOR_END: IsCanonicalNat
 
-/-- Numeric value of a digit-string group, defaulting to `0` when it does not parse (never taken on
-    a `IsDigits` group). -/
--- ANCHOR: numValue
-public def numValue (s : String) : Nat := (toNat?' s).getD 0
--- ANCHOR_END: numValue
-
 /-! ## IPv4 grammar
 
 `V4Addr` is four dot-separated groups, each a canonical 1–3 digit number `≤ 255`; the optional
@@ -95,7 +89,7 @@ public def V4Components.syntaxWf (v : V4Components) : Prop :=
 /-- Each group's value is at most `255` (`0xff`). -/
 -- ANCHOR: V4Components.constraintsWf
 public def V4Components.constraintsWf (v : V4Components) : Prop :=
-  numValue v.g₀ ≤ 255 ∧ numValue v.g₁ ≤ 255 ∧ numValue v.g₂ ≤ 255 ∧ numValue v.g₃ ≤ 255
+  natOf v.g₀ ≤ 255 ∧ natOf v.g₁ ≤ 255 ∧ natOf v.g₂ ≤ 255 ∧ natOf v.g₃ ≤ 255
 -- ANCHOR_END: V4Components.constraintsWf
 
 /-- Render a `V4Addr` as `g₀ '.' g₁ '.' g₂ '.' g₃`. -/
@@ -107,7 +101,7 @@ public def V4Components.asString (v : V4Components) : String :=
 /-- The `IPv4Addr` value of well-formed V4 groups. -/
 -- ANCHOR: V4Components.toAddr
 public def V4Components.toAddr (v : V4Components) : IPv4Addr :=
-  IPv4Addr.mk (numValue v.g₀) (numValue v.g₁) (numValue v.g₂) (numValue v.g₃)
+  IPv4Addr.mk (natOf v.g₀) (natOf v.g₁) (natOf v.g₂) (natOf v.g₃)
 -- ANCHOR_END: V4Components.toAddr
 
 /-! ## IPv6 grammar
@@ -189,14 +183,14 @@ address width (`≤ 32` for V4, `≤ 128` for V6). Absence of the suffix denotes
 -- ANCHOR: IsWfOptionalPrefix
 public def IsWfOptionalPrefix (digits size : Nat) : Option String → Prop
   | none        => True
-  | some p      => IsCanonicalNat p ∧ p.length ≤ digits ∧ numValue p ≤ size
+  | some p      => IsCanonicalNat p ∧ p.length ≤ digits ∧ natOf p ≤ size
 -- ANCHOR_END: IsWfOptionalPrefix
 
 /-- The `IPNetPrefix` value of an optional prefix string: `none` maps to the full-width prefix. -/
 -- ANCHOR: prefixValue
 public def prefixValue (w : Nat) : Option String → IPNetPrefix w
   | none   => IPNetPrefix.ofNat w (ADDR_SIZE w)
-  | some p => IPNetPrefix.ofNat w (numValue p)
+  | some p => IPNetPrefix.ofNat w (natOf p)
 -- ANCHOR_END: prefixValue
 
 /-! ## Top-level well-formedness
@@ -235,12 +229,11 @@ public def IsWfIPNet (str : String) : Prop :=
   IsWfV4 str ∨ IsWfV6 str
 -- ANCHOR_END: IsWfIPNet
 
-/-! ## Value function
+/-! ## Value relation
 
-`computeValue` maps a well-formed string to the `IPNet` it denotes, independently of the parser.
-For V4: the four groups' values form the address, with the optional prefix (defaulting to full
-width). For V6: the eight hextets' values, similarly. It returns `none` on strings that match no
-grammar form. -/
+The component value functions are independent of the parser. The relational definitions below
+tie those values to the same witnesses used by the syntax predicates, so no second string decoder
+is needed. -/
 
 /-- The `IPNet` value of a well-formed V4 string's components. -/
 -- ANCHOR: v4Value
@@ -253,6 +246,33 @@ public def v4Value (v : V4Components) (pre : Option String) : IPNet :=
 public def v6Value (v : V6Components) (pre : Option String) : IPNet :=
   IPNet.V6 ⟨v.toAddr, prefixValue V6_WIDTH pre⟩
 -- ANCHOR_END: v6Value
+
+/-- `net` is the value of a well-formed IPv4-net rendering. -/
+-- ANCHOR: IsV4Value
+public def IsV4Value (str : String) (net : IPNet) : Prop :=
+  ∃ (v : V4Components) (pre : Option String),
+    v.syntaxWf ∧
+    v.constraintsWf ∧
+    IsWfOptionalPrefix 2 (ADDR_SIZE V4_WIDTH) pre ∧
+    str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p) ∧
+    net = v4Value v pre
+-- ANCHOR_END: IsV4Value
+
+/-- `net` is the value of a well-formed IPv6-net rendering. -/
+-- ANCHOR: IsV6Value
+public def IsV6Value (str : String) (net : IPNet) : Prop :=
+  ∃ (v : V6Components) (pre : Option String),
+    v.syntaxWf ∧
+    IsWfOptionalPrefix 3 (ADDR_SIZE V6_WIDTH) pre ∧
+    str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p) ∧
+    net = v6Value v pre
+-- ANCHOR_END: IsV6Value
+
+/-- `net` is the value of the IP-net literal `str`, through either the V4 or V6 production. -/
+-- ANCHOR: IsIPNetValue
+public def IsIPNetValue (str : String) (net : IPNet) : Prop :=
+  IsV4Value str net ∨ IsV6Value str net
+-- ANCHOR_END: IsIPNetValue
 
 /-- Canonical-form normalizer: parse the string and re-serialize.
     Returns `none` for malformed inputs. -/

@@ -28,21 +28,15 @@ open Cedar.Spec.Ext
 
 /-! # Datetime grammar: definitions
 
-This file contains only the grammar-level definitions — the well-formedness predicates — as a
-direct, parser-independent transcription of the datetime grammar. Well-formedness takes the same
-shape as the decimal and duration grammars — the string is the rendering of well-formed components
-— but the datetime grammar describes a date optionally followed by a time, a fractional-seconds
-field, and a zone designator, so the components form a nested record rather than a flat sequence
-of fields.
+This file gives a direct, parser-independent transcription of the datetime grammar, its component
+value function, and the declarative relation connecting a string to its epoch-millisecond value.
+Well-formedness takes the same shape as the decimal and duration grammars — the string is the
+rendering of well-formed components — but the datetime grammar describes a date optionally
+followed by a time, a fractional-seconds field, and a zone designator, so the components form a
+nested record rather than a flat sequence of fields.
 The `Digit⁺` predicate `IsDigits` and its fixed-width refinement `IsFixedDigits` (the grammar's
 `Digit{n}`, used for every numeric field here) are shared with the decimal and duration grammars
-and live in `Cedar.Thm.Data.String`. -/
-
-/-- Numeric value of a digit field, defaulting to `0` when the string does not parse. On a field
-    satisfying `IsFixedDigits` the default is never taken, so this is exactly the field's value. -/
--- ANCHOR: fieldValue
-public def fieldValue (s : String) : Nat := (toNat?' s).getD 0
--- ANCHOR_END: fieldValue
+and live in `Cedar.Thm.Data.String`, together with the shared `natOf` numeric reader. -/
 
 /-! ## Numeric constraints
 
@@ -90,9 +84,9 @@ public def DateComponents.syntaxWf (d : DateComponents) : Prop :=
 /-- The month/day bounds: `01 ≤ MM ≤ 12` and `01 ≤ DD ≤ daysInMonth(YYYY, MM)`. -/
 -- ANCHOR: DateComponents.constraintsWf
 public def DateComponents.constraintsWf (d : DateComponents) : Prop :=
-  let mm := fieldValue d.month
+  let mm := natOf d.month
   1 ≤ mm ∧ mm ≤ 12 ∧
-  1 ≤ fieldValue d.day ∧ fieldValue d.day ≤ daysInMonth (fieldValue d.year) mm
+  1 ≤ natOf d.day ∧ natOf d.day ≤ daysInMonth (natOf d.year) mm
 -- ANCHOR_END: DateComponents.constraintsWf
 
 /-- Render a date as `YYYY '-' MM '-' DD`. -/
@@ -120,9 +114,9 @@ public def TimeComponents.syntaxWf (t : TimeComponents) : Prop :=
 /-- The time bounds: `00 ≤ hh ≤ 23`, `00 ≤ mm ≤ 59`, `00 ≤ ss ≤ 59`. -/
 -- ANCHOR: TimeComponents.constraintsWf
 public def TimeComponents.constraintsWf (t : TimeComponents) : Prop :=
-  fieldValue t.hours ≤ 23 ∧
-  fieldValue t.minutes ≤ 59 ∧
-  fieldValue t.seconds ≤ 59
+  natOf t.hours ≤ 23 ∧
+  natOf t.minutes ≤ 59 ∧
+  natOf t.seconds ≤ 59
 -- ANCHOR_END: TimeComponents.constraintsWf
 
 /-- Render a time as `hh ':' mm ':' ss`. -/
@@ -151,8 +145,8 @@ public def OffsetComponents.syntaxWf (o : OffsetComponents) : Prop :=
     `00 ≤ hh ≤ 23` and `00 ≤ mm ≤ 59`. -/
 -- ANCHOR: OffsetComponents.constraintsWf
 public def OffsetComponents.constraintsWf (o : OffsetComponents) : Prop :=
-  fieldValue o.hours ≤ 23 ∧
-  fieldValue o.minutes ≤ 59
+  natOf o.hours ≤ 23 ∧
+  natOf o.minutes ≤ 59
 -- ANCHOR_END: OffsetComponents.constraintsWf
 
 /-- Render an offset as `('+' | '-') hh mm`. -/
@@ -271,18 +265,16 @@ public def IsWfDatetime (str : String) : Prop :=
     str = components.asString
 -- ANCHOR_END: IsWfDatetime
 
-/-! ## Value function
+/-! ## Value relation
 
-`computeValue` mirrors the date/time → milliseconds-since-epoch conversion the parser performs,
-stated independently of the parser's implementation. It re-parses the string into components (a
-structural transcription of the grammar, as the decimal and duration value functions also do)
-and applies a value function to them. It returns `none` for strings that do not match the grammar
-structure; on `IsWfDatetime`-satisfying inputs it always returns `some` (see
-`Cedar.Thm.Ext.Datetime`). -/
+The component value functions below transcribe the grammar's date/time →
+milliseconds-since-epoch formula. `IsDatetimeValue str v` then reuses the same witnesses as
+`IsWfDatetime` and states that their denotation is `v`. No second string parser is part of the
+trusted grammar specification. -/
 
 /-- Day count of a date since the Unix epoch (1970-01-01), via Howard Hinnant's `days_from_civil`
-    algorithm. This transcribes `Std.Time.PlainDate.toEpochDay` over raw `Nat` fields,
-    so that `computeValue` can be stated independently of the `Std.Time` date type. -/
+    algorithm. This transcribes `Std.Time.PlainDate.toEpochDay` over raw `Nat` fields, independently
+    of the `Std.Time` date type. -/
 -- ANCHOR: epochDays
 public def epochDays (year month day : Nat) : Int :=
   let m : Int := month
@@ -299,7 +291,7 @@ public def epochDays (year month day : Nat) : Int :=
     east of UTC, so the parser subtracts this to normalize to UTC. -/
 -- ANCHOR: OffsetComponents.seconds
 public def OffsetComponents.seconds (o : OffsetComponents) : Int :=
-  let mag : Int := fieldValue o.hours * 3600 + fieldValue o.minutes * 60
+  let mag : Int := natOf o.hours * 3600 + natOf o.minutes * 60
   if o.negative then -mag else mag
 -- ANCHOR_END: OffsetComponents.seconds
 
@@ -314,7 +306,7 @@ public def Zone.offsetSeconds : Zone → Int
 /-- Milliseconds-since-epoch value of a well-formed date's midnight UTC. -/
 -- ANCHOR: DateComponents.toMillis
 public def DateComponents.toMillis (d : DateComponents) : Int :=
-  epochDays (fieldValue d.year) (fieldValue d.month) (fieldValue d.day) * 86400000
+  epochDays (natOf d.year) (natOf d.month) (natOf d.day) * 86400000
 -- ANCHOR_END: DateComponents.toMillis
 
 /-- Milliseconds-since-epoch value of a datetime's time-bearing tail relative to its date's
@@ -323,8 +315,8 @@ public def DateComponents.toMillis (d : DateComponents) : Int :=
 -- ANCHOR: TimePart.toMillis
 public def TimePart.toMillis (tp : TimePart) : Int :=
   let wallSeconds : Int :=
-    fieldValue tp.time.hours * 3600 + fieldValue tp.time.minutes * 60 + fieldValue tp.time.seconds
-  let millis : Int := match tp.millis with | none => 0 | some sss => fieldValue sss
+    natOf tp.time.hours * 3600 + natOf tp.time.minutes * 60 + natOf tp.time.seconds
+  let millis : Int := match tp.millis with | none => 0 | some sss => natOf sss
   (wallSeconds - tp.zone.offsetSeconds) * 1000 + millis
 -- ANCHOR_END: TimePart.toMillis
 
@@ -335,82 +327,20 @@ public def DatetimeComponents.toMillis (c : DatetimeComponents) : Int :=
   c.date.toMillis + (match c.time with | none => 0 | some tp => tp.toMillis)
 -- ANCHOR_END: DatetimeComponents.toMillis
 
-/-- Structural parse of a `Date`: split on `'-'` into `[YYYY, MM, DD]`. -/
--- ANCHOR: parseDate
-public def parseDate (s : String) : Option DateComponents :=
-  match s.splitToList (· = '-') with
-  | [year, month, day] => some { year, month, day }
-  | _ => none
--- ANCHOR_END: parseDate
+/-- `v` is the value of the datetime literal `str`: `str` is the rendering of syntactically and
+    numerically well-formed datetime components, and `v` is their epoch-millisecond denotation.
 
-/-- Structural parse of a `Time`: split on `':'` into `[hh, mm, ss]`. -/
--- ANCHOR: parseTime
-public def parseTime (s : String) : Option TimeComponents :=
-  match s.splitToList (· = ':') with
-  | [hours, minutes, seconds] => some { hours, minutes, seconds }
-  | _ => none
--- ANCHOR_END: parseTime
-
-/-- Structural parse of an `Offset ::= ('+' | '-') hh mm`: a sign character followed by exactly
-    four characters, split into two two-character fields. -/
--- ANCHOR: parseOffset
-public def parseOffset (s : String) : Option OffsetComponents :=
-  match s.toList with
-  | sign :: rest =>
-    if (sign = '+' ∨ sign = '-') ∧ rest.length = 4 then
-      some { negative := sign = '-',
-             hours := String.ofList (rest.take 2),
-             minutes := String.ofList (rest.drop 2) }
-    else none
-  | _ => none
--- ANCHOR_END: parseOffset
-
-/-- Structural parse of the time-bearing tail's body — the portion after the `'T'`, i.e.
-    `Time ['.' SSS] Zone`. The zone designator is split off the end by inspecting the character
-    list in reverse (a trailing `'Z'` gives the UTC zone; otherwise the last five characters form
-    an `Offset`), and the remainder is split on `'.'` into the time and the optional `SSS`. -/
--- ANCHOR: parseTimePart
-public def parseTimePart (s : String) : Option TimePart := do
-  let (timeMs, zone) ←
-    match s.toList.reverse with
-    | [] => none
-    | c :: rev =>
-      if c = 'Z' then some (String.ofList rev.reverse, Zone.utc)
-      else do
-        let o ← parseOffset (String.ofList ((c :: rev).take 5).reverse)
-        some (String.ofList ((c :: rev).drop 5).reverse, Zone.offset o)
-  match timeMs.splitToList (· = '.') with
-  | [time] => do
-    let t ← parseTime time
-    some { time := t, millis := none, zone }
-  | [time, sss] => do
-    let t ← parseTime time
-    some { time := t, millis := some sss, zone }
-  | _ => none
--- ANCHOR_END: parseTimePart
-
-/-- Structural parse of a datetime string into components: split on `'T'` into a date and an
-    optional time-bearing tail. A direct transcription of the grammar's five top-level forms. -/
--- ANCHOR: parseComponents
-public def parseComponents (str : String) : Option DatetimeComponents := do
-  match str.splitToList (· = 'T') with
-  | [date] => do
-    let d ← parseDate date
-    some { date := d, time := none }
-  | [date, rest] => do
-    let d ← parseDate date
-    let tp ← parseTimePart rest
-    some { date := d, time := some tp }
-  | _ => none
--- ANCHOR_END: parseComponents
-
-/-- Convert a datetime string to its milliseconds-since-epoch value, or `none` when the string
-    does not match the grammar structure. Structurally re-parses the string and applies the
-    components' value function `toMillis`. -/
--- ANCHOR: computeValue
-public def computeValue (str : String) : Option Int :=
-  (parseComponents str).map DatetimeComponents.toMillis
--- ANCHOR_END: computeValue
+    The existential supplies the grammar decomposition directly, so this relation does not
+    re-parse the string. It is total on well-formed syntax (`isWfDatetime_iff_exists_value`) and
+    single-valued (`isDatetimeValue_unique`). -/
+-- ANCHOR: IsDatetimeValue
+public def IsDatetimeValue (str : String) (v : Int) : Prop :=
+  ∃ components : DatetimeComponents,
+    components.syntaxWf ∧
+    components.constraintsWf ∧
+    str = components.asString ∧
+    v = components.toMillis
+-- ANCHOR_END: IsDatetimeValue
 
 /-! ## Canonical serialization
 
@@ -530,22 +460,22 @@ public def DatetimeComponents.syntaxWfB (components : DatetimeComponents) : Bool
 
 /-- Executable mirror of `DatetimeComponents.constraintsWf`. -/
 public def DatetimeComponents.constraintsWfB (components : DatetimeComponents) : Bool :=
-  let year := fieldValue components.date.year
-  let month := fieldValue components.date.month
-  let day := fieldValue components.date.day
+  let year := natOf components.date.year
+  let month := natOf components.date.month
+  let day := natOf components.date.day
   decide (1 ≤ month) && decide (month ≤ 12) &&
   decide (1 ≤ day) && decide (day ≤ daysInMonth year month) &&
   match components.time with
   | none => true
   | some time =>
-    decide (fieldValue time.time.hours ≤ 23) &&
-    decide (fieldValue time.time.minutes ≤ 59) &&
-    decide (fieldValue time.time.seconds ≤ 59) &&
+    decide (natOf time.time.hours ≤ 23) &&
+    decide (natOf time.time.minutes ≤ 59) &&
+    decide (natOf time.time.seconds ≤ 59) &&
     match time.zone with
     | .utc => true
     | .offset offset =>
-      decide (fieldValue offset.hours ≤ 23) &&
-      decide (fieldValue offset.minutes ≤ 59)
+      decide (natOf offset.hours ≤ 23) &&
+      decide (natOf offset.minutes ≤ 59)
 
 /-- Produce certified canonical components for a datetime value. The final check is deliberately
     stated in terms of the owned grammar and value function, insulating serialization from

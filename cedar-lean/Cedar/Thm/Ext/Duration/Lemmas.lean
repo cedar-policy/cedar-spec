@@ -37,10 +37,43 @@ open Datetime
     `Cedar.Thm.Data.String`) recover the facts these proofs consume.
     ============================================================================================ -/
 
+/-- Apply the parser's duration sign to a natural quantity. -/
+private def signedQuantity (isNegative : Bool) (n : Nat) : Int :=
+  if isNegative then Int.negOfNat n else Int.ofNat n
+
+/-- Proof-local decoder that peels the natural-number token before a duration suffix. It mirrors
+    `parseUnit?` closely enough to connect the executable parser to the declarative value relation,
+    but is not part of the public grammar specification. -/
+private def extractTrailingQuantity (s : String) (suffix : String) : Option (Nat × String) :=
+  if s.endsWith suffix then
+    let rest := (s.dropEnd suffix.length).toString
+    let digits := rest.toList.reverse.takeWhile Char.isDigit |>.reverse
+    match toNat?' (String.ofList digits) with
+    | some n => some (n, (rest.dropEnd digits.length).toString)
+    | none => none
+  else
+    some (0, s)
+
+/-- Proof-local unsigned value decoder for a duration body. -/
+private def computeBodyValue (body : String) : Option Int := do
+  let (ms, body) ← extractTrailingQuantity body "ms"
+  let (sec, body) ← extractTrailingQuantity body "s"
+  let (min, body) ← extractTrailingQuantity body "m"
+  let (hr, body) ← extractTrailingQuantity body "h"
+  let (day, _) ← extractTrailingQuantity body "d"
+  some (↑day * MILLISECONDS_PER_DAY +
+    ↑hr * MILLISECONDS_PER_HOUR +
+    ↑min * MILLISECONDS_PER_MINUTE +
+    ↑sec * MILLISECONDS_PER_SECOND +
+    ↑ms)
+
+/-- Proof-local signed value decoder for a duration body. -/
+private def computeSignedBodyValue (isNegative : Bool) (body : String) : Option Int :=
+  (computeBodyValue body).map (fun value => if isNegative then -value else value)
+
 /-- Total mirror of `extractTrailingQuantity`: the value-side payload it *would* carry, using
     `getD 0` in the (unreachable-on-well-formed-input) parse-failure slot. This lets the internal
-    digit-extraction machinery keep reasoning with `.1`/`.2` projections while the public
-    `extractTrailingQuantity` remains genuinely `Option`-valued. -/
+    digit-extraction machinery keep reasoning with `.1`/`.2` projections. -/
 private def extractPair (s suffix : String) : Nat × String :=
   if s.endsWith suffix then
     let rest := (s.dropEnd suffix.length).toString
@@ -1055,15 +1088,14 @@ private theorem extract_chain_rest_empty_of_wf (isNeg : Bool) (body : String)
 private theorem extract_ms_step
     (days hours minutes seconds milliseconds : Option String)
     (hwf_s : IsWfOptionalQuantity seconds) (hwf_ms : IsWfOptionalQuantity milliseconds) :
-    ∃ n, extractTrailingQuantity (Components.asString
+    extractTrailingQuantity (Components.asString
         ⟨days, hours, minutes, seconds, milliseconds⟩) "ms" =
-      some (n, durationChunk days "d" ++ durationChunk hours "h" ++
+      some (optionalNatOf milliseconds, durationChunk days "d" ++ durationChunk hours "h" ++
         durationChunk minutes "m" ++ durationChunk seconds "s") := by
   unfold Components.asString
   cases milliseconds with
   | none =>
     simp only [durationChunk, String.append_empty]
-    refine ⟨0, ?_⟩
     apply extract_absent_some
     have hew : (durationChunk days "d" ++ durationChunk hours "h" ++
         durationChunk minutes "m" ++ durationChunk seconds "s").endsWith "ms" = false := by
@@ -1091,25 +1123,25 @@ private theorem extract_ms_step
       rcases seconds with _ | s_d <;> rcases minutes with _ | m_d <;>
         rcases hours with _ | hr_d <;> rcases days with _ | d_d <;>
         simp [durationChunk, String.toList_append]
-    refine ⟨n, ?_⟩
     have hstep := extract_step_chain_some
       (durationChunk days "d" ++ durationChunk hours "h" ++ durationChunk minutes "m" ++
         durationChunk seconds "s") ms_d "ms" n h_iq hnat hpfx_end
     simp only [durationChunk, String.append_assoc] at hstep ⊢
-    exact hstep
+    simpa [optionalNatOf, natOf, hnat] using hstep
 
 
 private theorem extract_s_step
     (days hours minutes seconds : Option String)
     (hwf_d : IsWfOptionalQuantity days) (hwf_h : IsWfOptionalQuantity hours)
     (hwf_s : IsWfOptionalQuantity seconds) :
-    ∃ n, extractTrailingQuantity (durationChunk days "d" ++ durationChunk hours "h" ++
+    extractTrailingQuantity (durationChunk days "d" ++ durationChunk hours "h" ++
         durationChunk minutes "m" ++ durationChunk seconds "s") "s" =
-      some (n, durationChunk days "d" ++ durationChunk hours "h" ++ durationChunk minutes "m") := by
+      some (optionalNatOf seconds,
+        durationChunk days "d" ++ durationChunk hours "h" ++ durationChunk minutes "m") := by
   cases seconds with
   | none =>
     simp only [durationChunk, String.append_empty]
-    refine ⟨0, extract_absent_some _ _ ?_⟩
+    apply extract_absent_some
     have hew : (durationChunk days "d" ++ durationChunk hours "h" ++
         durationChunk minutes "m").endsWith "s" = false := by
       rcases minutes with _ | m_d <;> rcases hours with _ | hr_d <;> rcases days with _ | d_d <;>
@@ -1126,24 +1158,23 @@ private theorem extract_s_step
           durationChunk minutes "m").toList.reverse = c :: cs ∧ c.isDigit = false := by
       rcases minutes with _ | m_d <;> rcases hours with _ | hr_d <;> rcases days with _ | d_d <;>
         simp [durationChunk, String.toList_append]
-    refine ⟨n, ?_⟩
     have hstep := extract_step_chain_some
       (durationChunk days "d" ++ durationChunk hours "h" ++ durationChunk minutes "m") s_d "s" n
       h_iq hnat hpfx_end
     simp only [durationChunk, String.append_assoc] at hstep ⊢
-    exact hstep
+    simpa [optionalNatOf, natOf, hnat] using hstep
 
 private theorem extract_m_step
     (days hours minutes : Option String)
     (hwf_d : IsWfOptionalQuantity days) (hwf_h : IsWfOptionalQuantity hours)
     (hwf_m : IsWfOptionalQuantity minutes) :
-    ∃ n, extractTrailingQuantity (durationChunk days "d" ++ durationChunk hours "h" ++
+    extractTrailingQuantity (durationChunk days "d" ++ durationChunk hours "h" ++
         durationChunk minutes "m") "m" =
-      some (n, durationChunk days "d" ++ durationChunk hours "h") := by
+      some (optionalNatOf minutes, durationChunk days "d" ++ durationChunk hours "h") := by
   cases minutes with
   | none =>
     simp only [durationChunk, String.append_empty]
-    refine ⟨0, extract_absent_some _ _ ?_⟩
+    apply extract_absent_some
     cases hours with
     | none =>
       simp only [String.append_empty]
@@ -1188,21 +1219,20 @@ private theorem extract_m_step
         | some hr_d =>
           exact pfx_append_chunk_reverse_non_digit (durationChunk (some d_d) "d") hr_d "h" hwf_h
             (Or.inr (Or.inl rfl))
-    refine ⟨n, ?_⟩
     have hstep := extract_step_chain_some (durationChunk days "d" ++ durationChunk hours "h") m_d "m" n
       h_iq hnat hpfx_end
     simp only [durationChunk, String.append_assoc] at hstep ⊢
-    exact hstep
+    simpa [optionalNatOf, natOf, hnat] using hstep
 
 private theorem extract_h_step
     (days hours : Option String)
     (hwf_d : IsWfOptionalQuantity days) (hwf_h : IsWfOptionalQuantity hours) :
-    ∃ n, extractTrailingQuantity (durationChunk days "d" ++ durationChunk hours "h") "h" =
-      some (n, durationChunk days "d") := by
+    extractTrailingQuantity (durationChunk days "d" ++ durationChunk hours "h") "h" =
+      some (optionalNatOf hours, durationChunk days "d") := by
   cases hours with
   | none =>
     simp only [durationChunk, String.append_empty]
-    refine ⟨0, extract_absent_some _ _ ?_⟩
+    apply extract_absent_some
     cases days with
     | none => simp [String.endsWith_eq_endsWith_toSlice, -String.endsWith_toSlice]
     | some d_d =>
@@ -1223,24 +1253,22 @@ private theorem extract_h_step
       | none => left; simp [durationChunk]
       | some d_d =>
         right; exact pfx_append_chunk_reverse_non_digit "" d_d "d" hwf_d (Or.inl rfl)
-    refine ⟨n, ?_⟩
     have hstep := extract_step_chain_some (durationChunk days "d") hr_d "h" n h_iq hnat hpfx_end
     simp only [durationChunk, String.append_assoc] at hstep ⊢
-    exact hstep
+    simpa [optionalNatOf, natOf, hnat] using hstep
 
 private theorem extract_d_step (days : Option String) (hwf_d : IsWfOptionalQuantity days) :
-    ∃ n, extractTrailingQuantity (durationChunk days "d") "d" = some (n, "") := by
+    extractTrailingQuantity (durationChunk days "d") "d" =
+      some (optionalNatOf days, "") := by
   cases days with
   | none =>
-    refine ⟨0, ?_⟩
     simp only [durationChunk]
     exact extract_absent_some _ _ (by simp [String.endsWith_eq_endsWith_toSlice, -String.endsWith_toSlice])
   | some d_d =>
     have h_iq : IsDigits d_d := hwf_d
     obtain ⟨n, hnat⟩ := Option.isSome_iff_exists.mp h_iq.toNat?'_isSome
-    refine ⟨n, ?_⟩
     have := extract_step_chain_some "" d_d "d" n h_iq hnat (Or.inl rfl)
-    simpa [String.empty_append, durationChunk] using this
+    simpa [String.empty_append, durationChunk, optionalNatOf, natOf, hnat] using this
 
 
 /-- The full some-chain of extract steps for a well-formed body: every present component parses,
@@ -1256,12 +1284,31 @@ private theorem extracts_chain_of_wf (body : String) (h : IsWfBody body) :
   simp only [Components.quantitiesWf, IsWfOptionalQuantity] at hwf_q
   obtain ⟨hwf_d, hwf_h, hwf_m, hwf_s, hwf_ms⟩ := hwf_q
   subst hbody
-  obtain ⟨n_ms, e1⟩ := extract_ms_step days hours minutes seconds milliseconds hwf_s hwf_ms
-  obtain ⟨n_s, e2⟩ := extract_s_step days hours minutes seconds hwf_d hwf_h hwf_s
-  obtain ⟨n_m, e3⟩ := extract_m_step days hours minutes hwf_d hwf_h hwf_m
-  obtain ⟨n_h, e4⟩ := extract_h_step days hours hwf_d hwf_h
-  obtain ⟨n_d, e5⟩ := extract_d_step days hwf_d
-  exact ⟨_, _, _, _, _, _, _, _, _, e1, e2, e3, e4, e5⟩
+  have e1 := extract_ms_step days hours minutes seconds milliseconds hwf_s hwf_ms
+  have e2 := extract_s_step days hours minutes seconds hwf_d hwf_h hwf_s
+  have e3 := extract_m_step days hours minutes hwf_d hwf_h hwf_m
+  have e4 := extract_h_step days hours hwf_d hwf_h
+  have e5 := extract_d_step days hwf_d
+  exact ⟨_, _, _, _, optionalNatOf milliseconds, optionalNatOf seconds,
+    optionalNatOf minutes, optionalNatOf hours, optionalNatOf days, e1, e2, e3, e4, e5⟩
+
+/-- On well-formed captured components, the proof-local extraction decoder agrees with the
+    grammar's direct weighted sum. This is the sole bridge from string surgery to denotation. -/
+private theorem computeBodyValueD_asString (components : Components)
+    (h : components.quantitiesWf) :
+    computeBodyValueD components.asString = components.toMillis := by
+  rcases components with ⟨days, hours, minutes, seconds, milliseconds⟩
+  simp only [Components.quantitiesWf, IsWfOptionalQuantity] at h
+  obtain ⟨hwf_d, hwf_h, hwf_m, hwf_s, hwf_ms⟩ := h
+  have e1 := extract_ms_step days hours minutes seconds milliseconds hwf_s hwf_ms
+  have e2 := extract_s_step days hours minutes seconds hwf_d hwf_h hwf_s
+  have e3 := extract_m_step days hours minutes hwf_d hwf_h hwf_m
+  have e4 := extract_h_step days hours hwf_d hwf_h
+  have e5 := extract_d_step days hwf_d
+  rw [computeBodyValueD_of_extracts _ _ _ _ _
+    (optionalNatOf milliseconds) (optionalNatOf seconds) (optionalNatOf minutes)
+    (optionalNatOf hours) (optionalNatOf days) e1 e2 e3 e4 e5]
+  rfl
 
 /-- Crux: on a well-formed body, `computeBodyValue` is defined and equals its total mirror
     `computeBodyValueD`. -/
@@ -2611,10 +2658,17 @@ theorem wf_str_iff_signed_body (str : String) :
     · intro hbody
       exact ⟨"", str, by simp, Or.inr rfl, hbody⟩
 
-theorem compute_value_eq_signed_body_value (str : String) (_hwf : IsWfDuration str) :
-    computeValue str =
-      let (isNegative, body) := isNegativeDuration str
-      computeSignedBodyValue isNegative body := rfl
+/-- Well-formed duration syntax is exactly syntax to which the grammar assigns some value. Both
+    sides use the same sign and component witnesses; no parser or string decoder is involved. -/
+public theorem isWfDuration_iff_exists_value {str : String} :
+    IsWfDuration str ↔ ∃ v, IsDurationValue str v := by
+  constructor
+  · rintro ⟨sign, body, hstr, hsign, components, hnonempty, hquantities, hbody⟩
+    subst body
+    exact ⟨value sign components, sign, components, hstr, hsign, hnonempty, hquantities, rfl⟩
+  · rintro ⟨_, sign, components, hstr, hsign, hnonempty, hquantities, _⟩
+    exact ⟨sign, components.asString, hstr, hsign,
+      components, hnonempty, hquantities, rfl⟩
 
 theorem duration?_some_toInt (value : Int) (d : Duration)
     (h : duration? value = some d) :
@@ -2718,6 +2772,65 @@ theorem isNegativeDuration_canonical_body (body : String) (hfront : body.front �
   split
   · contradiction
   · rfl
+
+/-- On a rendering to which the grammar assigns `v`, `Duration.parse` reaches the range check with
+    exactly `v`. Thus acceptance is decided by `duration?` alone. -/
+public theorem parse_eq_duration?_of_isDurationValue {str : String} {v : Int}
+    (h : IsDurationValue str v) :
+    Duration.parse str = duration? v := by
+  obtain ⟨sign, components, rfl, hsign, hnonempty, hquantities, rfl⟩ := h
+  have hbody : IsWfBody components.asString :=
+    ⟨components, hnonempty, hquantities, rfl⟩
+  have hvalue := computeBodyValueD_asString components hquantities
+  rcases hsign with rfl | rfl
+  · unfold Duration.parse
+    rw [isNegativeDuration_neg_body]
+    simp only
+    rw [parseDuration?_eq_duration?_of_wf true _ hbody]
+    unfold computeSignedBodyValueD value
+    rw [hvalue]
+    simp [signOf]
+  · simp only [String.empty_append]
+    have hfront := duration_body_front_ne_dash components.asString hbody
+    unfold Duration.parse
+    rw [isNegativeDuration_canonical_body _ hfront]
+    simp only
+    rw [parseDuration?_eq_duration?_of_wf false _ hbody]
+    unfold computeSignedBodyValueD value
+    rw [hvalue]
+    simp [signOf]
+
+/-- Every relational value witness agrees with the same signed body value determined by the input
+    string. This also covers values outside the `Int64` range, where `Duration.parse` rejects. -/
+private theorem isDurationValue_eq_signed_body_value {str : String} {v : Int}
+    (h : IsDurationValue str v) :
+    v =
+      let (isNegative, body) := isNegativeDuration str
+      computeSignedBodyValueD isNegative body := by
+  obtain ⟨sign, components, rfl, hsign, hnonempty, hquantities, rfl⟩ := h
+  have hbody : IsWfBody components.asString :=
+    ⟨components, hnonempty, hquantities, rfl⟩
+  have hvalue := computeBodyValueD_asString components hquantities
+  rcases hsign with rfl | rfl
+  · rw [isNegativeDuration_neg_body]
+    simp only
+    unfold computeSignedBodyValueD value
+    rw [hvalue]
+    simp [signOf]
+  · simp only [String.empty_append]
+    have hfront := duration_body_front_ne_dash components.asString hbody
+    rw [isNegativeDuration_canonical_body _ hfront]
+    simp only
+    unfold computeSignedBodyValueD value
+    rw [hvalue]
+    simp [signOf]
+
+/-- The declarative value relation is single-valued: a duration string denotes at most one
+    integer, including when that integer lies outside the parser's `Int64` range. -/
+public theorem isDurationValue_unique {str : String} {v₁ v₂ : Int}
+    (h₁ : IsDurationValue str v₁) (h₂ : IsDurationValue str v₂) : v₁ = v₂ :=
+  (isDurationValue_eq_signed_body_value h₁).trans
+    (isDurationValue_eq_signed_body_value h₂).symm
 
 theorem canonicalDurationBody_value (days hours minutes seconds ms : Nat) :
     computeBodyValue (canonicalBody days hours minutes seconds ms) =
@@ -2843,3 +2956,21 @@ theorem durationParts_value_int (n : Nat) :
     (↑(n % 86400000 % 3600000 % 60000 % 1000) : Int) = n
   have h := durationParts_value_nat n
   omega
+
+private theorem specCanonicalDurationBody_wf (totalMs : Nat) :
+    IsWfBody (Datetime.canonicalDurationBody totalMs) := by
+  unfold Datetime.canonicalDurationBody
+  change IsWfBody (canonicalBody _ _ _ _ _)
+  exact canonicalDurationBody_wf _ _ _ _ _
+
+private theorem specCanonicalDurationBody_value (totalMs : Nat) :
+    computeBodyValueD (Datetime.canonicalDurationBody totalMs) = (totalMs : Int) := by
+  have hwf := specCanonicalDurationBody_wf totalMs
+  have hvalue :
+      computeBodyValue (Datetime.canonicalDurationBody totalMs) = some (totalMs : Int) := by
+    unfold Datetime.canonicalDurationBody
+    change computeBodyValue (canonicalBody _ _ _ _ _) = some (totalMs : Int)
+    rw [canonicalDurationBody_value]
+    exact congrArg some (durationParts_value_int totalMs)
+  rw [computeBodyValue_eq_some_D_of_wf _ hwf] at hvalue
+  injection hvalue

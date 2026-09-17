@@ -33,9 +33,9 @@ open IPAddr
 /-! # IPAddr grammar bridge lemmas
 
 These lemmas connect the parser-independent grammar definitions in
-`Cedar.Thm.Ext.IPAddr.Grammar` (`IsWfIPNet`, `computeValue`-style `v4Value`/`v6Value`) to the actual
-`Cedar.Spec.Ext.IPAddr.parse`. They culminate in the per-form parse characterizations the aggregator
-`parse_sound`/`parse_complete` build on.
+`Cedar.Thm.Ext.IPAddr.Grammar` (`IsWfIPNet`, `IsIPNetValue`, and the component value functions) to
+the actual `Cedar.Spec.Ext.IPAddr.parse`. They culminate in the per-form parse characterizations
+the aggregator `parse_sound`/`parse_complete` build on.
 
 The parser structure (from `Cedar.Spec.Ext.IPAddr`) is:
 - `parse str = if (parseIPv4Net str).isSome then parseIPv4Net str else parseIPv6Net str`;
@@ -50,10 +50,10 @@ leading-zero / range side conditions that the grammar predicates transcribe. -/
 /-! ## Numeric-token bridges -/
 
 /-- `parseNumV4` accepts exactly the canonical ≤ 3-digit groups with value ≤ 255, returning
-    `numValue`. -/
+    `natOf`. -/
 theorem parseNumV4_eq_some {s : String} (hwf : IsCanonicalNat s ∧ s.length ≤ 3)
-    (hcon : numValue s ≤ 255) :
-    parseNumV4 s = some (BitVec.ofNat 8 (numValue s)) :=
+    (hcon : natOf s ≤ 255) :
+    parseNumV4 s = some (BitVec.ofNat 8 (natOf s)) :=
   by
   unfold parseNumV4
   dsimp only
@@ -63,7 +63,7 @@ theorem parseNumV4_eq_some {s : String} (hwf : IsCanonicalNat s ∧ s.length ≤
       have hs := hwf.1.1.toNat?'_isSome
       simp [hnat] at hs
     | some n =>
-      simp [hnat, numValue] at hcon ⊢
+      simp [hnat, natOf] at hcon ⊢
       omega
   · simp only [Bool.and_eq_true, decide_eq_true_eq]
     exact ⟨⟨hwf.1.1.1, hwf.2⟩, hwf.1.2⟩
@@ -71,7 +71,7 @@ theorem parseNumV4_eq_some {s : String} (hwf : IsCanonicalNat s ∧ s.length ≤
 /-- Conversely, if `parseNumV4` accepts `s`, it is a canonical ≤ 3-digit group whose value is at
     most 255. -/
 theorem parseNumV4_isSome_wf {s : String} (h : (parseNumV4 s).isSome) :
-    (IsCanonicalNat s ∧ s.length ≤ 3) ∧ numValue s ≤ 255 :=
+    (IsCanonicalNat s ∧ s.length ≤ 3) ∧ natOf s ≤ 255 :=
   by
   simp only [parseNumV4] at h
   split at h <;> rename_i hg
@@ -84,7 +84,7 @@ theorem parseNumV4_isSome_wf {s : String} (h : (parseNumV4 s).isSome) :
         simp [hnle] at h
       simp only [Bool.and_eq_true, decide_eq_true_eq] at hg
       have hdig : IsDigits s := isDigits_of_toNat?'_isSome (by simp [hnat])
-      exact ⟨⟨⟨hdig, hg.2⟩, hg.1.2⟩, by simpa [numValue, hnat] using hnle⟩
+      exact ⟨⟨⟨hdig, hg.2⟩, hg.1.2⟩, by simpa [natOf, hnat] using hnle⟩
   · simp at h
 
 /-- `parseNumV6` accepts exactly the 1–4 digit hex groups, returning `hexValue`. -/
@@ -172,7 +172,7 @@ theorem parseNumV6_isSome_wf {s : String} (h : (parseNumV6 s).isSome) : IsHexGro
 /-- `parsePrefixNat` accepts exactly the canonical numbers with at most `digits` digits and value
     at most `size`. -/
 theorem parsePrefixNat_eq_some {s : String} {digits size : Nat}
-    (hwf : IsCanonicalNat s ∧ s.length ≤ digits ∧ numValue s ≤ size) :
+    (hwf : IsCanonicalNat s ∧ s.length ≤ digits ∧ natOf s ≤ size) :
     (parsePrefixNat s digits size).isSome :=
   by
   unfold parsePrefixNat
@@ -183,14 +183,14 @@ theorem parsePrefixNat_eq_some {s : String} {digits size : Nat}
       simp [hnat] at hs
     | some n =>
       have hnle : n ≤ size := by
-        simpa [numValue, hnat] using hwf.2.2
+        simpa [natOf, hnat] using hwf.2.2
       simp [hnle]
   · simp only [Bool.and_eq_true, decide_eq_true_eq]
     exact ⟨⟨hwf.1.1.1, hwf.2.1⟩, hwf.1.2⟩
 
 private theorem parsePrefixNat_eq_value {s : String} {digits size : Nat}
-    (hwf : IsCanonicalNat s ∧ s.length ≤ digits ∧ numValue s ≤ size) :
-    parsePrefixNat s digits size = some (Fin.ofNat (size + 1) (numValue s)) := by
+    (hwf : IsCanonicalNat s ∧ s.length ≤ digits ∧ natOf s ≤ size) :
+    parsePrefixNat s digits size = some (Fin.ofNat (size + 1) (natOf s)) := by
   unfold parsePrefixNat
   rw [if_pos]
   · cases hnat : toNat?' s with
@@ -199,14 +199,14 @@ private theorem parsePrefixNat_eq_value {s : String} {digits size : Nat}
       simp [hnat] at hs
     | some n =>
       have hnle : n ≤ size := by
-        simpa [numValue, hnat] using hwf.2.2
-      simp [hnat, hnle, numValue]
+        simpa [natOf, hnat] using hwf.2.2
+      simp [hnat, hnle, natOf]
   · simp only [Bool.and_eq_true, decide_eq_true_eq]
     exact ⟨⟨hwf.1.1.1, hwf.2.1⟩, hwf.1.2⟩
 
 private theorem parsePrefixNat_isSome_wf {s : String} {digits size : Nat}
     (h : (parsePrefixNat s digits size).isSome) :
-    IsCanonicalNat s ∧ s.length ≤ digits ∧ numValue s ≤ size := by
+    IsCanonicalNat s ∧ s.length ≤ digits ∧ natOf s ≤ size := by
   simp only [parsePrefixNat] at h
   split at h <;> rename_i hguard
   · cases hnat : toNat?' s with
@@ -218,13 +218,13 @@ private theorem parsePrefixNat_isSome_wf {s : String} {digits size : Nat}
         simp [hnle] at h
       simp only [Bool.and_eq_true, decide_eq_true_eq] at hguard
       have hdig : IsDigits s := isDigits_of_toNat?'_isSome (by simp [hnat])
-      exact ⟨⟨hdig, hguard.2⟩, hguard.1.2, by simpa [numValue, hnat] using hnle⟩
+      exact ⟨⟨hdig, hguard.2⟩, hguard.1.2, by simpa [natOf, hnat] using hnle⟩
   · simp at h
 
 private theorem parsePrefixNat_some_wf {s : String} {digits size : Nat}
     {pre : Fin (size + 1)} (h : parsePrefixNat s digits size = some pre) :
-    (IsCanonicalNat s ∧ s.length ≤ digits ∧ numValue s ≤ size) ∧
-      pre.val = numValue s := by
+    (IsCanonicalNat s ∧ s.length ≤ digits ∧ natOf s ≤ size) ∧
+      pre.val = natOf s := by
   have hisSome : (parsePrefixNat s digits size).isSome := by
     rw [h]
     simp
@@ -420,14 +420,14 @@ theorem parseIPv4Net_eq_some {v : V4Components} {pre : Option String}
       rw [hsplit]
       simp only
       rw [parsePrefixNat_eq_value hpre, parseSegsV4_asString hsyn hcon]
-      change IsCanonicalNat p ∧ p.length ≤ 2 ∧ numValue p ≤ ADDR_SIZE V4_WIDTH at hpre
-      have hlt : numValue p < ADDR_SIZE V4_WIDTH + 1 := by omega
+      change IsCanonicalNat p ∧ p.length ≤ 2 ∧ natOf p ≤ ADDR_SIZE V4_WIDTH at hpre
+      have hlt : natOf p < ADDR_SIZE V4_WIDTH + 1 := by omega
       simp [v4Value, prefixValue, IPNetPrefix.ofNat, Fin.ofNat, Nat.mod_eq_of_lt hlt]
 
 /-- Soundness for V4: a successful `parseIPv4Net` means the string is a well-formed V4 rendering
     whose value is the returned net. -/
 theorem parseIPv4Net_isSome_wf {str : String} {net : IPNet} (h : parseIPv4Net str = some net) :
-    IsWfV4 str ∧ ∃ v pre, net = v4Value v pre :=
+    IsV4Value str net :=
   by
   unfold parseIPv4Net at h
   generalize hsplits : str.splitToList (· = '/') = parts at h
@@ -443,10 +443,9 @@ theorem parseIPv4Net_isSome_wf {str : String} {net : IPNet} (h : parseIPv4Net st
       have hstr := eq_intercalate_of_splitToList_eq '/' hsplits
       rw [String.intercalate_singleton] at hstr
       rw [haddrStr] at hstr
-      refine ⟨?_, v, none, ?_⟩
-      · exact ⟨v, none, hsyn, hcon, trivial, by simpa using hstr⟩
-      · subst addr
-        simpa [v4Value, prefixValue, IPNetPrefix.ofNat] using h.symm
+      refine ⟨v, none, hsyn, hcon, trivial, by simpa using hstr, ?_⟩
+      subst addr
+      simpa [v4Value, prefixValue, IPNetPrefix.ofNat] using h.symm
   rcases rest with _ | ⟨extra, rest⟩
   ·
     cases hp : parsePrefixNat preStr 2 (ADDR_SIZE V4_WIDTH) with
@@ -461,9 +460,8 @@ theorem parseIPv4Net_isSome_wf {str : String} {net : IPNet} (h : parseIPv4Net st
         have hstr := eq_intercalate_of_splitToList_eq '/' hsplits
         rw [String.intercalate_cons_cons, String.intercalate_singleton] at hstr
         rw [haddrStr] at hstr
-        refine ⟨?_, v, some preStr, ?_⟩
-        · exact ⟨v, some preStr, hsyn, hcon, hpre, by
-            simpa [String.append_assoc] using hstr⟩
+        refine ⟨v, some preStr, hsyn, hcon, hpre, ?_, ?_⟩
+        · simpa [String.append_assoc] using hstr
         · subst addr
           simpa [v4Value, prefixValue, hpreValue] using h.symm
   · simp at h
@@ -1318,13 +1316,13 @@ theorem parseIPv6Net_eq_some {v : V6Components} {pre : Option String}
       rw [hsplit]
       simp only
       rw [parsePrefixNat_eq_value hpre, parseSegsV6_asString hsyn]
-      change IsCanonicalNat p ∧ p.length ≤ 3 ∧ numValue p ≤ ADDR_SIZE V6_WIDTH at hpre
-      have hlt : numValue p < ADDR_SIZE V6_WIDTH + 1 := by omega
+      change IsCanonicalNat p ∧ p.length ≤ 3 ∧ natOf p ≤ ADDR_SIZE V6_WIDTH at hpre
+      have hlt : natOf p < ADDR_SIZE V6_WIDTH + 1 := by omega
       simp [v6Value, prefixValue, IPNetPrefix.ofNat, Fin.ofNat, Nat.mod_eq_of_lt hlt]
 
 /-- Soundness for V6: a successful `parseIPv6Net` means the string is a well-formed V6 rendering. -/
 theorem parseIPv6Net_isSome_wf {str : String} {net : IPNet} (h : parseIPv6Net str = some net) :
-    IsWfV6 str ∧ ∃ v pre, net = v6Value v pre :=
+    IsV6Value str net :=
   by
   unfold parseIPv6Net at h
   generalize hsplits : str.splitToList (· = '/') = parts at h
@@ -1339,10 +1337,9 @@ theorem parseIPv6Net_isSome_wf {str : String} {net : IPNet} (h : parseIPv6Net st
       obtain ⟨v, haddrStr, hsyn, haddr⟩ := parseSegsV6_some_wf ha
       have hstr := eq_intercalate_of_splitToList_eq '/' hsplits
       rw [String.intercalate_singleton, haddrStr] at hstr
-      refine ⟨?_, v, none, ?_⟩
-      · exact ⟨v, none, hsyn, trivial, by simpa using hstr⟩
-      · subst addr
-        simpa [v6Value, prefixValue, IPNetPrefix.ofNat] using h.symm
+      refine ⟨v, none, hsyn, trivial, by simpa using hstr, ?_⟩
+      subst addr
+      simpa [v6Value, prefixValue, IPNetPrefix.ofNat] using h.symm
   rcases rest with _ | ⟨extra, rest⟩
   ·
     cases hp : parsePrefixNat preStr 3 (ADDR_SIZE V6_WIDTH) with
@@ -1357,9 +1354,8 @@ theorem parseIPv6Net_isSome_wf {str : String} {net : IPNet} (h : parseIPv6Net st
         have hstr := eq_intercalate_of_splitToList_eq '/' hsplits
         rw [String.intercalate_cons_cons, String.intercalate_singleton,
           haddrStr] at hstr
-        refine ⟨?_, v, some preStr, ?_⟩
-        · exact ⟨v, some preStr, hsyn, hpre, by
-            simpa [String.append_assoc] using hstr⟩
+        refine ⟨v, some preStr, hsyn, hpre, ?_, ?_⟩
+        · simpa [String.append_assoc] using hstr
         · subst addr
           simpa [v6Value, prefixValue, hpreValue] using h.symm
   · simp at h
@@ -1399,5 +1395,37 @@ theorem parseIPv4Net_none_of_isWfV6 {str : String} (h : IsWfV6 str) :
       · rfl
       · rw [haddrNone]
         rfl
+
+/-- Well-formed IPv4 syntax is exactly syntax to which the grammar assigns some V4 value. -/
+public theorem isWfV4_iff_exists_value {str : String} :
+    IsWfV4 str ↔ ∃ net, IsV4Value str net := by
+  constructor
+  · rintro ⟨v, pre, hsyn, hcon, hpre, hstr⟩
+    exact ⟨v4Value v pre, v, pre, hsyn, hcon, hpre, hstr, rfl⟩
+  · rintro ⟨_, v, pre, hsyn, hcon, hpre, hstr, _⟩
+    exact ⟨v, pre, hsyn, hcon, hpre, hstr⟩
+
+/-- Well-formed IPv6 syntax is exactly syntax to which the grammar assigns some V6 value. -/
+public theorem isWfV6_iff_exists_value {str : String} :
+    IsWfV6 str ↔ ∃ net, IsV6Value str net := by
+  constructor
+  · rintro ⟨v, pre, hsyn, hpre, hstr⟩
+    exact ⟨v6Value v pre, v, pre, hsyn, hpre, hstr, rfl⟩
+  · rintro ⟨_, v, pre, hsyn, hpre, hstr, _⟩
+    exact ⟨v, pre, hsyn, hpre, hstr⟩
+
+/-- Well-formed IP-net syntax is exactly syntax to which the grammar assigns some `IPNet`. -/
+public theorem isWfIPNet_iff_exists_value {str : String} :
+    IsWfIPNet str ↔ ∃ net, IsIPNetValue str net := by
+  constructor
+  · rintro (hv4 | hv6)
+    · obtain ⟨net, hvalue⟩ := isWfV4_iff_exists_value.mp hv4
+      exact ⟨net, Or.inl hvalue⟩
+    · obtain ⟨net, hvalue⟩ := isWfV6_iff_exists_value.mp hv6
+      exact ⟨net, Or.inr hvalue⟩
+  · rintro ⟨net, hvalue⟩
+    rcases hvalue with hv4 | hv6
+    · exact Or.inl (isWfV4_iff_exists_value.mpr ⟨net, hv4⟩)
+    · exact Or.inr (isWfV6_iff_exists_value.mpr ⟨net, hv6⟩)
 
 end Cedar.Thm.IPAddr

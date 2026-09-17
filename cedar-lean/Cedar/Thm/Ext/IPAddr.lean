@@ -32,31 +32,21 @@ open IPAddr
 
 `parse_sound`, `parse_complete`, and `parse_eq_none_iff` characterize exactly when
 `Cedar.Spec.Ext.IPAddr.ip` (a.k.a. `ip`) succeeds, in terms of the grammar-level `IsWfIPNet`
-predicate and the `v4Value`/`v6Value` value functions (both in `Cedar.Thm.Ext.IPAddr.Grammar`). The
-parser-independent bridge lemmas they build on live in `Cedar.Thm.Ext.IPAddr.Lemmas`.
-
-Unlike decimal/duration, the value of an IP-net is not a single `Int` but an `IPNet`, so soundness
-is phrased as "the returned net equals the components' value". Unlike datetime, the parser is
-hand-written (no `Std.Time` delegation), so the bridges are direct string-manipulation reasoning.
-
-`IsWfIPNet` is `IsWfV4 ∨ IsWfV6`. On the value side there is no separate `computeValue : Option`
-(as in decimal): a well-formed string determines its `IPNet` via `v4Value`/`v6Value`, so soundness
-and completeness are stated per witnessing components. -/
+predicate and declarative `IsIPNetValue` relation. Its two branches use `v4Value` and `v6Value` to
+give the denotation of the same components that witness the input rendering. The parser-independent
+bridge lemmas they build on live in `Cedar.Thm.Ext.IPAddr.Lemmas`. -/
 
 /-! ## Soundness -/
 
-/-- Soundness of `IPAddr.ip`: if parsing succeeds, the input is a well-formed IP-net string, and
-    the returned net is the value of its witnessing components. -/
+/-- Soundness of `IPAddr.ip`: if parsing succeeds, the declarative grammar relation assigns the
+    input exactly the returned `IPNet`. -/
 public theorem parse_sound (str : String) (net : IPNet) (h : IPAddr.ip str = some net) :
-    IsWfIPNet str ∧
-    ((∃ v pre, net = v4Value v pre) ∨ (∃ v pre, net = v6Value v pre)) := by
+    IsIPNetValue str net := by
   unfold IPAddr.ip parse at h
   simp only at h
   split at h
-  · obtain ⟨hwf, hvalue⟩ := parseIPv4Net_isSome_wf h
-    exact ⟨Or.inl hwf, Or.inl hvalue⟩
-  · obtain ⟨hwf, hvalue⟩ := parseIPv6Net_isSome_wf h
-    exact ⟨Or.inr hwf, Or.inr hvalue⟩
+  · exact Or.inl (parseIPv4Net_isSome_wf h)
+  · exact Or.inr (parseIPv6Net_isSome_wf h)
 
 /-! ## Completeness -/
 
@@ -105,39 +95,39 @@ public theorem parse_complete_v6 {v : V6Components} {pre : Option String}
       rw [hv4, hv6]
       rfl
 
-/-- Completeness of `IPAddr.ip`: every well-formed IP-net string is accepted (with the value of
-    its witnessing components). -/
-public theorem parse_complete (str : String) (h : IsWfIPNet str) :
-    (IPAddr.ip str).isSome := by
+/-- Completeness of `IPAddr.ip`: if the grammar assigns `str` the value `net`, parsing returns that
+    exact `IPNet`. -/
+public theorem parse_complete (str : String) (net : IPNet)
+    (h : IsIPNetValue str net) :
+    IPAddr.ip str = some net := by
   rcases h with hv4 | hv6
-  · obtain ⟨v, pre, hsyn, hcon, hpre, hstr⟩ := hv4
+  · obtain ⟨v, pre, hsyn, hcon, hpre, hstr, hnet⟩ := hv4
+    subst str
+    subst net
     cases pre with
-    | none =>
-        simp only [String.append_empty] at hstr
-        subst str
-        have hparse : IPAddr.ip v.asString = some (v4Value v none) := by
-          simpa only [String.append_empty] using
-            (parse_complete_v4 (v := v) (pre := none) hsyn hcon hpre)
-        rw [hparse]
-        simp
-    | some p =>
-        subst str
-        rw [parse_complete_v4 (v := v) (pre := some p) hsyn hcon hpre]
-        simp
-  · obtain ⟨v, pre, hsyn, hpre, hstr⟩ := hv6
+    | none => simpa using parse_complete_v4 hsyn hcon hpre
+    | some p => simpa using parse_complete_v4 hsyn hcon hpre
+  · obtain ⟨v, pre, hsyn, hpre, hstr, hnet⟩ := hv6
+    subst str
+    subst net
     cases pre with
-    | none =>
-        simp only [String.append_empty] at hstr
-        subst str
-        have hparse : IPAddr.ip v.asString = some (v6Value v none) := by
-          simpa only [String.append_empty] using
-            (parse_complete_v6 (v := v) (pre := none) hsyn hpre)
-        rw [hparse]
-        simp
-    | some p =>
-        subst str
-        rw [parse_complete_v6 (v := v) (pre := some p) hsyn hpre]
-        simp
+    | none => simpa using parse_complete_v6 hsyn hpre
+    | some p => simpa using parse_complete_v6 hsyn hpre
+
+/-- Exact parser characterization: parsing succeeds with `net` precisely when the declarative
+    grammar relation assigns the input that `IPNet`. -/
+public theorem parse_eq_some_iff_isIPNetValue (str : String) (net : IPNet) :
+    IPAddr.ip str = some net ↔ IsIPNetValue str net :=
+  ⟨parse_sound str net, parse_complete str net⟩
+
+/-- The relational value specification is single-valued: an IP-net string denotes at most one
+    `IPNet`. -/
+public theorem isIPNetValue_unique {str : String} {net₁ net₂ : IPNet}
+    (h₁ : IsIPNetValue str net₁) (h₂ : IsIPNetValue str net₂) : net₁ = net₂ := by
+  have hp₁ := parse_complete str net₁ h₁
+  have hp₂ := parse_complete str net₂ h₂
+  rw [hp₁] at hp₂
+  exact Option.some.inj hp₂
 
 /-! ## Failure characterization -/
 
@@ -148,13 +138,15 @@ public theorem parse_eq_none_iff (str : String) :
     IPAddr.ip str = none ↔ ¬ IsWfIPNet str := by
   constructor
   · intro hnone hwf
-    have hsome := parse_complete str hwf
+    obtain ⟨net, hvalue⟩ := isWfIPNet_iff_exists_value.mp hwf
+    have hsome := parse_complete str net hvalue
     rw [hnone] at hsome
-    simp at hsome
+    contradiction
   · intro hnwf
     cases hparse : IPAddr.ip str with
     | none => rfl
-    | some net => exact (hnwf (parse_sound str net hparse).1).elim
+    | some net =>
+        exact (hnwf (isWfIPNet_iff_exists_value.mpr ⟨net, parse_sound str net hparse⟩)).elim
 
 /-! ## Roundtrip -/
 
@@ -247,7 +239,7 @@ private theorem v4Components_toAddr_of_addr (addr : IPv4Addr) :
           toString ((v >>> 8) &&& 0xff), toString (v &&& 0xff)⟩ =
       addr := by
   dsimp only
-  unfold V4Components.toAddr numValue
+  unfold V4Components.toAddr natOf
   repeat rw [toNat?'_toString]
   simp only [Option.getD_some]
   apply BitVec.eq_of_toNat_eq
@@ -311,7 +303,7 @@ private theorem parse_toString_v4 (addr : IPv4Addr) (pre : IPv4Prefix) :
           have h := mask255_le v
           omega) (by omega)⟩⟩
   have hcon : c.constraintsWf := by
-    simp only [V4Components.constraintsWf, c, g₀, g₁, g₂, g₃, numValue]
+    simp only [V4Components.constraintsWf, c, g₀, g₁, g₂, g₃, natOf]
     repeat rw [toNat?'_toString]
     simp only [Option.getD_some]
     exact ⟨mask255_le _, mask255_le _, mask255_le _, mask255_le _⟩
@@ -323,7 +315,7 @@ private theorem parse_toString_v4 (addr : IPv4Addr) (pre : IPv4Prefix) :
           have h := v4Prefix_toNat_le pre
           omega) (by omega),
         ?_⟩
-    simp only [p, numValue]
+    simp only [p, natOf]
     rw [toNat?'_toString]
     simp only [Option.getD_some]
     change pre.toNat ≤ 32
@@ -331,7 +323,7 @@ private theorem parse_toString_v4 (addr : IPv4Addr) (pre : IPv4Prefix) :
   have haddr : c.toAddr = addr := by
     simpa [c, g₀, g₁, g₂, g₃, v] using v4Components_toAddr_of_addr addr
   have hpfx : prefixValue V4_WIDTH (some p) = pre := by
-    simp only [prefixValue, p, numValue]
+    simp only [prefixValue, p, natOf]
     rw [toNat?'_toString]
     simp only [Option.getD_some]
     exact v4Prefix_of_toNat pre
@@ -526,7 +518,7 @@ private theorem parse_toString_v6 (addr : IPv6Addr) (pre : IPv6Prefix) :
           have h := v6Prefix_toNat_le pre
           omega) (by omega),
         ?_⟩
-    simp only [p, numValue]
+    simp only [p, natOf]
     rw [toNat?'_toString]
     simp only [Option.getD_some]
     change pre.toNat ≤ 128
@@ -535,7 +527,7 @@ private theorem parse_toString_v6 (addr : IPv6Addr) (pre : IPv6Prefix) :
     simpa [c, h₀, h₁, h₂, h₃, h₄, h₅, h₆, h₇, v] using
       v6Components_toAddr_of_addr addr
   have hpfx : prefixValue V6_WIDTH (some p) = pre := by
-    simp only [prefixValue, p, numValue]
+    simp only [prefixValue, p, natOf]
     rw [toNat?'_toString]
     simp only [Option.getD_some]
     exact v6Prefix_of_toNat pre

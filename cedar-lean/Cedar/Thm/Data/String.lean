@@ -62,6 +62,22 @@ public def IsWfSign (s : String) : Prop :=
   s = "-" ∨ s = ""
 -- ANCHOR_END: IsWfSign
 
+/-- Natural-number value of a captured decimal digit string, defaulting to `0` when parsing fails.
+    On a field satisfying `IsDigits`, the default is never taken. -/
+-- ANCHOR: natOf
+public def natOf (s : String) : Nat := (toNat?' s).getD 0
+-- ANCHOR_END: natOf
+
+/-- Length of a captured string as an integer, for use in grammar value formulas. -/
+-- ANCHOR: lenOf
+public def lenOf (s : String) : Int := s.length
+-- ANCHOR_END: lenOf
+
+/-- Sign denoted by a captured optional-minus field. -/
+-- ANCHOR: signOf
+public def signOf (s : String) : Int := if s.startsWith "-" then -1 else 1
+-- ANCHOR_END: signOf
+
 /-- A digit string contains no `'_'`, so `toInt?'`/`toNat?'` (which reject `'_'`) do not
     short-circuit on it. -/
 theorem no_underscore_of_isDigits {s : String} (h : IsDigits s) : s.contains '_' = false := by

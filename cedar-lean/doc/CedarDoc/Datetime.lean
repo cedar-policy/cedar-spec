@@ -105,7 +105,11 @@ the Cedar documentation uses the one word for both.
 
 # Formal Specification
 
-We formalize validity by a single predicate `IsWfDatetime` (well-formed grammar syntax) — the range constraint needs no separate clause, since it is implied. The grammar describes a date optionally followed by a time, a fractional-seconds field, and a zone designator, so the specification is phrased over an explicit record of those components (as in the duration grammar).
+As in the decimal and duration specifications, we separate syntax, component denotation, and the
+relation between a string and its value. `IsWfDatetime` directly transcribes the grammar,
+`DatetimeComponents.toMillis` evaluates already identified components, and
+`IsDatetimeValue str v` combines the same witnesses to say that `str` denotes `v`. The range
+constraint needs no separate clause because it follows from the grammar.
 
 Every numeric field of this grammar is a digit run of an exact width, so the building block is `IsFixedDigits` — the `Digit{n}` refinement of the shared `IsDigits` predicate (introduced in the _Decimal Parsing_ chapter). It too lives in `Cedar.Thm.Data.String`:
 
@@ -132,9 +136,9 @@ public def DateComponents.syntaxWf (d : DateComponents) : Prop :=
 
 ```anchor DateComponents.constraintsWf (module := Cedar.Thm.Ext.Datetime.Grammar)
 public def DateComponents.constraintsWf (d : DateComponents) : Prop :=
-  let mm := fieldValue d.month
+  let mm := natOf d.month
   1 ≤ mm ∧ mm ≤ 12 ∧
-  1 ≤ fieldValue d.day ∧ fieldValue d.day ≤ daysInMonth (fieldValue d.year) mm
+  1 ≤ natOf d.day ∧ natOf d.day ≤ daysInMonth (natOf d.year) mm
 ```
 
 The month/day bounds refer to `daysInMonth` and `isLeapYear`, the two auxiliary grammar functions:
@@ -176,12 +180,32 @@ public def IsWfDatetime (str : String) : Prop :=
     str = components.asString
 ```
 
-The value of a well-formed string is computed structurally by `computeValue`: it re-parses the rendering into its components and evaluates the grammar's value formula — days since the epoch (`epochDays`, the standard civil-calendar day count) scaled to milliseconds, plus the time-of-day, fractional, and zone contributions:
+The component denotation evaluates the grammar's value formula directly: days since the epoch
+(`epochDays`, the standard civil-calendar day count) scaled to milliseconds, plus the
+time-of-day, fractional, and zone contributions.
 
-```anchor computeValue (module := Cedar.Thm.Ext.Datetime.Grammar)
-public def computeValue (str : String) : Option Int :=
-  (parseComponents str).map DatetimeComponents.toMillis
+```anchor DatetimeComponents.toMillis (module := Cedar.Thm.Ext.Datetime.Grammar)
+public def DatetimeComponents.toMillis (c : DatetimeComponents) : Int :=
+  c.date.toMillis + (match c.time with | none => 0 | some tp => tp.toMillis)
 ```
+
+The declarative value relation extends the same well-formed component witness with that
+denotation. It does not re-parse the string or introduce an `Option`-valued second decoder:
+
+```anchor IsDatetimeValue (module := Cedar.Thm.Ext.Datetime.Grammar)
+public def IsDatetimeValue (str : String) (v : Int) : Prop :=
+  ∃ components : DatetimeComponents,
+    components.syntaxWf ∧
+    components.constraintsWf ∧
+    str = components.asString ∧
+    v = components.toMillis
+```
+
+The value relation is total on well-formed syntax and single-valued:
+
+{docstring isWfDatetime_iff_exists_value}
+
+{docstring isDatetimeValue_unique}
 
 # Parser
 
@@ -264,17 +288,27 @@ none
 
 # Soundness and Completeness
 
-The parser is characterized by the same two guarantees as the decimal and duration parsers, stated against `IsWfDatetime` and `computeValue`. Those two are hand-written and reasoned about directly; `Datetime.parse` instead delegates to `Std.Time.GenericFormat.parse`. The extra work is a parser-inversion library that evaluates `Std.Time`'s combinator parsers once and shows a successful parse is exactly the rendering of well-formed witnessing components — reducing both proofs to reasoning about components rather than the parser's recursion.
+The parser is characterized by the same relational guarantees as the decimal and duration
+parsers. `Datetime.parse` delegates to `Std.Time.GenericFormat.parse`, so the proof layer contains
+a parser-inversion library that evaluates those combinators once and shows that a successful parse
+is exactly the rendering of well-formed witnessing components.
 
-_Soundness_: whenever parsing succeeds, the input is well-formed and `computeValue` yields exactly the returned datetime's value.
+_Soundness_: whenever parsing succeeds, the grammar relation assigns the input exactly the
+returned datetime's value.
 
 {docstring parse_sound}
 
-_Completeness_ is the converse: every well-formed string whose computed value is `some d.val.toInt` is accepted as that datetime.
+_Completeness_ is the converse: every string assigned `d.val.toInt` by the grammar relation is
+accepted as that datetime.
 
 {docstring parse_complete}
 
-Together they characterize failure completely — the parser rejects exactly the strings that are malformed or whose computed value overflows `Int64`:
+Together they give an exact success characterization:
+
+{docstring parse_eq_some_iff_isDatetimeValue}
+
+They also characterize failure uniformly with decimal and duration — malformed syntax or a
+related value outside `Int64`:
 
 {docstring parse_eq_none_iff}
 
@@ -319,7 +353,9 @@ Parsing the canonical string representation of any datetime recovers the origina
 
 {docstring parse_toString_roundtrip}
 
-It is a direct corollary of completeness: a successfully serialized string is well-formed with computed value `d.val.toInt`, so completeness parses it back to `d`. The total-`Option` phrasing packages the same fact without a side hypothesis on definedness:
+It is a direct corollary of completeness: a successfully serialized string denotes
+`d.val.toInt`, so completeness parses it back to `d`. The total-`Option` phrasing packages the
+same fact without a side hypothesis on definedness:
 
 {docstring bind_parse_toString?}
 

@@ -302,6 +302,20 @@ public def Duration.toDays (duration: Duration) : Int64 :=
 private def durationComponent (n : Nat) (suffix : String) : String :=
   toString n ++ suffix
 
+/-- Render a nonnegative millisecond total as a canonical duration body. -/
+private def canonicalDurationBody (totalMs : Nat) : String :=
+  let days := totalMs / MILLISECONDS_PER_DAY.toNat
+  let rem := totalMs % MILLISECONDS_PER_DAY.toNat
+  let hours := rem / MILLISECONDS_PER_HOUR.toNat
+  let rem := rem % MILLISECONDS_PER_HOUR.toNat
+  let minutes := rem / MILLISECONDS_PER_MINUTE.toNat
+  let rem := rem % MILLISECONDS_PER_MINUTE.toNat
+  let seconds := rem / MILLISECONDS_PER_SECOND.toNat
+  let ms := rem % MILLISECONDS_PER_SECOND.toNat
+  durationComponent days "d" ++ durationComponent hours "h" ++
+    durationComponent minutes "m" ++ durationComponent seconds "s" ++
+    durationComponent ms "ms"
+
 /-- Convert a `Duration` to its canonical string representation.
     The format is `[-]<days>d<hours>h<minutes>m<seconds>s<milliseconds>ms`,
     with units maximized and printed largest-to-smallest.
@@ -311,18 +325,7 @@ private def durationComponent (n : Nat) (suffix : String) : String :=
 -- ANCHOR: toString
 public def Duration.toString (d : Duration) : String :=
   let neg := d.val < 0
-  let totalMs := d.val.toInt.natAbs
-  let days := totalMs / MILLISECONDS_PER_DAY.toNat
-  let rem := totalMs % MILLISECONDS_PER_DAY.toNat
-  let hours := rem / MILLISECONDS_PER_HOUR.toNat
-  let rem := rem % MILLISECONDS_PER_HOUR.toNat
-  let minutes := rem / MILLISECONDS_PER_MINUTE.toNat
-  let rem := rem % MILLISECONDS_PER_MINUTE.toNat
-  let seconds := rem / MILLISECONDS_PER_SECOND.toNat
-  let ms := rem % MILLISECONDS_PER_SECOND.toNat
-  let body := durationComponent days "d" ++ durationComponent hours "h" ++
-    durationComponent minutes "m" ++ durationComponent seconds "s" ++
-    durationComponent ms "ms"
+  let body := canonicalDurationBody d.val.toInt.natAbs
   if neg then "-" ++ body else body
 -- ANCHOR_END: toString
 

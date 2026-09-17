@@ -89,7 +89,10 @@ instead uses fixed-width lowercase hextets and does not elide zero runs.
 
 # Formal Specification
 
-We formalize the validity of an input string by the predicate `IsWfIPNet` (well-formed syntax of the grammar) and the value functions `v4Value`/`v6Value` (the `IPNet` a well-formed string denotes). Unlike the decimal grammar, whose value is a single `Int`, an IP-net's value is an `IPNet`, so soundness and completeness are phrased per witnessing components rather than through a single `computeValue`.
+As with Decimal and Duration, the public specification separates syntax, component denotation,
+and a relational value statement. `IsWfIPNet` directly transcribes the V4/V6 grammar,
+`v4Value` and `v6Value` give the denotation of identified components, and
+`IsIPNetValue str net` ties the same rendering witnesses to the `IPNet` they denote.
 
 The building block for numeric groups is `IsCanonicalNat`, which captures a non-empty digit string with the grammar's "no leading zeros" rule (`str.startsWith "0" → str = "0"`), building on the shared `IsDigits` predicate:
 
@@ -110,7 +113,7 @@ public def V4Components.syntaxWf (v : V4Components) : Prop :=
 
 ```anchor V4Components.constraintsWf (module := Cedar.Thm.Ext.IPAddr.Grammar)
 public def V4Components.constraintsWf (v : V4Components) : Prop :=
-  numValue v.g₀ ≤ 255 ∧ numValue v.g₁ ≤ 255 ∧ numValue v.g₂ ≤ 255 ∧ numValue v.g₃ ≤ 255
+  natOf v.g₀ ≤ 255 ∧ natOf v.g₁ ≤ 255 ∧ natOf v.g₂ ≤ 255 ∧ natOf v.g₃ ≤ 255
 ```
 
 An IPv6 address is modelled on the grammar's `::` structure — either a `full` list of eight groups, or a `gap` form whose two sides straddle the `::` and whose total is strictly fewer than eight groups (the gap expanding to the missing zero groups). This mirrors how the parser (next section) splits on `"::"`:
@@ -132,7 +135,7 @@ The optional CIDR prefix is a canonical decimal number bounded by the address wi
 ```anchor IsWfOptionalPrefix (module := Cedar.Thm.Ext.IPAddr.Grammar)
 public def IsWfOptionalPrefix (digits size : Nat) : Option String → Prop
   | none        => True
-  | some p      => IsCanonicalNat p ∧ p.length ≤ digits ∧ numValue p ≤ size
+  | some p      => IsCanonicalNat p ∧ p.length ≤ digits ∧ natOf p ≤ size
 ```
 
 Well-formedness of the whole string then reads off the grammar — a well-formed V4 rendering or a well-formed V6 rendering, each phrased existentially over the components' `asString` (which bakes in the separators, group count, and `::`-placement):
@@ -149,6 +152,54 @@ public def IsWfV4 (str : String) : Prop :=
 public def IsWfIPNet (str : String) : Prop :=
   IsWfV4 str ∨ IsWfV6 str
 ```
+
+The family-specific value functions construct an `IPNet` from already identified address and
+prefix components:
+
+```anchor v4Value (module := Cedar.Thm.Ext.IPAddr.Grammar)
+public def v4Value (v : V4Components) (pre : Option String) : IPNet :=
+  IPNet.V4 ⟨v.toAddr, prefixValue V4_WIDTH pre⟩
+```
+
+```anchor v6Value (module := Cedar.Thm.Ext.IPAddr.Grammar)
+public def v6Value (v : V6Components) (pre : Option String) : IPNet :=
+  IPNet.V6 ⟨v.toAddr, prefixValue V6_WIDTH pre⟩
+```
+
+`IsV4Value` and `IsV6Value` extend the corresponding syntax witnesses with their denotation;
+`IsIPNetValue` combines the two productions:
+
+```anchor IsV4Value (module := Cedar.Thm.Ext.IPAddr.Grammar)
+public def IsV4Value (str : String) (net : IPNet) : Prop :=
+  ∃ (v : V4Components) (pre : Option String),
+    v.syntaxWf ∧
+    v.constraintsWf ∧
+    IsWfOptionalPrefix 2 (ADDR_SIZE V4_WIDTH) pre ∧
+    str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p) ∧
+    net = v4Value v pre
+```
+
+```anchor IsV6Value (module := Cedar.Thm.Ext.IPAddr.Grammar)
+public def IsV6Value (str : String) (net : IPNet) : Prop :=
+  ∃ (v : V6Components) (pre : Option String),
+    v.syntaxWf ∧
+    IsWfOptionalPrefix 3 (ADDR_SIZE V6_WIDTH) pre ∧
+    str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p) ∧
+    net = v6Value v pre
+```
+
+```anchor IsIPNetValue (module := Cedar.Thm.Ext.IPAddr.Grammar)
+public def IsIPNetValue (str : String) (net : IPNet) : Prop :=
+  IsV4Value str net ∨ IsV6Value str net
+```
+
+The syntax and value views agree: an input is well-formed exactly when it denotes some `IPNet`.
+
+{docstring isWfIPNet_iff_exists_value}
+
+The relation is also single-valued, including across the V4/V6 alternatives.
+
+{docstring isIPNetValue_unique}
 
 # Parser
 
@@ -235,25 +286,28 @@ none
 # Soundness and Completeness
 
 The parser is characterized by the same guarantees as the other verified extension parsers. The
-specification is independent of the parser: `IsWfIPNet` describes the accepted grammar, while
-`v4Value` and `v6Value` give the value of witnessing components. The proof connects those
-definitions to the hand-written parser, including IPv4's precedence over IPv6.
+proof connects `IsIPNetValue` to the hand-written parser, including IPv4's precedence over IPv6.
 
-_Soundness_: whenever parsing succeeds, the input is well-formed and the returned `IPNet` is the
-value of either witnessing IPv4 or IPv6 components.
+_Soundness_: whenever parsing succeeds, the grammar relation assigns the input exactly the
+returned `IPNet`.
 
 {docstring parse_sound}
 
-_Completeness_ is exact for each address family: well-formed IPv4 and IPv6 renderings parse to their
-component values.
+_Completeness_ is exact for each address family: well-formed IPv4 and IPv6 renderings parse to
+their component values.
 
 {docstring parse_complete_v4}
 
 {docstring parse_complete_v6}
 
-The family-independent form states that every well-formed IP-net string is accepted.
+The family-independent form states that every relational value witness is accepted as that exact
+`IPNet`.
 
 {docstring parse_complete}
+
+Together, soundness and completeness give a direct parser characterization:
+
+{docstring parse_eq_some_iff_isIPNetValue}
 
 Together, soundness and completeness characterize failure completely. There is no separate
 overflow case: the octet, hextet, and prefix bounds are already part of the grammar.

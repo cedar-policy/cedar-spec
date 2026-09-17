@@ -70,12 +70,65 @@ open Datetime
 
 /-! # Datetime grammar roundtrip lemmas
 
-The value function `computeValue = (parseComponents ·).map toMillis` re-parses the string. On a
-well-formed string — one that equals `c.asString` for some structurally valid `c` — this re-parse
-succeeds, giving `computeValue` a value. These lemmas establish the roundtrip nonterminal by
-nonterminal, using the digit-field separator-freeness established from `IsDigits`. They culminate
-in `parseComponents_asString`, which the aggregator's `computeValue_isSome_of_isWfDatetime` builds
-on. -/
+The trusted grammar specification carries component witnesses directly through
+`IsDatetimeValue`. The small structural decoder below is therefore proof-local: it establishes
+that a well-formed rendering determines those witnesses uniquely. The lemmas prove its roundtrip
+nonterminal by nonterminal, using digit-field separator-freeness from `IsDigits`, and culminate in
+`parseComponents_asString`. -/
+
+/-- Proof-local structural parse of a `Date`: split on `'-'` into `[YYYY, MM, DD]`. -/
+private def parseDate (s : String) : Option DateComponents :=
+  match s.splitToList (· = '-') with
+  | [year, month, day] => some { year, month, day }
+  | _ => none
+
+/-- Proof-local structural parse of a `Time`: split on `':'` into `[hh, mm, ss]`. -/
+private def parseTime (s : String) : Option TimeComponents :=
+  match s.splitToList (· = ':') with
+  | [hours, minutes, seconds] => some { hours, minutes, seconds }
+  | _ => none
+
+/-- Proof-local structural parse of an `Offset ::= ('+' | '-') hh mm`. -/
+private def parseOffset (s : String) : Option OffsetComponents :=
+  match s.toList with
+  | sign :: rest =>
+    if (sign = '+' ∨ sign = '-') ∧ rest.length = 4 then
+      some { negative := sign = '-',
+             hours := String.ofList (rest.take 2),
+             minutes := String.ofList (rest.drop 2) }
+    else none
+  | _ => none
+
+/-- Proof-local structural parse of `Time ['.' SSS] Zone`, after the leading `'T'`. -/
+private def parseTimePart (s : String) : Option TimePart := do
+  let (timeMs, zone) ←
+    match s.toList.reverse with
+    | [] => none
+    | c :: rev =>
+      if c = 'Z' then some (String.ofList rev.reverse, Zone.utc)
+      else do
+        let o ← parseOffset (String.ofList ((c :: rev).take 5).reverse)
+        some (String.ofList ((c :: rev).drop 5).reverse, Zone.offset o)
+  match timeMs.splitToList (· = '.') with
+  | [time] => do
+    let t ← parseTime time
+    some { time := t, millis := none, zone }
+  | [time, sss] => do
+    let t ← parseTime time
+    some { time := t, millis := some sss, zone }
+  | _ => none
+
+/-- Proof-local structural parse of the grammar's five top-level datetime forms. -/
+private def parseComponents (str : String) : Option DatetimeComponents := do
+  match str.splitToList (· = 'T') with
+  | [date] => do
+    let d ← parseDate date
+    some { date := d, time := none }
+  | [date, rest] => do
+    let d ← parseDate date
+    let tp ← parseTimePart rest
+    some { date := d, time := some tp }
+  | _ => none
 
 /-- A non-digit separator character never occurs in a digit string. -/
 theorem not_mem_of_isDigits {s : String} (h : IsDigits s) {sep : Char} (hsep : sep.isDigit = false) :
@@ -389,6 +442,30 @@ theorem parseComponents_asString {c : DatetimeComponents} (h : c.syntaxWf) :
     rw [show c = DatetimeComponents.mk c.date (some tp) from by rw [← htp]]
     rfl
 
+/-- Well-formed datetime syntax is exactly syntax to which the grammar assigns some value. Both
+    sides use the same component witnesses; no parser or string decoder is involved. -/
+public theorem isWfDatetime_iff_exists_value {str : String} :
+    IsWfDatetime str ↔ ∃ v, IsDatetimeValue str v := by
+  constructor
+  · rintro ⟨components, hsyntax, hconstraints, hstr⟩
+    exact ⟨components.toMillis, components, hsyntax, hconstraints, hstr, rfl⟩
+  · rintro ⟨_, components, hsyntax, hconstraints, hstr, _⟩
+    exact ⟨components, hsyntax, hconstraints, hstr⟩
+
+/-- The declarative value relation is single-valued: a datetime string denotes at most one
+    epoch-millisecond value. -/
+public theorem isDatetimeValue_unique {str : String} {v₁ v₂ : Int}
+    (h₁ : IsDatetimeValue str v₁) (h₂ : IsDatetimeValue str v₂) : v₁ = v₂ := by
+  obtain ⟨c₁, hsyntax₁, _, hstr₁, hv₁⟩ := h₁
+  obtain ⟨c₂, hsyntax₂, _, hstr₂, hv₂⟩ := h₂
+  have hp₁ := parseComponents_asString hsyntax₁
+  have hp₂ := parseComponents_asString hsyntax₂
+  have hrender : c₁.asString = c₂.asString := hstr₁.symm.trans hstr₂
+  rw [hrender, hp₂] at hp₁
+  have hc : c₂ = c₁ := Option.some.inj hp₁
+  subst c₂
+  exact hv₁.trans hv₂.symm
+
 /-! ## Canonical serialization certificates -/
 
 /-- The executable fixed-width digit check reflects the grammar predicate. -/
@@ -461,11 +538,10 @@ theorem canonicalComponents?_some {d : Cedar.Spec.Ext.Datetime} {components : Da
       exact Option.some.inj h ▸ ⟨hsyntax, hconstraints, hvalue⟩
     · contradiction
 
-/-- Every string returned by `toString?` is a well-formed datetime rendering with the source
-    datetime's exact millisecond value. -/
-theorem toString?_some_wf_value {d : Cedar.Spec.Ext.Datetime} {str : String}
+/-- Every string returned by `toString?` denotes the source datetime's exact millisecond value. -/
+theorem toString?_some_value {d : Cedar.Spec.Ext.Datetime} {str : String}
     (h : toString? d = some str) :
-    IsWfDatetime str ∧ computeValue str = some d.val.toInt := by
+    IsDatetimeValue str d.val.toInt := by
   unfold toString? at h
   cases hc : canonicalComponents? d with
   | none => simp [hc] at h
@@ -473,9 +549,7 @@ theorem toString?_some_wf_value {d : Cedar.Spec.Ext.Datetime} {str : String}
     simp only [hc, Option.map_some, Option.some.injEq] at h
     subst str
     obtain ⟨hsyntax, hconstraints, hvalue⟩ := canonicalComponents?_some hc
-    refine ⟨⟨components, hsyntax, hconstraints, rfl⟩, ?_⟩
-    unfold computeValue
-    rw [parseComponents_asString hsyntax, Option.map_some, hvalue]
+    exact ⟨components, hsyntax, hconstraints, rfl, hvalue.symm⟩
 
 /-- Values outside the exact grammar-representable millisecond interval do not serialize: the
     canonical local-time selection returns `none`, so `toString?` short-circuits. -/
@@ -673,18 +747,18 @@ theorem toNat?'_eq_toNat? (s : String) (h : IsDigits s) : toNat?' s = s.toNat? :
   rw [no_underscore_of_isDigits h]
   simp
 
-/-- On a digit string, `String.toNat!` equals the grammar's `fieldValue`
-    (`fieldValue s = (toNat?' s).getD 0`). -/
-theorem toNat!_eq_fieldValue (s : String) (h : IsDigits s) : s.toNat! = fieldValue s := by
-  unfold fieldValue
+/-- On a digit string, `String.toNat!` equals the grammar's `natOf`
+    (`natOf s = (toNat?' s).getD 0`). -/
+theorem toNat!_eq_natOf (s : String) (h : IsDigits s) : s.toNat! = natOf s := by
+  unfold natOf
   rw [toNat?'_eq_toNat? s h, toNat!_eq_getD_toNat? s (isNat_of_isDigits h)]
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time in
 /-- `parseNum n` on a fixed-width digit field. Running `Std.Time`'s `parseNum` (which is
     `String.toNat! <$> exactlyChars (satisfy Char.isDigit) n`) on `digits ++ rest`, where `digits`
     is exactly `n` digit characters, succeeds: it produces `String.toNat! digits`, leaves the string
-    unchanged, and advances the position past `digits`. See `parseNum_digits_fieldValue` for the
-    same result phrased via the grammar's `fieldValue`. -/
+    unchanged, and advances the position past `digits`. See `parseNum_digits_natOf` for the
+    same result phrased via the grammar's `natOf`. -/
 theorem parseNum_digits {digits rest : String} (n : Nat)
     (hlen : digits.length = n)
     (hdig : ∀ c ∈ digits.toList, c.isDigit = true) :
@@ -699,20 +773,20 @@ theorem parseNum_digits {digits rest : String} (n : Nat)
   rw [parsec_map_app, hpar]
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time in
-/-- `parseNum n` on a fixed-width digit field, value phrased via the grammar's `fieldValue` — the
+/-- `parseNum n` on a fixed-width digit field, value phrased via the grammar's `natOf` — the
     form the datetime roundtrip consumer wants: on `digits ++ rest` with `digits` exactly `n`
-    digits, `parseNum n` succeeds producing `fieldValue digits`, keeps the string, and advances
+    digits, `parseNum n` succeeds producing `natOf digits`, keeps the string, and advances
     past `digits`. -/
-theorem parseNum_digits_fieldValue {digits rest : String} (n : Nat)
+theorem parseNum_digits_natOf {digits rest : String} (n : Nat)
     (hdigits : IsFixedDigits n digits) :
     ∃ (it' : ParseIt),
       parseNum n ⟨digits ++ rest, (digits ++ rest).startPos⟩
-        = ParseResult.success it' (fieldValue digits) ∧
+        = ParseResult.success it' (natOf digits) ∧
       it'.1 = digits ++ rest ∧
       it'.2.offset.byteIdx = digits.utf8ByteSize := by
   obtain ⟨hdig, hlen⟩ := hdigits
   obtain ⟨it', hpar, hstr, hoff⟩ := parseNum_digits n hlen hdig.2
-  exact ⟨it', by rw [hpar, toNat!_eq_fieldValue digits hdig], hstr, hoff⟩
+  exact ⟨it', by rw [hpar, toNat!_eq_natOf digits hdig], hstr, hoff⟩
 
 open Std.Time Std.Time.Internal in
 /-- Cedar's grammar-level `epochDays` agrees with `Std.Time.PlainDate.toEpochDay` whenever
@@ -731,35 +805,35 @@ theorem epochDays_eq (year month day : Nat) (date : PlainDate)
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time in
 /-- `parseWith` on the four-digit year modifier. On `digits ++ rest` with `IsFixedDigits 4 digits`,
-    it succeeds with value `Int.ofNat (fieldValue digits)`, string unchanged, position advanced. -/
+    it succeeds with value `Int.ofNat (natOf digits)`, string unchanged, position advanced. -/
 theorem parseWith_year {digits rest : String} (config : Std.Time.FormatConfig)
     (hdigits : IsFixedDigits 4 digits) :
     ∃ (it' : ParseIt),
       parseWith config (.y .fourDigit) ⟨digits ++ rest, (digits ++ rest).startPos⟩
-        = ParseResult.success it' (Int.ofNat (fieldValue digits)) ∧
+        = ParseResult.success it' (Int.ofNat (natOf digits)) ∧
       it'.1 = digits ++ rest ∧
       it'.2.offset.byteIdx = digits.utf8ByteSize := by
-  obtain ⟨it', hpar, hstr, hoff⟩ := parseNum_digits_fieldValue 4 hdigits
+  obtain ⟨it', hpar, hstr, hoff⟩ := parseNum_digits_natOf 4 hdigits
   refine ⟨it', ?_, hstr, hoff⟩
   show (Int.ofNat <$> parseNum 4) _ = _
   rw [parsec_map_app, hpar]
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal in
 /-- `parseWith` on the two-digit month modifier. On `digits ++ rest` with `IsFixedDigits 2 digits`
-    and the month bound `1 ≤ fieldValue digits ≤ 12` (the grammar's `constraintsWf`, which is
+    and the month bound `1 ≤ natOf digits ≤ 12` (the grammar's `constraintsWf`, which is
     exactly what makes `parseNatToBounded`'s range check pass), it succeeds with the `Bounded.LE`
-    value whose `.val` is `fieldValue digits`, string unchanged, position advanced. -/
+    value whose `.val` is `natOf digits`, string unchanged, position advanced. -/
 theorem parseWith_month {digits rest : String} (config : Std.Time.FormatConfig)
     (hdigits : IsFixedDigits 2 digits)
-    (hbound : 1 ≤ fieldValue digits ∧ fieldValue digits ≤ 12) :
-    ∃ (it' : ParseIt) (h : 1 ≤ fieldValue digits ∧ fieldValue digits ≤ 12),
+    (hbound : 1 ≤ natOf digits ∧ natOf digits ≤ 12) :
+    ∃ (it' : ParseIt) (h : 1 ≤ natOf digits ∧ natOf digits ≤ 12),
       parseWith config (.M (.inl {padding := 2}))
           ⟨digits ++ rest, (digits ++ rest).startPos⟩
-        = ParseResult.success it' (Bounded.LE.ofNat' (fieldValue digits) h) ∧
-      (Bounded.LE.ofNat' (fieldValue digits) h).val = fieldValue digits ∧
+        = ParseResult.success it' (Bounded.LE.ofNat' (natOf digits) h) ∧
+      (Bounded.LE.ofNat' (natOf digits) h).val = natOf digits ∧
       it'.1 = digits ++ rest ∧
       it'.2.offset.byteIdx = digits.utf8ByteSize := by
-  obtain ⟨it', hpar, hstr, hoff⟩ := parseNum_digits_fieldValue 2 hdigits
+  obtain ⟨it', hpar, hstr, hoff⟩ := parseNum_digits_natOf 2 hdigits
   refine ⟨it', hbound, ?_, rfl, hstr, hoff⟩
   show (parseNatToBounded (parseFlexibleNum 2)) _ = _
   unfold parseNatToBounded parseFlexibleNum
@@ -770,18 +844,18 @@ theorem parseWith_month {digits rest : String} (config : Std.Time.FormatConfig)
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal in
 /-- `parseWith` on the two-digit day modifier. As `parseWith_month`, with the day bound
-    `1 ≤ fieldValue digits ≤ 31`. -/
+    `1 ≤ natOf digits ≤ 31`. -/
 theorem parseWith_day {digits rest : String} (config : Std.Time.FormatConfig)
     (hdigits : IsFixedDigits 2 digits)
-    (hbound : 1 ≤ fieldValue digits ∧ fieldValue digits ≤ 31) :
-    ∃ (it' : ParseIt) (h : 1 ≤ fieldValue digits ∧ fieldValue digits ≤ 31),
+    (hbound : 1 ≤ natOf digits ∧ natOf digits ≤ 31) :
+    ∃ (it' : ParseIt) (h : 1 ≤ natOf digits ∧ natOf digits ≤ 31),
       parseWith config (.d {padding := 2})
           ⟨digits ++ rest, (digits ++ rest).startPos⟩
-        = ParseResult.success it' (Bounded.LE.ofNat' (fieldValue digits) h) ∧
-      (Bounded.LE.ofNat' (fieldValue digits) h).val = fieldValue digits ∧
+        = ParseResult.success it' (Bounded.LE.ofNat' (natOf digits) h) ∧
+      (Bounded.LE.ofNat' (natOf digits) h).val = natOf digits ∧
       it'.1 = digits ++ rest ∧
       it'.2.offset.byteIdx = digits.utf8ByteSize := by
-  obtain ⟨it', hpar, hstr, hoff⟩ := parseNum_digits_fieldValue 2 hdigits
+  obtain ⟨it', hpar, hstr, hoff⟩ := parseNum_digits_natOf 2 hdigits
   refine ⟨it', hbound, ?_, rfl, hstr, hoff⟩
   show (parseNatToBounded (parseFlexibleNum 2)) _ = _
   unfold parseNatToBounded parseFlexibleNum
@@ -794,14 +868,14 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal i
 /-- `parseWith` on the two-digit hour modifier `.H`. As `parseWith_month`, with `Hour.Ordinal`
     bounds `0..23`. -/
 theorem parseWith_hour {digits rest : String} (config : Std.Time.FormatConfig)
-    (hdigits : IsFixedDigits 2 digits) (hbound : fieldValue digits ≤ 23) :
-    ∃ (it' : ParseIt) (h : 0 ≤ fieldValue digits ∧ fieldValue digits ≤ 23),
+    (hdigits : IsFixedDigits 2 digits) (hbound : natOf digits ≤ 23) :
+    ∃ (it' : ParseIt) (h : 0 ≤ natOf digits ∧ natOf digits ≤ 23),
       parseWith config (.H {padding := 2}) ⟨digits ++ rest, (digits ++ rest).startPos⟩
-        = ParseResult.success it' (Bounded.LE.ofNat' (fieldValue digits) h) ∧
-      (Bounded.LE.ofNat' (fieldValue digits) h).val = fieldValue digits ∧
+        = ParseResult.success it' (Bounded.LE.ofNat' (natOf digits) h) ∧
+      (Bounded.LE.ofNat' (natOf digits) h).val = natOf digits ∧
       it'.1 = digits ++ rest ∧ it'.2.offset.byteIdx = digits.utf8ByteSize := by
-  obtain ⟨it', hpar, hstr, hoff⟩ := parseNum_digits_fieldValue 2 hdigits
-  have hbound' : 0 ≤ fieldValue digits ∧ fieldValue digits ≤ 23 := ⟨Nat.zero_le _, hbound⟩
+  obtain ⟨it', hpar, hstr, hoff⟩ := parseNum_digits_natOf 2 hdigits
+  have hbound' : 0 ≤ natOf digits ∧ natOf digits ≤ 23 := ⟨Nat.zero_le _, hbound⟩
   refine ⟨it', hbound', ?_, rfl, hstr, hoff⟩
   show (parseNatToBounded (parseFlexibleNum 2)) _ = _
   unfold parseNatToBounded parseFlexibleNum
@@ -814,14 +888,14 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal i
 /-- `parseWith` on the two-digit minute modifier `.m`. As `parseWith_hour`, with `Minute.Ordinal`
     bounds `0..59`. -/
 theorem parseWith_minute {digits rest : String} (config : Std.Time.FormatConfig)
-    (hdigits : IsFixedDigits 2 digits) (hbound : fieldValue digits ≤ 59) :
-    ∃ (it' : ParseIt) (h : 0 ≤ fieldValue digits ∧ fieldValue digits ≤ 59),
+    (hdigits : IsFixedDigits 2 digits) (hbound : natOf digits ≤ 59) :
+    ∃ (it' : ParseIt) (h : 0 ≤ natOf digits ∧ natOf digits ≤ 59),
       parseWith config (.m {padding := 2}) ⟨digits ++ rest, (digits ++ rest).startPos⟩
-        = ParseResult.success it' (Bounded.LE.ofNat' (fieldValue digits) h) ∧
-      (Bounded.LE.ofNat' (fieldValue digits) h).val = fieldValue digits ∧
+        = ParseResult.success it' (Bounded.LE.ofNat' (natOf digits) h) ∧
+      (Bounded.LE.ofNat' (natOf digits) h).val = natOf digits ∧
       it'.1 = digits ++ rest ∧ it'.2.offset.byteIdx = digits.utf8ByteSize := by
-  obtain ⟨it', hpar, hstr, hoff⟩ := parseNum_digits_fieldValue 2 hdigits
-  have hbound' : 0 ≤ fieldValue digits ∧ fieldValue digits ≤ 59 := ⟨Nat.zero_le _, hbound⟩
+  obtain ⟨it', hpar, hstr, hoff⟩ := parseNum_digits_natOf 2 hdigits
+  have hbound' : 0 ≤ natOf digits ∧ natOf digits ≤ 59 := ⟨Nat.zero_le _, hbound⟩
   refine ⟨it', hbound', ?_, rfl, hstr, hoff⟩
   show (parseNatToBounded (parseFlexibleNum 2)) _ = _
   unfold parseNatToBounded parseFlexibleNum
@@ -837,16 +911,16 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal i
     ascriptions on `expandTop` are load-bearing (they pin the existential's value type). -/
 theorem parseWith_second {digits rest : String} (config : Std.Time.FormatConfig)
     (hcfg : config.allowLeapSeconds = false)
-    (hdigits : IsFixedDigits 2 digits) (hbound : fieldValue digits ≤ 59) :
-    ∃ (it' : ParseIt) (h : 0 ≤ fieldValue digits ∧ fieldValue digits ≤ 59),
+    (hdigits : IsFixedDigits 2 digits) (hbound : natOf digits ≤ 59) :
+    ∃ (it' : ParseIt) (h : 0 ≤ natOf digits ∧ natOf digits ≤ 59),
       parseWith config (.s {padding := 2}) ⟨digits ++ rest, (digits ++ rest).startPos⟩
         = ParseResult.success it'
-            (((Bounded.LE.ofNat' (fieldValue digits) h).expandTop (by decide) : Bounded.LE 0 60)) ∧
-      (((Bounded.LE.ofNat' (fieldValue digits) h).expandTop (by decide) : Bounded.LE 0 60)).val
-        = fieldValue digits ∧
+            (((Bounded.LE.ofNat' (natOf digits) h).expandTop (by decide) : Bounded.LE 0 60)) ∧
+      (((Bounded.LE.ofNat' (natOf digits) h).expandTop (by decide) : Bounded.LE 0 60)).val
+        = natOf digits ∧
       it'.1 = digits ++ rest ∧ it'.2.offset.byteIdx = digits.utf8ByteSize := by
-  obtain ⟨it', hpar, hstr, hoff⟩ := parseNum_digits_fieldValue 2 hdigits
-  have hbound' : 0 ≤ fieldValue digits ∧ fieldValue digits ≤ 59 := ⟨Nat.zero_le _, hbound⟩
+  obtain ⟨it', hpar, hstr, hoff⟩ := parseNum_digits_natOf 2 hdigits
+  have hbound' : 0 ≤ natOf digits ∧ natOf digits ≤ 59 := ⟨Nat.zero_le _, hbound⟩
   refine ⟨it', hbound', ?_, rfl, hstr, hoff⟩
   show (if config.allowLeapSeconds then parseNatToBounded (parseFlexibleNum 2)
         else (do let res : Bounded.LE 0 59 ← parseNatToBounded (parseFlexibleNum 2)
@@ -856,7 +930,7 @@ theorem parseWith_second {digits rest : String} (config : Std.Time.FormatConfig)
   have hinner : (parseNatToBounded (parseFlexibleNum 2) :
         Std.Internal.Parsec ParseIt (Bounded.LE 0 59))
       ⟨digits ++ rest, (digits ++ rest).startPos⟩
-      = ParseResult.success it' (Bounded.LE.ofNat' (fieldValue digits) hbound') := by
+      = ParseResult.success it' (Bounded.LE.ofNat' (natOf digits) hbound') := by
     unfold parseNatToBounded parseFlexibleNum
     simp only [Nat.reduceEqDiff, ↓reduceIte, bind, Bind.bind]
     rw [parsec_bind_app, hpar]
@@ -916,10 +990,10 @@ theorem isDigits_append_zeros (sss : String) (h : IsDigits sss) (k : Nat) :
       have hce := List.eq_of_mem_replicate hc
       rw [hce]; decide
 
-/-- `fieldValue` of a digit string as the explicit base-10 digit fold over its characters. -/
-theorem fieldValue_isDigits (s : String) (h : IsDigits s) :
-    fieldValue s = List.foldl (fun n c => n * 10 + (c.toNat - 48)) 0 s.toList := by
-  unfold fieldValue
+/-- `natOf` of a digit string as the explicit base-10 digit fold over its characters. -/
+theorem natOf_isDigits (s : String) (h : IsDigits s) :
+    natOf s = List.foldl (fun n c => n * 10 + (c.toNat - 48)) 0 s.toList := by
+  unfold natOf
   rw [toNat?'_eq_toNat? s h, String.toNat?_eq_some_ofDigitChars (isNat_of_isDigits h)]
   rw [Option.getD_some]
   have hfilter : s.toList.filter (· != '_') = s.toList := by
@@ -945,28 +1019,28 @@ theorem foldl_replicate_zero (k : Nat) (a : Nat) :
 
 /-- `String.toNat!` of a digit string with `k` appended `'0'`s equals its value times `10ᵏ`. -/
 theorem toNat!_append_zeros (sss : String) (h : IsDigits sss) (k : Nat) :
-    String.toNat! (sss ++ "".pushn '0' k) = fieldValue sss * (10 ^ k) := by
+    String.toNat! (sss ++ "".pushn '0' k) = natOf sss * (10 ^ k) := by
   have hd : IsDigits (sss ++ "".pushn '0' k) := isDigits_append_zeros sss h k
-  rw [toNat!_eq_fieldValue _ hd, fieldValue_isDigits _ hd, fieldValue_isDigits _ h]
+  rw [toNat!_eq_natOf _ hd, natOf_isDigits _ hd, natOf_isDigits _ h]
   rw [String.toList_append, pushn_empty_toList, List.foldl_append, foldl_replicate_zero]
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal Std.Time.GenericFormat in
 /-- `parseWith` on the truncated-3 fraction modifier `.S (.truncated 3)` (the `SSS` millisecond
-    field). On a 3-digit `sss`, it succeeds with the `Nanosecond.Ordinal` value `fieldValue sss ×
+    field). On a 3-digit `sss`, it succeeds with the `Nanosecond.Ordinal` value `natOf sss ×
     10⁶` (milliseconds → nanoseconds), string unchanged, position advanced. The `≤ 999999999` bound
-    follows from `fieldValue sss ≤ 999`. -/
+    follows from `natOf sss ≤ 999`. -/
 theorem parseWith_fraction {sss rest : String} (config : Std.Time.FormatConfig)
-    (hsss : IsFixedDigits 3 sss) (hb : fieldValue sss ≤ 999) :
-    ∃ (it' : ParseIt) (h : 0 ≤ fieldValue sss * 1000000 ∧ fieldValue sss * 1000000 ≤ 999999999),
+    (hsss : IsFixedDigits 3 sss) (hb : natOf sss ≤ 999) :
+    ∃ (it' : ParseIt) (h : 0 ≤ natOf sss * 1000000 ∧ natOf sss * 1000000 ≤ 999999999),
       parseWith config (.S (.truncated 3)) ⟨sss ++ rest, (sss ++ rest).startPos⟩
-        = ParseResult.success it' (Bounded.LE.ofNat' (fieldValue sss * 1000000) h) ∧
-      (Bounded.LE.ofNat' (fieldValue sss * 1000000) h).val = fieldValue sss * 1000000 ∧
+        = ParseResult.success it' (Bounded.LE.ofNat' (natOf sss * 1000000) h) ∧
+      (Bounded.LE.ofNat' (natOf sss * 1000000) h).val = natOf sss * 1000000 ∧
       it'.1 = sss ++ rest ∧ it'.2.offset.byteIdx = sss.utf8ByteSize := by
   obtain ⟨hdig, hlen⟩ := hsss
   obtain ⟨it', hpar, hstr, hoff⟩ := exactlyChars_digits 3 hlen hdig.2
-  have hbound : 0 ≤ fieldValue sss * 1000000 ∧ fieldValue sss * 1000000 ≤ 999999999 :=
+  have hbound : 0 ≤ natOf sss * 1000000 ∧ natOf sss * 1000000 ≤ 999999999 :=
     ⟨Nat.zero_le _, by omega⟩
-  have hfval : String.toNat! (rightPadAscii 9 '0' sss) = fieldValue sss * 1000000 := by
+  have hfval : String.toNat! (rightPadAscii 9 '0' sss) = natOf sss * 1000000 := by
     unfold rightPadAscii
     rw [positions_length_eq]
     rw [hlen, show (9 : Nat) - 3 = 6 from rfl, toNat!_append_zeros sss hdig 6,
@@ -1039,19 +1113,19 @@ theorem exactlyChars_digits_at {s : String} (p : s.Pos) (pre rest digits : Strin
   · rw [String.ofList_toList] at hsp; exact hsp
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time in
-/-- `parseNum n` at an interior position, value via `fieldValue`. -/
-theorem parseNum_digits_fieldValue_at {s : String} (p : s.Pos) (pre rest digits : String) (n : Nat)
+/-- `parseNum n` at an interior position, value via `natOf`. -/
+theorem parseNum_digits_natOf_at {s : String} (p : s.Pos) (pre rest digits : String) (n : Nat)
     (hdigits : IsFixedDigits n digits)
     (hsplit : p.Splits pre (digits ++ rest)) :
     ∃ p' : s.Pos,
-      parseNum n ⟨s, p⟩ = ParseResult.success ⟨s, p'⟩ (fieldValue digits) ∧
+      parseNum n ⟨s, p⟩ = ParseResult.success ⟨s, p'⟩ (natOf digits) ∧
       p'.Splits (pre ++ digits) rest := by
   obtain ⟨hdig, hlen⟩ := hdigits
   obtain ⟨p', hpar, hsp⟩ := exactlyChars_digits_at p pre rest digits n hlen hdig.2 hsplit
   refine ⟨p', ?_, hsp⟩
   unfold parseNum
   rw [parsec_map_app, hpar]
-  simp only [toNat!_eq_fieldValue digits hdig]
+  simp only [toNat!_eq_natOf digits hdig]
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time in
 /-- `parseWith` on the four-digit year modifier, at an interior position. -/
@@ -1061,9 +1135,9 @@ theorem parseWith_year_at {s : String} (p : s.Pos) (pre rest digits : String)
     (hsplit : p.Splits pre (digits ++ rest)) :
     ∃ p' : s.Pos,
       parseWith config (.y .fourDigit) ⟨s, p⟩
-        = ParseResult.success ⟨s, p'⟩ (Int.ofNat (fieldValue digits)) ∧
+        = ParseResult.success ⟨s, p'⟩ (Int.ofNat (natOf digits)) ∧
       p'.Splits (pre ++ digits) rest := by
-  obtain ⟨p', hpar, hsp⟩ := parseNum_digits_fieldValue_at p pre rest digits 4 hdigits hsplit
+  obtain ⟨p', hpar, hsp⟩ := parseNum_digits_natOf_at p pre rest digits 4 hdigits hsplit
   refine ⟨p', ?_, hsp⟩
   show (Int.ofNat <$> parseNum 4) _ = _
   rw [parsec_map_app, hpar]
@@ -1073,13 +1147,13 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal i
 theorem parseWith_month_at {s : String} (p : s.Pos) (pre rest digits : String)
     (config : Std.Time.FormatConfig)
     (hdigits : IsFixedDigits 2 digits)
-    (hbound : 1 ≤ fieldValue digits ∧ fieldValue digits ≤ 12)
+    (hbound : 1 ≤ natOf digits ∧ natOf digits ≤ 12)
     (hsplit : p.Splits pre (digits ++ rest)) :
-    ∃ (p' : s.Pos) (h : 1 ≤ fieldValue digits ∧ fieldValue digits ≤ 12),
+    ∃ (p' : s.Pos) (h : 1 ≤ natOf digits ∧ natOf digits ≤ 12),
       parseWith config (.M (.inl {padding := 2})) ⟨s, p⟩
-        = ParseResult.success ⟨s, p'⟩ (Bounded.LE.ofNat' (fieldValue digits) h) ∧
+        = ParseResult.success ⟨s, p'⟩ (Bounded.LE.ofNat' (natOf digits) h) ∧
       p'.Splits (pre ++ digits) rest := by
-  obtain ⟨p', hpar, hsp⟩ := parseNum_digits_fieldValue_at p pre rest digits 2 hdigits hsplit
+  obtain ⟨p', hpar, hsp⟩ := parseNum_digits_natOf_at p pre rest digits 2 hdigits hsplit
   refine ⟨p', hbound, ?_, hsp⟩
   show (parseNatToBounded (parseFlexibleNum 2)) _ = _
   unfold parseNatToBounded parseFlexibleNum
@@ -1093,13 +1167,13 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal i
 theorem parseWith_day_at {s : String} (p : s.Pos) (pre rest digits : String)
     (config : Std.Time.FormatConfig)
     (hdigits : IsFixedDigits 2 digits)
-    (hbound : 1 ≤ fieldValue digits ∧ fieldValue digits ≤ 31)
+    (hbound : 1 ≤ natOf digits ∧ natOf digits ≤ 31)
     (hsplit : p.Splits pre (digits ++ rest)) :
-    ∃ (p' : s.Pos) (h : 1 ≤ fieldValue digits ∧ fieldValue digits ≤ 31),
+    ∃ (p' : s.Pos) (h : 1 ≤ natOf digits ∧ natOf digits ≤ 31),
       parseWith config (.d {padding := 2}) ⟨s, p⟩
-        = ParseResult.success ⟨s, p'⟩ (Bounded.LE.ofNat' (fieldValue digits) h) ∧
+        = ParseResult.success ⟨s, p'⟩ (Bounded.LE.ofNat' (natOf digits) h) ∧
       p'.Splits (pre ++ digits) rest := by
-  obtain ⟨p', hpar, hsp⟩ := parseNum_digits_fieldValue_at p pre rest digits 2 hdigits hsplit
+  obtain ⟨p', hpar, hsp⟩ := parseNum_digits_natOf_at p pre rest digits 2 hdigits hsplit
   refine ⟨p', hbound, ?_, hsp⟩
   show (parseNatToBounded (parseFlexibleNum 2)) _ = _
   unfold parseNatToBounded parseFlexibleNum
@@ -1195,11 +1269,11 @@ theorem satisfy_digit_at {s : String} (p : s.Pos) (pre rest : String) (c : Char)
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time in
 /-- On a known two-digit field, `parseOneOrTwoNum` consumes both digits. -/
-theorem parseOneOrTwoNum_digits_fieldValue_at {s : String} (p : s.Pos)
+theorem parseOneOrTwoNum_digits_natOf_at {s : String} (p : s.Pos)
     (pre rest digits : String) (hdigits : IsFixedDigits 2 digits)
     (hsplit : p.Splits pre (digits ++ rest)) :
     ∃ p' : s.Pos,
-      parseOneOrTwoNum ⟨s, p⟩ = ParseResult.success ⟨s, p'⟩ (fieldValue digits) ∧
+      parseOneOrTwoNum ⟨s, p⟩ = ParseResult.success ⟨s, p'⟩ (natOf digits) ∧
       p'.Splits (pre ++ digits) rest := by
   obtain ⟨hdig, hlen⟩ := hdigits
   have hlist_len : digits.toList.length = 2 := by
@@ -1234,8 +1308,8 @@ theorem parseOneOrTwoNum_digits_fieldValue_at {s : String} (p : s.Pos)
     rw [parsec_map_app, h₂]
     rfl
   have hvalue :
-      (c₁.toNat - 48) * 10 + (c₂.toNat - 48) = fieldValue digits := by
-    rw [fieldValue_isDigits digits hdig, hchars]
+      (c₁.toNat - 48) * 10 + (c₂.toNat - 48) = natOf digits := by
+    rw [natOf_isDigits digits hdig, hchars]
     simp
   refine ⟨p₂, ?_, ?_⟩
   · unfold parseOneOrTwoNum
@@ -1245,7 +1319,7 @@ theorem parseOneOrTwoNum_digits_fieldValue_at {s : String} (p : s.Pos)
     rw [parsec_bind_app, hoptional]
     change ParseResult.success (⟨s, p₂⟩ : ParseIt)
       ((c₁.toNat - 48) * 10 + (c₂.toNat - 48)) =
-        ParseResult.success (⟨s, p₂⟩ : ParseIt) (fieldValue digits)
+        ParseResult.success (⟨s, p₂⟩ : ParseIt) (natOf digits)
     rw [hvalue]
   · rw [hdigits_eq, ← String.append_assoc]
     exact hsp₂
@@ -1316,27 +1390,27 @@ set_option backward.isDefEq.respectTransparency false in
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal Std.Time.GenericFormat in
 /-- **`parseWith config (.x .hourMinute)` on a symbolic `±hhmm` offset string, position-general.**
     On `signStr ++ hh ++ mm ++ rest` with `signStr = "-"` (neg) or `"+"`, `hh`/`mm` fixed 2-digit
-    fields, `fieldValue hh ≤ 23`, `fieldValue mm ≤ 59`, at a position `p` splitting
+    fields, `natOf hh ≤ 23`, `natOf mm ≤ 59`, at a position `p` splitting
     `pre (signStr ++ hh ++ mm ++ rest)`, it succeeds producing
-    `Offset.ofSeconds ⟨(fieldValue hh × 3600 + fieldValue mm × 60) × sign⟩` (sign `+`→1, `-`→-1),
+    `Offset.ofSeconds ⟨(natOf hh × 3600 + natOf mm × 60) × sign⟩` (sign `+`→1, `-`→-1),
     advancing past the sign, `hh` and `mm`. -/
 theorem parseWith_hourMinute_at {s : String} (p : s.Pos) (pre rest hh mm : String)
     (neg : Bool) (config : Std.Time.FormatConfig)
     (hhh : IsFixedDigits 2 hh) (hmm : IsFixedDigits 2 mm)
-    (hhb : fieldValue hh ≤ 23) (hmb : fieldValue mm ≤ 59)
+    (hhb : natOf hh ≤ 23) (hmb : natOf mm ≤ 59)
     (hsplit : p.Splits pre
       (String.singleton (if neg then '-' else '+') ++ (hh ++ (mm ++ rest)))) :
     ∃ p' : s.Pos,
       parseWith config (.x .hourMinute) ⟨s, p⟩
         = ParseResult.success ⟨s, p'⟩
             (TimeZone.Offset.ofSeconds
-              ⟨((fieldValue hh : Int) * 3600 + (fieldValue mm : Int) * 60)
+              ⟨((natOf hh : Int) * 3600 + (natOf mm : Int) * 60)
                 * (if neg then -1 else 1)⟩) ∧
       p'.Splits (pre ++ String.singleton (if neg then '-' else '+') ++ hh ++ mm) rest := by
   obtain ⟨p1, hsign, hsp1⟩ := sign_at p pre (hh ++ (mm ++ rest)) neg hsplit
-  obtain ⟨p2, hpar2, hsp2⟩ := parseOneOrTwoNum_digits_fieldValue_at p1
+  obtain ⟨p2, hpar2, hsp2⟩ := parseOneOrTwoNum_digits_natOf_at p1
     (pre ++ String.singleton (if neg then '-' else '+')) (mm ++ rest) hh hhh hsp1
-  obtain ⟨p3, hpar3, hsp3⟩ := parseOneOrTwoNum_digits_fieldValue_at p2
+  obtain ⟨p3, hpar3, hsp3⟩ := parseOneOrTwoNum_digits_natOf_at p2
     (pre ++ String.singleton (if neg then '-' else '+') ++ hh) rest mm hmm hsp2
   refine ⟨p3, ?_, by
     have := hsp3
@@ -1351,8 +1425,8 @@ theorem parseWith_hourMinute_at {s : String} (p : s.Pos) (pre rest hh mm : Strin
   have hpure : ∀ (a : Int) (q : ParseIt),
       (Pure.pure a : Parser Int) q = ParseResult.success q a := fun _ _ => rfl
   simp only [parsec_map_app, parsec_bind_app, hpar2, hpure]
-  have hhle : ¬ (((fieldValue hh : Int)) < 0 ∨ ((fieldValue hh : Int)) > 23) := by
-    have : ((fieldValue hh : Int)) ≤ 23 := by exact_mod_cast hhb
+  have hhle : ¬ (((natOf hh : Int)) < 0 ∨ ((natOf hh : Int)) > 23) := by
+    have : ((natOf hh : Int)) ≤ 23 := by exact_mod_cast hhb
     omega
   simp only [hhle, if_false]
   rw [parsec_bind_app, parsec_map_app, seqRight_app]
@@ -1362,29 +1436,29 @@ theorem parseWith_hourMinute_at {s : String} (p : s.Pos) (pre rest hh mm : Strin
   simp only []
   rw [parsec_map_app, parsec_bind_app, hpar3]
   simp only [hpure]
-  have hmle : ¬ (((fieldValue mm : Int)) > 59) := by
-    have : ((fieldValue mm : Int)) ≤ 59 := by exact_mod_cast hmb
+  have hmle : ¬ (((natOf mm : Int)) > 59) := by
+    have : ((natOf mm : Int)) ≤ 59 := by exact_mod_cast hmb
     omega
   simp only [hmle, if_false]
   rw [parsec_bind_app]
   show ParseResult.success (⟨s, p3⟩ : ParseIt)
       (TimeZone.Offset.ofSeconds { val :=
-        (Hour.Offset.toSeconds { val := (fieldValue hh : Int) }
-          + ((some { val := (fieldValue mm : Int) } : Option Minute.Offset).getD 0).toSeconds
+        (Hour.Offset.toSeconds { val := (natOf hh : Int) }
+          + ((some { val := (natOf mm : Int) } : Option Minute.Offset).getD 0).toSeconds
           + (none : Option Second.Offset).getD 0).val * (if neg then -1 else 1) }) = _
-  have eh : (Hour.Offset.toSeconds { val := (fieldValue hh : Int) }).val
-      = (fieldValue hh : Int) * 3600 := by
+  have eh : (Hour.Offset.toSeconds { val := (natOf hh : Int) }).val
+      = (natOf hh : Int) * 3600 := by
     unfold Hour.Offset.toSeconds UnitVal.cast UnitVal.mul; rfl
-  have em : (Minute.Offset.toSeconds { val := (fieldValue mm : Int) }).val
-      = (fieldValue mm : Int) * 60 := by
+  have em : (Minute.Offset.toSeconds { val := (natOf mm : Int) }).val
+      = (natOf mm : Int) * 60 := by
     unfold Minute.Offset.toSeconds UnitVal.cast UnitVal.mul; rfl
-  have hval : (Hour.Offset.toSeconds { val := (fieldValue hh : Int) }
-        + ((some { val := (fieldValue mm : Int) } : Option Minute.Offset).getD 0).toSeconds
+  have hval : (Hour.Offset.toSeconds { val := (natOf hh : Int) }
+        + ((some { val := (natOf mm : Int) } : Option Minute.Offset).getD 0).toSeconds
         + (none : Option Second.Offset).getD 0).val
-      = (fieldValue hh : Int) * 3600 + (fieldValue mm : Int) * 60 := by
-    show (Hour.Offset.toSeconds { val := (fieldValue hh : Int) }).val
-        + (Minute.Offset.toSeconds { val := (fieldValue mm : Int) }).val + (0 : Int)
-        = (fieldValue hh : Int) * 3600 + (fieldValue mm : Int) * 60
+      = (natOf hh : Int) * 3600 + (natOf mm : Int) * 60 := by
+    show (Hour.Offset.toSeconds { val := (natOf hh : Int) }).val
+        + (Minute.Offset.toSeconds { val := (natOf mm : Int) }).val + (0 : Int)
+        = (natOf hh : Int) * 3600 + (natOf mm : Int) * 60
     rw [eh, em]; omega
   rw [hval]
 
@@ -1392,14 +1466,14 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal i
 /-- `parseWith` on the two-digit hour modifier `.H`, at an interior position. -/
 theorem parseWith_hour_at {s : String} (p : s.Pos) (pre rest digits : String)
     (config : Std.Time.FormatConfig)
-    (hdigits : IsFixedDigits 2 digits) (hbound : fieldValue digits ≤ 23)
+    (hdigits : IsFixedDigits 2 digits) (hbound : natOf digits ≤ 23)
     (hsplit : p.Splits pre (digits ++ rest)) :
-    ∃ (p' : s.Pos) (h : 0 ≤ fieldValue digits ∧ fieldValue digits ≤ 23),
+    ∃ (p' : s.Pos) (h : 0 ≤ natOf digits ∧ natOf digits ≤ 23),
       parseWith config (.H {padding := 2}) ⟨s, p⟩
-        = ParseResult.success ⟨s, p'⟩ (Bounded.LE.ofNat' (fieldValue digits) h) ∧
+        = ParseResult.success ⟨s, p'⟩ (Bounded.LE.ofNat' (natOf digits) h) ∧
       p'.Splits (pre ++ digits) rest := by
-  obtain ⟨p', hpar, hsp⟩ := parseNum_digits_fieldValue_at p pre rest digits 2 hdigits hsplit
-  have hbound' : 0 ≤ fieldValue digits ∧ fieldValue digits ≤ 23 := ⟨Nat.zero_le _, hbound⟩
+  obtain ⟨p', hpar, hsp⟩ := parseNum_digits_natOf_at p pre rest digits 2 hdigits hsplit
+  have hbound' : 0 ≤ natOf digits ∧ natOf digits ≤ 23 := ⟨Nat.zero_le _, hbound⟩
   refine ⟨p', hbound', ?_, hsp⟩
   show (parseNatToBounded (parseFlexibleNum 2)) _ = _
   unfold parseNatToBounded parseFlexibleNum
@@ -1412,14 +1486,14 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal i
 /-- `parseWith` on the two-digit minute modifier `.m`, at an interior position. -/
 theorem parseWith_minute_at {s : String} (p : s.Pos) (pre rest digits : String)
     (config : Std.Time.FormatConfig)
-    (hdigits : IsFixedDigits 2 digits) (hbound : fieldValue digits ≤ 59)
+    (hdigits : IsFixedDigits 2 digits) (hbound : natOf digits ≤ 59)
     (hsplit : p.Splits pre (digits ++ rest)) :
-    ∃ (p' : s.Pos) (h : 0 ≤ fieldValue digits ∧ fieldValue digits ≤ 59),
+    ∃ (p' : s.Pos) (h : 0 ≤ natOf digits ∧ natOf digits ≤ 59),
       parseWith config (.m {padding := 2}) ⟨s, p⟩
-        = ParseResult.success ⟨s, p'⟩ (Bounded.LE.ofNat' (fieldValue digits) h) ∧
+        = ParseResult.success ⟨s, p'⟩ (Bounded.LE.ofNat' (natOf digits) h) ∧
       p'.Splits (pre ++ digits) rest := by
-  obtain ⟨p', hpar, hsp⟩ := parseNum_digits_fieldValue_at p pre rest digits 2 hdigits hsplit
-  have hbound' : 0 ≤ fieldValue digits ∧ fieldValue digits ≤ 59 := ⟨Nat.zero_le _, hbound⟩
+  obtain ⟨p', hpar, hsp⟩ := parseNum_digits_natOf_at p pre rest digits 2 hdigits hsplit
+  have hbound' : 0 ≤ natOf digits ∧ natOf digits ≤ 59 := ⟨Nat.zero_le _, hbound⟩
   refine ⟨p', hbound', ?_, hsp⟩
   show (parseNatToBounded (parseFlexibleNum 2)) _ = _
   unfold parseNatToBounded parseFlexibleNum
@@ -1435,15 +1509,15 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal i
 theorem parseWith_second_at {s : String} (p : s.Pos) (pre rest digits : String)
     (config : Std.Time.FormatConfig)
     (hcfg : config.allowLeapSeconds = false)
-    (hdigits : IsFixedDigits 2 digits) (hbound : fieldValue digits ≤ 59)
+    (hdigits : IsFixedDigits 2 digits) (hbound : natOf digits ≤ 59)
     (hsplit : p.Splits pre (digits ++ rest)) :
-    ∃ (p' : s.Pos) (h : 0 ≤ fieldValue digits ∧ fieldValue digits ≤ 59),
+    ∃ (p' : s.Pos) (h : 0 ≤ natOf digits ∧ natOf digits ≤ 59),
       parseWith config (.s {padding := 2}) ⟨s, p⟩
         = ParseResult.success ⟨s, p'⟩
-            ((Bounded.LE.ofNat' (fieldValue digits) h).expandTop (by decide) : Bounded.LE 0 60) ∧
+            ((Bounded.LE.ofNat' (natOf digits) h).expandTop (by decide) : Bounded.LE 0 60) ∧
       p'.Splits (pre ++ digits) rest := by
-  obtain ⟨p', hpar, hsp⟩ := parseNum_digits_fieldValue_at p pre rest digits 2 hdigits hsplit
-  have hbound' : 0 ≤ fieldValue digits ∧ fieldValue digits ≤ 59 := ⟨Nat.zero_le _, hbound⟩
+  obtain ⟨p', hpar, hsp⟩ := parseNum_digits_natOf_at p pre rest digits 2 hdigits hsplit
+  have hbound' : 0 ≤ natOf digits ∧ natOf digits ≤ 59 := ⟨Nat.zero_le _, hbound⟩
   refine ⟨p', hbound', ?_, hsp⟩
   show (if config.allowLeapSeconds then parseNatToBounded (parseFlexibleNum 2)
         else (do let res : Bounded.LE 0 59 ← parseNatToBounded (parseFlexibleNum 2)
@@ -1453,7 +1527,7 @@ theorem parseWith_second_at {s : String} (p : s.Pos) (pre rest digits : String)
   have hinner : (parseNatToBounded (parseFlexibleNum 2) :
         Std.Internal.Parsec ParseIt (Bounded.LE 0 59))
       ⟨s, p⟩
-      = ParseResult.success ⟨s, p'⟩ (Bounded.LE.ofNat' (fieldValue digits) hbound') := by
+      = ParseResult.success ⟨s, p'⟩ (Bounded.LE.ofNat' (natOf digits) hbound') := by
     unfold parseNatToBounded parseFlexibleNum
     simp only [Nat.reduceEqDiff, ↓reduceIte, bind, Bind.bind]
     rw [parsec_bind_app, hpar]
@@ -1469,21 +1543,21 @@ theorem parseWith_second_at {s : String} (p : s.Pos) (pre rest digits : String)
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal Std.Time.GenericFormat in
 /-- `parseWith` on the truncated-3 fraction modifier `.S (.truncated 3)` (`SSS` millisecond
     field), at an interior position. On a 3-digit `sss`, succeeds with the `Nanosecond.Ordinal`
-    value `fieldValue sss × 10⁶`. -/
+    value `natOf sss × 10⁶`. -/
 theorem parseWith_fraction_at {s : String} (p : s.Pos) (pre rest sss : String)
     (config : Std.Time.FormatConfig)
-    (hsss : IsFixedDigits 3 sss) (hb : fieldValue sss ≤ 999)
+    (hsss : IsFixedDigits 3 sss) (hb : natOf sss ≤ 999)
     (hsplit : p.Splits pre (sss ++ rest)) :
     ∃ (p' : s.Pos)
-      (h : 0 ≤ fieldValue sss * 1000000 ∧ fieldValue sss * 1000000 ≤ 999999999),
+      (h : 0 ≤ natOf sss * 1000000 ∧ natOf sss * 1000000 ≤ 999999999),
       parseWith config (.S (.truncated 3)) ⟨s, p⟩
-        = ParseResult.success ⟨s, p'⟩ (Bounded.LE.ofNat' (fieldValue sss * 1000000) h) ∧
+        = ParseResult.success ⟨s, p'⟩ (Bounded.LE.ofNat' (natOf sss * 1000000) h) ∧
       p'.Splits (pre ++ sss) rest := by
   obtain ⟨hdig, hlen⟩ := hsss
   obtain ⟨p', hpar, hsp⟩ := exactlyChars_digits_at p pre rest sss 3 hlen hdig.2 hsplit
-  have hbound : 0 ≤ fieldValue sss * 1000000 ∧ fieldValue sss * 1000000 ≤ 999999999 :=
+  have hbound : 0 ≤ natOf sss * 1000000 ∧ natOf sss * 1000000 ≤ 999999999 :=
     ⟨Nat.zero_le _, by omega⟩
-  have hfval : String.toNat! (rightPadAscii 9 '0' sss) = fieldValue sss * 1000000 := by
+  have hfval : String.toNat! (rightPadAscii 9 '0' sss) = natOf sss * 1000000 := by
     unfold rightPadAscii
     rw [positions_length_eq]
     rw [hlen, show (9 : Nat) - 3 = 6 from rfl, toNat!_append_zeros sss hdig 6,
@@ -1510,7 +1584,7 @@ theorem step_year {s : String} (p : s.Pos) (pre rest year : String) (b : DateBui
     (config : FormatConfig) (hy : IsFixedDigits 4 year) (hsplit : p.Splits pre (year ++ rest)) :
     ∃ p' : s.Pos,
       parseWithDate b config (.modifier (.y .fourDigit)) ⟨s, p⟩
-        = ParseResult.success ⟨s, p'⟩ { b with y := some (Int.ofNat (fieldValue year)) } ∧
+        = ParseResult.success ⟨s, p'⟩ { b with y := some (Int.ofNat (natOf year)) } ∧
       p'.Splits (pre ++ year) rest := by
   obtain ⟨p', hpar, hsp⟩ := parseWith_year_at p pre rest year config hy hsplit
   refine ⟨p', ?_, hsp⟩
@@ -1523,12 +1597,12 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal i
 /-- One `parseWithDate` step on the month modifier. -/
 theorem step_month {s : String} (p : s.Pos) (pre rest month : String) (b : DateBuilder)
     (config : FormatConfig) (hm : IsFixedDigits 2 month)
-    (hbound : 1 ≤ fieldValue month ∧ fieldValue month ≤ 12)
+    (hbound : 1 ≤ natOf month ∧ natOf month ≤ 12)
     (hsplit : p.Splits pre (month ++ rest)) :
-    ∃ (p' : s.Pos) (h : 1 ≤ fieldValue month ∧ fieldValue month ≤ 12),
+    ∃ (p' : s.Pos) (h : 1 ≤ natOf month ∧ natOf month ≤ 12),
       parseWithDate b config (.modifier (.M (.inl {padding := 2}))) ⟨s, p⟩
         = ParseResult.success ⟨s, p'⟩
-            { b with M := some (Bounded.LE.ofNat' (fieldValue month) h) } ∧
+            { b with M := some (Bounded.LE.ofNat' (natOf month) h) } ∧
       p'.Splits (pre ++ month) rest := by
   obtain ⟨p', h, hpar, hsp⟩ := parseWith_month_at p pre rest month config hm hbound hsplit
   refine ⟨p', h, ?_, hsp⟩
@@ -1541,11 +1615,11 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal i
 /-- One `parseWithDate` step on the day modifier. -/
 theorem step_day {s : String} (p : s.Pos) (pre rest day : String) (b : DateBuilder)
     (config : FormatConfig) (hd : IsFixedDigits 2 day)
-    (hbound : 1 ≤ fieldValue day ∧ fieldValue day ≤ 31)
+    (hbound : 1 ≤ natOf day ∧ natOf day ≤ 31)
     (hsplit : p.Splits pre (day ++ rest)) :
-    ∃ (p' : s.Pos) (h : 1 ≤ fieldValue day ∧ fieldValue day ≤ 31),
+    ∃ (p' : s.Pos) (h : 1 ≤ natOf day ∧ natOf day ≤ 31),
       parseWithDate b config (.modifier (.d {padding := 2})) ⟨s, p⟩
-        = ParseResult.success ⟨s, p'⟩ { b with d := some (Bounded.LE.ofNat' (fieldValue day) h) } ∧
+        = ParseResult.success ⟨s, p'⟩ { b with d := some (Bounded.LE.ofNat' (natOf day) h) } ∧
       p'.Splits (pre ++ day) rest := by
   obtain ⟨p', h, hpar, hsp⟩ := parseWith_day_at p pre rest day config hd hbound hsplit
   refine ⟨p', h, ?_, hsp⟩
@@ -1572,11 +1646,11 @@ theorem step_sep {s : String} (p : s.Pos) (pre rest sep : String) (b : DateBuild
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal in
 /-- One `parseWithDate` step on the hour modifier. -/
 theorem step_hour {s : String} (p : s.Pos) (pre rest hh : String) (b : DateBuilder)
-    (config : FormatConfig) (hh2 : IsFixedDigits 2 hh) (hbound : fieldValue hh ≤ 23)
+    (config : FormatConfig) (hh2 : IsFixedDigits 2 hh) (hbound : natOf hh ≤ 23)
     (hsplit : p.Splits pre (hh ++ rest)) :
-    ∃ (p' : s.Pos) (h : 0 ≤ fieldValue hh ∧ fieldValue hh ≤ 23),
+    ∃ (p' : s.Pos) (h : 0 ≤ natOf hh ∧ natOf hh ≤ 23),
       parseWithDate b config (.modifier (.H {padding := 2})) ⟨s, p⟩
-        = ParseResult.success ⟨s, p'⟩ { b with H := some (Bounded.LE.ofNat' (fieldValue hh) h) } ∧
+        = ParseResult.success ⟨s, p'⟩ { b with H := some (Bounded.LE.ofNat' (natOf hh) h) } ∧
       p'.Splits (pre ++ hh) rest := by
   obtain ⟨p', h, hpar, hsp⟩ := parseWith_hour_at p pre rest hh config hh2 hbound hsplit
   refine ⟨p', h, ?_, hsp⟩
@@ -1588,11 +1662,11 @@ theorem step_hour {s : String} (p : s.Pos) (pre rest hh : String) (b : DateBuild
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal in
 /-- One `parseWithDate` step on the minute modifier. -/
 theorem step_minute {s : String} (p : s.Pos) (pre rest mm : String) (b : DateBuilder)
-    (config : FormatConfig) (hm2 : IsFixedDigits 2 mm) (hbound : fieldValue mm ≤ 59)
+    (config : FormatConfig) (hm2 : IsFixedDigits 2 mm) (hbound : natOf mm ≤ 59)
     (hsplit : p.Splits pre (mm ++ rest)) :
-    ∃ (p' : s.Pos) (h : 0 ≤ fieldValue mm ∧ fieldValue mm ≤ 59),
+    ∃ (p' : s.Pos) (h : 0 ≤ natOf mm ∧ natOf mm ≤ 59),
       parseWithDate b config (.modifier (.m {padding := 2})) ⟨s, p⟩
-        = ParseResult.success ⟨s, p'⟩ { b with m := some (Bounded.LE.ofNat' (fieldValue mm) h) } ∧
+        = ParseResult.success ⟨s, p'⟩ { b with m := some (Bounded.LE.ofNat' (natOf mm) h) } ∧
       p'.Splits (pre ++ mm) rest := by
   obtain ⟨p', h, hpar, hsp⟩ := parseWith_minute_at p pre rest mm config hm2 hbound hsplit
   refine ⟨p', h, ?_, hsp⟩
@@ -1605,12 +1679,12 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal i
 /-- One `parseWithDate` step on the second modifier. -/
 theorem step_second {s : String} (p : s.Pos) (pre rest ss : String) (b : DateBuilder)
     (config : FormatConfig) (hcfg : config.allowLeapSeconds = false)
-    (hs2 : IsFixedDigits 2 ss) (hbound : fieldValue ss ≤ 59)
+    (hs2 : IsFixedDigits 2 ss) (hbound : natOf ss ≤ 59)
     (hsplit : p.Splits pre (ss ++ rest)) :
-    ∃ (p' : s.Pos) (h : 0 ≤ fieldValue ss ∧ fieldValue ss ≤ 59),
+    ∃ (p' : s.Pos) (h : 0 ≤ natOf ss ∧ natOf ss ≤ 59),
       parseWithDate b config (.modifier (.s {padding := 2})) ⟨s, p⟩
         = ParseResult.success ⟨s, p'⟩
-            { b with s := some ((Bounded.LE.ofNat' (fieldValue ss) h).expandTop (by decide)
+            { b with s := some ((Bounded.LE.ofNat' (natOf ss) h).expandTop (by decide)
                                 : Bounded.LE 0 60) } ∧
       p'.Splits (pre ++ ss) rest := by
   obtain ⟨p', h, hpar, hsp⟩ := parseWith_second_at p pre rest ss config hcfg hs2 hbound hsplit
@@ -1640,11 +1714,11 @@ theorem parseWithDate_datetimePrefix {c : DatetimeComponents} (tp : TimePart) (t
     (config : FormatConfig) (hcfg : config.allowLeapSeconds = false)
     (hsyn : c.syntaxWf) (hcon : c.constraintsWf) (htime : c.time = some tp)
     (suf : FormatString) :
-    ∃ (hm : 1 ≤ fieldValue c.date.month ∧ fieldValue c.date.month ≤ 12)
-      (hd : 1 ≤ fieldValue c.date.day ∧ fieldValue c.date.day ≤ 31)
-      (hh : 0 ≤ fieldValue tp.time.hours ∧ fieldValue tp.time.hours ≤ 23)
-      (hmin : 0 ≤ fieldValue tp.time.minutes ∧ fieldValue tp.time.minutes ≤ 59)
-      (hsec : 0 ≤ fieldValue tp.time.seconds ∧ fieldValue tp.time.seconds ≤ 59)
+    ∃ (hm : 1 ≤ natOf c.date.month ∧ natOf c.date.month ≤ 12)
+      (hd : 1 ≤ natOf c.date.day ∧ natOf c.date.day ≤ 31)
+      (hh : 0 ≤ natOf tp.time.hours ∧ natOf tp.time.hours ≤ 23)
+      (hmin : 0 ≤ natOf tp.time.minutes ∧ natOf tp.time.minutes ≤ 59)
+      (hsec : 0 ≤ natOf tp.time.seconds ∧ natOf tp.time.seconds ≤ 59)
       (p : (c.date.asString ++ "T" ++ tp.time.asString ++ tail).Pos),
       parser.go config .any {}
           ([.modifier (.y .fourDigit), .string "-", .modifier (.M (.inl {padding := 2})),
@@ -1655,12 +1729,12 @@ theorem parseWithDate_datetimePrefix {c : DatetimeComponents} (tp : TimePart) (t
             (c.date.asString ++ "T" ++ tp.time.asString ++ tail).startPos⟩
         = parser.go config .any
             { ({} : DateBuilder) with
-              y := some (Int.ofNat (fieldValue c.date.year)),
-              M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-              d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-              H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-              m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-              s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop
+              y := some (Int.ofNat (natOf c.date.year)),
+              M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+              d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+              H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+              m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+              s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop
                 (by decide) : Bounded.LE 0 60) }
             suf ⟨c.date.asString ++ "T" ++ tp.time.asString ++ tail, p⟩ ∧
       p.Splits (c.date.asString ++ "T" ++ tp.time.asString) tail := by
@@ -1674,15 +1748,15 @@ theorem parseWithDate_datetimePrefix {c : DatetimeComponents} (tp : TimePart) (t
   obtain ⟨httimecon, _htzonecon⟩ := htimecon
   obtain ⟨hhbound, hminbound, hsecbound⟩ := httimecon
   obtain ⟨hm1, hm2, hd1, hd2⟩ := hdatecon
-  have hmbound : 1 ≤ fieldValue c.date.month ∧ fieldValue c.date.month ≤ 12 := ⟨hm1, hm2⟩
-  have hdaysle : daysInMonth (fieldValue c.date.year) (fieldValue c.date.month) ≤ 31 := by
+  have hmbound : 1 ≤ natOf c.date.month ∧ natOf c.date.month ≤ 12 := ⟨hm1, hm2⟩
+  have hdaysle : daysInMonth (natOf c.date.year) (natOf c.date.month) ≤ 31 := by
     unfold daysInMonth
     split
     · omega
     · split
       · split <;> omega
       · omega
-  have hdbound : 1 ≤ fieldValue c.date.day ∧ fieldValue c.date.day ≤ 31 :=
+  have hdbound : 1 ≤ natOf c.date.day ∧ natOf c.date.day ≤ 31 :=
     ⟨hd1, Nat.le_trans hd2 hdaysle⟩
   have hassoc : c.date.asString ++ "T" ++ tp.time.asString ++ tail
       = c.date.year ++ ("-" ++ (c.date.month ++ ("-" ++ (c.date.day ++ ("T" ++
@@ -1707,17 +1781,17 @@ theorem parseWithDate_datetimePrefix {c : DatetimeComponents} (tp : TimePart) (t
       (c.date.month ++ ("-" ++ (c.date.day ++ ("T" ++
         (tp.time.hours ++ (":" ++ (tp.time.minutes ++ (":" ++
           (tp.time.seconds ++ tail)))))))))
-      "-" { ({} : DateBuilder) with y := some (Int.ofNat (fieldValue c.date.year)) } config hsp1
+      "-" { ({} : DateBuilder) with y := some (Int.ofNat (natOf c.date.year)) } config hsp1
   obtain ⟨p3, hm', hpar3, hsp3⟩ :=
     step_month p2 (c.date.year ++ "-")
       ("-" ++ (c.date.day ++ ("T" ++
         (tp.time.hours ++ (":" ++ (tp.time.minutes ++ (":" ++
           (tp.time.seconds ++ tail))))))))
-      c.date.month { ({} : DateBuilder) with y := some (Int.ofNat (fieldValue c.date.year)) }
+      c.date.month { ({} : DateBuilder) with y := some (Int.ofNat (natOf c.date.year)) }
       config hmm hmbound hsp2
   let bYM : DateBuilder :=
-    { ({} : DateBuilder) with y := some (Int.ofNat (fieldValue c.date.year)),
-                              M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm') }
+    { ({} : DateBuilder) with y := some (Int.ofNat (natOf c.date.year)),
+                              M := some (Bounded.LE.ofNat' (natOf c.date.month) hm') }
   obtain ⟨p4, hpar4, hsp4⟩ :=
     step_sep p3 (c.date.year ++ "-" ++ c.date.month)
       (c.date.day ++ ("T" ++
@@ -1728,7 +1802,7 @@ theorem parseWithDate_datetimePrefix {c : DatetimeComponents} (tp : TimePart) (t
       ("T" ++ (tp.time.hours ++ (":" ++ (tp.time.minutes ++ (":" ++ (tp.time.seconds ++ tail))))))
       c.date.day bYM config hdd hdbound hsp4
   let bYMD : DateBuilder :=
-    { bYM with d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd') }
+    { bYM with d := some (Bounded.LE.ofNat' (natOf c.date.day) hd') }
   obtain ⟨p6, hpar6, hsp6⟩ :=
     step_sep p5 (c.date.year ++ "-" ++ c.date.month ++ "-" ++ c.date.day)
       (tp.time.hours ++ (":" ++ (tp.time.minutes ++ (":" ++ (tp.time.seconds ++ tail)))))
@@ -1738,7 +1812,7 @@ theorem parseWithDate_datetimePrefix {c : DatetimeComponents} (tp : TimePart) (t
       (":" ++ (tp.time.minutes ++ (":" ++ (tp.time.seconds ++ tail))))
       tp.time.hours bYMD config hhh hhbound hsp6
   let bYMDH : DateBuilder :=
-    { bYMD with H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh') }
+    { bYMD with H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh') }
   obtain ⟨p8, hpar8, hsp8⟩ :=
     step_sep p7
       (c.date.year ++ "-" ++ c.date.month ++ "-" ++ c.date.day ++ "T" ++ tp.time.hours)
@@ -1750,7 +1824,7 @@ theorem parseWithDate_datetimePrefix {c : DatetimeComponents} (tp : TimePart) (t
       (":" ++ (tp.time.seconds ++ tail))
       tp.time.minutes bYMDH config hmmi hminbound hsp8
   let bYMDHm : DateBuilder :=
-    { bYMDH with m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin') }
+    { bYMDH with m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin') }
   obtain ⟨p10, hpar10, hsp10⟩ :=
     step_sep p9
       (c.date.year ++ "-" ++ c.date.month ++ "-" ++ c.date.day ++ "T" ++ tp.time.hours ++ ":"
@@ -1782,30 +1856,30 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal S
     three-field record" are visible in the statement. -/
 theorem parseWithDate_dateOnly {d : DateComponents} (config : FormatConfig)
     (hsyn : d.syntaxWf) (hcon : d.constraintsWf) :
-    ∃ (hm : 1 ≤ fieldValue d.month ∧ fieldValue d.month ≤ 12)
-      (hd : 1 ≤ fieldValue d.day ∧ fieldValue d.day ≤ 31),
+    ∃ (hm : 1 ≤ natOf d.month ∧ natOf d.month ≤ 12)
+      (hd : 1 ≤ natOf d.day ∧ natOf d.day ≤ 31),
       parser.go config .any {}
           [.modifier (.y .fourDigit), .string "-", .modifier (.M (.inl {padding := 2})),
            .string "-", .modifier (.d {padding := 2})]
           ⟨d.asString, d.asString.startPos⟩
         = parser.go config .any
             { ({} : DateBuilder) with
-              y := some (Int.ofNat (fieldValue d.year)),
-              M := some (Bounded.LE.ofNat' (fieldValue d.month) hm),
-              d := some (Bounded.LE.ofNat' (fieldValue d.day) hd) }
+              y := some (Int.ofNat (natOf d.year)),
+              M := some (Bounded.LE.ofNat' (natOf d.month) hm),
+              d := some (Bounded.LE.ofNat' (natOf d.day) hd) }
             [] ⟨d.asString, d.asString.endPos⟩ := by
   obtain ⟨hy, hmm, hdd⟩ := hsyn
   -- Numeric bounds from constraintsWf (day bound relaxed to ≤ 31 via daysInMonth ≤ 31).
   obtain ⟨hm1, hm2, hd1, hd2⟩ := hcon
-  have hmbound : 1 ≤ fieldValue d.month ∧ fieldValue d.month ≤ 12 := ⟨hm1, hm2⟩
-  have hdaysle : daysInMonth (fieldValue d.year) (fieldValue d.month) ≤ 31 := by
+  have hmbound : 1 ≤ natOf d.month ∧ natOf d.month ≤ 12 := ⟨hm1, hm2⟩
+  have hdaysle : daysInMonth (natOf d.year) (natOf d.month) ≤ 31 := by
     unfold daysInMonth
     split
     · omega
     · split
       · split <;> omega
       · omega
-  have hdbound : 1 ≤ fieldValue d.day ∧ fieldValue d.day ≤ 31 :=
+  have hdbound : 1 ≤ natOf d.day ∧ natOf d.day ≤ 31 :=
     ⟨hd1, Nat.le_trans hd2 hdaysle⟩
   -- Re-associate `d.asString` so each field sits at the front of the remaining suffix.
   have hassoc : d.asString = d.year ++ ("-" ++ (d.month ++ ("-" ++ d.day))) := by
@@ -1822,15 +1896,15 @@ theorem parseWithDate_dateOnly {d : DateComponents} (config : FormatConfig)
   rw [String.empty_append] at hsp1
   obtain ⟨p2, hpar2, hsp2⟩ :=
     step_sep p1 d.year (d.month ++ ("-" ++ d.day)) "-"
-      { ({} : DateBuilder) with y := some (Int.ofNat (fieldValue d.year)) } config hsp1
+      { ({} : DateBuilder) with y := some (Int.ofNat (natOf d.year)) } config hsp1
   -- Step 3: month.
   obtain ⟨p3, hm', hpar3, hsp3⟩ :=
     step_month p2 (d.year ++ "-") ("-" ++ d.day) d.month
-      { ({} : DateBuilder) with y := some (Int.ofNat (fieldValue d.year)) } config hmm hmbound hsp2
+      { ({} : DateBuilder) with y := some (Int.ofNat (natOf d.year)) } config hmm hmbound hsp2
   -- Builder after month is inserted (shared by steps 4 and 5).
   let bYM : DateBuilder :=
-    { ({} : DateBuilder) with y := some (Int.ofNat (fieldValue d.year)),
-                              M := some (Bounded.LE.ofNat' (fieldValue d.month) hm') }
+    { ({} : DateBuilder) with y := some (Int.ofNat (natOf d.year)),
+                              M := some (Bounded.LE.ofNat' (natOf d.month) hm') }
   -- Step 4: separator "-".
   obtain ⟨p4, hpar4, hsp4⟩ :=
     step_sep p3 (d.year ++ "-" ++ d.month) d.day "-" bYM config hsp3
@@ -1856,11 +1930,11 @@ theorem parseWithDate_dateUTC {c : DatetimeComponents} (tp : TimePart) (config :
     (hcfg : config.allowLeapSeconds = false)
     (hsyn : c.syntaxWf) (hcon : c.constraintsWf)
     (htime : c.time = some tp) (hutc : tp.zone = Zone.utc) (hmillis : tp.millis = none) :
-    ∃ (hm : 1 ≤ fieldValue c.date.month ∧ fieldValue c.date.month ≤ 12)
-      (hd : 1 ≤ fieldValue c.date.day ∧ fieldValue c.date.day ≤ 31)
-      (hh : 0 ≤ fieldValue tp.time.hours ∧ fieldValue tp.time.hours ≤ 23)
-      (hmin : 0 ≤ fieldValue tp.time.minutes ∧ fieldValue tp.time.minutes ≤ 59)
-      (hsec : 0 ≤ fieldValue tp.time.seconds ∧ fieldValue tp.time.seconds ≤ 59),
+    ∃ (hm : 1 ≤ natOf c.date.month ∧ natOf c.date.month ≤ 12)
+      (hd : 1 ≤ natOf c.date.day ∧ natOf c.date.day ≤ 31)
+      (hh : 0 ≤ natOf tp.time.hours ∧ natOf tp.time.hours ≤ 23)
+      (hmin : 0 ≤ natOf tp.time.minutes ∧ natOf tp.time.minutes ≤ 59)
+      (hsec : 0 ≤ natOf tp.time.seconds ∧ natOf tp.time.seconds ≤ 59),
       parser.go config .any {}
           [.modifier (.y .fourDigit), .string "-", .modifier (.M (.inl {padding := 2})),
            .string "-", .modifier (.d {padding := 2}), .string "T",
@@ -1869,12 +1943,12 @@ theorem parseWithDate_dateUTC {c : DatetimeComponents} (tp : TimePart) (config :
           ⟨c.asString, c.asString.startPos⟩
         = parser.go config .any
             { ({} : DateBuilder) with
-              y := some (Int.ofNat (fieldValue c.date.year)),
-              M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-              d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-              H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-              m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-              s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)
+              y := some (Int.ofNat (natOf c.date.year)),
+              M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+              d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+              H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+              m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+              s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)
                           : Bounded.LE 0 60) }
             [] ⟨c.asString, c.asString.endPos⟩ := by
   have hcstr : c.asString = c.date.asString ++ "T" ++ tp.time.asString ++ "Z" := by
@@ -1884,12 +1958,12 @@ theorem parseWithDate_dateUTC {c : DatetimeComponents} (tp : TimePart) (config :
     parseWithDate_datetimePrefix tp "Z" config hcfg hsyn hcon htime [.string "Z"]
   let b : DateBuilder :=
     { ({} : DateBuilder) with
-      y := some (Int.ofNat (fieldValue c.date.year)),
-      M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-      d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-      H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-      m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-      s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop
+      y := some (Int.ofNat (natOf c.date.year)),
+      M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+      d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+      H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+      m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+      s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop
         (by decide) : Bounded.LE 0 60) }
   obtain ⟨p', hpar, hsp'⟩ := step_sep p
     (c.date.asString ++ "T" ++ tp.time.asString) "" "Z" b config
@@ -2127,55 +2201,55 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal S
     timestamp collapses through the zero-offset zone. -/
 theorem build_dateOnly_value {d : DateComponents}
     (_hsyn : d.syntaxWf) (hcon : d.constraintsWf)
-    (hm : 1 ≤ fieldValue d.month ∧ fieldValue d.month ≤ 12)
-    (hdd : 1 ≤ fieldValue d.day ∧ fieldValue d.day ≤ 31)
+    (hm : 1 ≤ natOf d.month ∧ natOf d.month ≤ 12)
+    (hdd : 1 ≤ natOf d.day ∧ natOf d.day ≤ 31)
     (bld : Std.Time.GenericFormat.DateBuilder)
     (hbld : bld =
       { ({} : DateBuilder) with
-        y := some (Int.ofNat (fieldValue d.year)),
-        M := some (Bounded.LE.ofNat' (fieldValue d.month) hm),
-        d := some (Bounded.LE.ofNat' (fieldValue d.day) hdd) }) :
+        y := some (Int.ofNat (natOf d.year)),
+        M := some (Bounded.LE.ofNat' (natOf d.month) hm),
+        d := some (Bounded.LE.ofNat' (natOf d.day) hdd) }) :
     ∃ zt, bld.build .any = some zt ∧
       zt.toTimestamp.toMillisecondsSinceUnixEpoch.toInt =
-        epochDays (fieldValue d.year) (fieldValue d.month) (fieldValue d.day) * 86400000 := by
+        epochDays (natOf d.year) (natOf d.month) (natOf d.day) * 86400000 := by
   subst hbld
   -- Discharge the `year.Valid month day` guard from the grammar constraints.
-  have hvalid : Year.Offset.Valid (Int.ofNat (fieldValue d.year))
-      (Bounded.LE.ofNat' (fieldValue d.month) hm) (Bounded.LE.ofNat' (fieldValue d.day) hdd) := by
-    show (Bounded.LE.ofNat' (fieldValue d.day) hdd : Day.Ordinal)
-      ≤ Month.Ordinal.days (Year.Offset.isLeap (Int.ofNat (fieldValue d.year)))
-          (Bounded.LE.ofNat' (fieldValue d.month) hm)
-    show (Bounded.LE.ofNat' (fieldValue d.day) hdd : Day.Ordinal).val
-      ≤ (Month.Ordinal.days (Year.Offset.isLeap (Int.ofNat (fieldValue d.year)))
-          (Bounded.LE.ofNat' (fieldValue d.month) hm)).val
+  have hvalid : Year.Offset.Valid (Int.ofNat (natOf d.year))
+      (Bounded.LE.ofNat' (natOf d.month) hm) (Bounded.LE.ofNat' (natOf d.day) hdd) := by
+    show (Bounded.LE.ofNat' (natOf d.day) hdd : Day.Ordinal)
+      ≤ Month.Ordinal.days (Year.Offset.isLeap (Int.ofNat (natOf d.year)))
+          (Bounded.LE.ofNat' (natOf d.month) hm)
+    show (Bounded.LE.ofNat' (natOf d.day) hdd : Day.Ordinal).val
+      ≤ (Month.Ordinal.days (Year.Offset.isLeap (Int.ofNat (natOf d.year)))
+          (Bounded.LE.ofNat' (natOf d.month) hm)).val
     obtain ⟨hm1, hm2, hd1, hd2⟩ := hcon
-    have hbridge := days_eq_daysInMonth (fieldValue d.year) (fieldValue d.month)
-      (Bounded.LE.ofNat' (fieldValue d.month) hm) (Year.Offset.isLeap (Int.ofNat (fieldValue d.year)))
-      rfl (isLeap_ofNat (fieldValue d.year)).symm ⟨hm1, hm2⟩
+    have hbridge := days_eq_daysInMonth (natOf d.year) (natOf d.month)
+      (Bounded.LE.ofNat' (natOf d.month) hm) (Year.Offset.isLeap (Int.ofNat (natOf d.year)))
+      rfl (isLeap_ofNat (natOf d.year)).symm ⟨hm1, hm2⟩
     rw [← hbridge]
-    show (fieldValue d.day : Int) ≤ (daysInMonth (fieldValue d.year) (fieldValue d.month) : Int)
+    show (natOf d.day : Int) ≤ (daysInMonth (natOf d.year) (natOf d.month) : Int)
     exact_mod_cast hd2
-  letI : Decidable (Year.Offset.Valid (Int.ofNat (fieldValue d.year))
-      (Bounded.LE.ofNat' (fieldValue d.month) hm)
-      (Bounded.LE.ofNat' (fieldValue d.day) hdd)) := Day.instDecidableLeOrdinal
+  letI : Decidable (Year.Offset.Valid (Int.ofNat (natOf d.year))
+      (Bounded.LE.ofNat' (natOf d.month) hm)
+      (Bounded.LE.ofNat' (natOf d.day) hdd)) := Day.instDecidableLeOrdinal
   -- Reduce `build .any` to the mapped `dite`, then take the `some` branch.
   have hbuild :
       ({ ({} : DateBuilder) with
-          y := some (Int.ofNat (fieldValue d.year)),
-          M := some (Bounded.LE.ofNat' (fieldValue d.month) hm),
-          d := some (Bounded.LE.ofNat' (fieldValue d.day) hdd) }).build .any =
+          y := some (Int.ofNat (natOf d.year)),
+          M := some (Bounded.LE.ofNat' (natOf d.month) hm),
+          d := some (Bounded.LE.ofNat' (natOf d.day) hdd) }).build .any =
         (fun x => ZonedDateTime.ofPlainDateTime x
             (TimeZone.ZoneRules.ofTimeZone
               { offset := TimeZone.Offset.zero,
                 name := (TimeZone.Offset.zero).toIsoString true,
                 abbreviation := (TimeZone.Offset.zero).toIsoString true,
                 isDST := false })) <$>
-          (if h : Year.Offset.Valid (Int.ofNat (fieldValue d.year))
-              (Bounded.LE.ofNat' (fieldValue d.month) hm)
-              (Bounded.LE.ofNat' (fieldValue d.day) hdd) then
-            some { date := { year := Int.ofNat (fieldValue d.year),
-                             month := Bounded.LE.ofNat' (fieldValue d.month) hm,
-                             day := Bounded.LE.ofNat' (fieldValue d.day) hdd, valid := h },
+          (if h : Year.Offset.Valid (Int.ofNat (natOf d.year))
+              (Bounded.LE.ofNat' (natOf d.month) hm)
+              (Bounded.LE.ofNat' (natOf d.day) hdd) then
+            some { date := { year := Int.ofNat (natOf d.year),
+                             month := Bounded.LE.ofNat' (natOf d.month) hm,
+                             day := Bounded.LE.ofNat' (natOf d.day) hdd, valid := h },
                    time := PlainTime.mk ⟨0, by decide⟩ 0 0 0 }
           else none) := by
     rfl
@@ -2184,12 +2258,12 @@ theorem build_dateOnly_value {d : DateComponents}
   -- Evaluate the timestamp of the resulting DateTime.
   rw [ofPlainDateTime_zero_timestamp _ _ rfl, midnight_toTimestampAssumingUTC, toMillis_ofSeconds]
   -- Bridge the day count to `epochDays`.
-  have hday : (⟨Int.ofNat (fieldValue d.year), Bounded.LE.ofNat' (fieldValue d.month) hm,
-        Bounded.LE.ofNat' (fieldValue d.day) hdd, hvalid⟩ : PlainDate).toEpochDay.val
-      = epochDays (fieldValue d.year) (fieldValue d.month) (fieldValue d.day) :=
-    (epochDays_eq (fieldValue d.year) (fieldValue d.month) (fieldValue d.day)
-      ⟨Int.ofNat (fieldValue d.year), Bounded.LE.ofNat' (fieldValue d.month) hm,
-        Bounded.LE.ofNat' (fieldValue d.day) hdd, hvalid⟩ rfl rfl rfl).symm
+  have hday : (⟨Int.ofNat (natOf d.year), Bounded.LE.ofNat' (natOf d.month) hm,
+        Bounded.LE.ofNat' (natOf d.day) hdd, hvalid⟩ : PlainDate).toEpochDay.val
+      = epochDays (natOf d.year) (natOf d.month) (natOf d.day) :=
+    (epochDays_eq (natOf d.year) (natOf d.month) (natOf d.day)
+      ⟨Int.ofNat (natOf d.year), Bounded.LE.ofNat' (natOf d.month) hm,
+        Bounded.LE.ofNat' (natOf d.day) hdd, hvalid⟩ rfl rfl rfl).symm
   rw [hday]
   omega
 
@@ -2356,7 +2430,7 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal S
 theorem dateOnly_parse_eq_ok {d : DateComponents} (hsyn : d.syntaxWf) (hcon : d.constraintsWf) :
     ∃ zt, DateOnly.parse d.asString = .ok zt ∧
       zt.toTimestamp.toMillisecondsSinceUnixEpoch.toInt
-        = epochDays (fieldValue d.year) (fieldValue d.month) (fieldValue d.day) * 86400000 := by
+        = epochDays (natOf d.year) (natOf d.month) (natOf d.day) * 86400000 := by
   obtain ⟨hm, hd, hgo⟩ := parseWithDate_dateOnly DateOnly.config hsyn hcon
   obtain ⟨zt, hbuild, hval⟩ := build_dateOnly_value hsyn hcon hm hd _ rfl
   refine ⟨zt, ?_, hval⟩
@@ -2368,7 +2442,7 @@ open Cedar.Spec.Ext.Datetime in
 theorem dateOnly_parse_value {d : DateComponents} (hsyn : d.syntaxWf) (hcon : d.constraintsWf) :
     (DateOnly.parse d.asString).toOption.map
       (fun zt => zt.toTimestamp.toMillisecondsSinceUnixEpoch.toInt)
-      = some (epochDays (fieldValue d.year) (fieldValue d.month) (fieldValue d.day) * 86400000) := by
+      = some (epochDays (natOf d.year) (natOf d.month) (natOf d.day) * 86400000) := by
   obtain ⟨zt, hparse, hval⟩ := dateOnly_parse_eq_ok hsyn hcon
   rw [hparse]
   show (some zt).map _ = _
@@ -2398,50 +2472,50 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal S
 theorem build_dateUTC_value {c : DatetimeComponents} (tp : TimePart)
     (_hsyn : c.syntaxWf) (hcon : c.constraintsWf)
     (htime : c.time = some tp) (hutc : tp.zone = Zone.utc) (hmillis : tp.millis = none)
-    (hm : 1 ≤ fieldValue c.date.month ∧ fieldValue c.date.month ≤ 12)
-    (hd : 1 ≤ fieldValue c.date.day ∧ fieldValue c.date.day ≤ 31)
-    (hh : 0 ≤ fieldValue tp.time.hours ∧ fieldValue tp.time.hours ≤ 23)
-    (hmin : 0 ≤ fieldValue tp.time.minutes ∧ fieldValue tp.time.minutes ≤ 59)
-    (hsec : 0 ≤ fieldValue tp.time.seconds ∧ fieldValue tp.time.seconds ≤ 59)
+    (hm : 1 ≤ natOf c.date.month ∧ natOf c.date.month ≤ 12)
+    (hd : 1 ≤ natOf c.date.day ∧ natOf c.date.day ≤ 31)
+    (hh : 0 ≤ natOf tp.time.hours ∧ natOf tp.time.hours ≤ 23)
+    (hmin : 0 ≤ natOf tp.time.minutes ∧ natOf tp.time.minutes ≤ 59)
+    (hsec : 0 ≤ natOf tp.time.seconds ∧ natOf tp.time.seconds ≤ 59)
     (bld : DateBuilder)
     (hbld : bld =
       { ({} : DateBuilder) with
-        y := some (Int.ofNat (fieldValue c.date.year)),
-        M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-        d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-        H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-        m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-        s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)
+        y := some (Int.ofNat (natOf c.date.year)),
+        M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+        d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+        H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+        m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+        s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)
                     : Bounded.LE 0 60) }) :
     ∃ zt, bld.build .any = some zt ∧
       zt.toTimestamp.toMillisecondsSinceUnixEpoch.toInt = c.toMillis := by
   subst hbld
   obtain ⟨hdatecon, _⟩ := hcon
-  have hvalid : Year.Offset.Valid (Int.ofNat (fieldValue c.date.year))
-      (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-      (Bounded.LE.ofNat' (fieldValue c.date.day) hd) := by
-    show (Bounded.LE.ofNat' (fieldValue c.date.day) hd : Day.Ordinal).val
-      ≤ (Month.Ordinal.days (Year.Offset.isLeap (Int.ofNat (fieldValue c.date.year)))
-          (Bounded.LE.ofNat' (fieldValue c.date.month) hm)).val
+  have hvalid : Year.Offset.Valid (Int.ofNat (natOf c.date.year))
+      (Bounded.LE.ofNat' (natOf c.date.month) hm)
+      (Bounded.LE.ofNat' (natOf c.date.day) hd) := by
+    show (Bounded.LE.ofNat' (natOf c.date.day) hd : Day.Ordinal).val
+      ≤ (Month.Ordinal.days (Year.Offset.isLeap (Int.ofNat (natOf c.date.year)))
+          (Bounded.LE.ofNat' (natOf c.date.month) hm)).val
     obtain ⟨hm1, hm2, hd1, hd2⟩ := hdatecon
-    have hbridge := days_eq_daysInMonth (fieldValue c.date.year) (fieldValue c.date.month)
-      (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-      (Year.Offset.isLeap (Int.ofNat (fieldValue c.date.year)))
-      rfl (isLeap_ofNat (fieldValue c.date.year)).symm ⟨hm1, hm2⟩
+    have hbridge := days_eq_daysInMonth (natOf c.date.year) (natOf c.date.month)
+      (Bounded.LE.ofNat' (natOf c.date.month) hm)
+      (Year.Offset.isLeap (Int.ofNat (natOf c.date.year)))
+      rfl (isLeap_ofNat (natOf c.date.year)).symm ⟨hm1, hm2⟩
     rw [← hbridge]
-    show (fieldValue c.date.day : Int) ≤ (daysInMonth (fieldValue c.date.year) (fieldValue c.date.month) : Int)
+    show (natOf c.date.day : Int) ≤ (daysInMonth (natOf c.date.year) (natOf c.date.month) : Int)
     exact_mod_cast hd2
-  letI : Decidable (Year.Offset.Valid (Int.ofNat (fieldValue c.date.year))
-      (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-      (Bounded.LE.ofNat' (fieldValue c.date.day) hd)) := Day.instDecidableLeOrdinal
+  letI : Decidable (Year.Offset.Valid (Int.ofNat (natOf c.date.year))
+      (Bounded.LE.ofNat' (natOf c.date.month) hm)
+      (Bounded.LE.ofNat' (natOf c.date.day) hd)) := Day.instDecidableLeOrdinal
   have hbuild :
       ({ ({} : DateBuilder) with
-          y := some (Int.ofNat (fieldValue c.date.year)),
-          M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-          d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-          H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-          m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-          s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)
+          y := some (Int.ofNat (natOf c.date.year)),
+          M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+          d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+          H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+          m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+          s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)
                       : Bounded.LE 0 60) }).build .any =
         (fun x => ZonedDateTime.ofPlainDateTime x
             (TimeZone.ZoneRules.ofTimeZone
@@ -2449,15 +2523,15 @@ theorem build_dateUTC_value {c : DatetimeComponents} (tp : TimePart)
                 name := (TimeZone.Offset.zero).toIsoString true,
                 abbreviation := (TimeZone.Offset.zero).toIsoString true,
                 isDST := false })) <$>
-          (if h : Year.Offset.Valid (Int.ofNat (fieldValue c.date.year))
-              (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-              (Bounded.LE.ofNat' (fieldValue c.date.day) hd) then
-            some { date := { year := Int.ofNat (fieldValue c.date.year),
-                             month := Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-                             day := Bounded.LE.ofNat' (fieldValue c.date.day) hd, valid := h },
-                   time := PlainTime.mk (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh)
-                             (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin)
-                             ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop
+          (if h : Year.Offset.Valid (Int.ofNat (natOf c.date.year))
+              (Bounded.LE.ofNat' (natOf c.date.month) hm)
+              (Bounded.LE.ofNat' (natOf c.date.day) hd) then
+            some { date := { year := Int.ofNat (natOf c.date.year),
+                             month := Bounded.LE.ofNat' (natOf c.date.month) hm,
+                             day := Bounded.LE.ofNat' (natOf c.date.day) hd, valid := h },
+                   time := PlainTime.mk (Bounded.LE.ofNat' (natOf tp.time.hours) hh)
+                             (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin)
+                             ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop
                                (by decide))
                              0 }
           else none) := by
@@ -2465,24 +2539,24 @@ theorem build_dateUTC_value {c : DatetimeComponents} (tp : TimePart)
   rw [hbuild, dif_pos hvalid]
   refine ⟨_, rfl, ?_⟩
   have hzv := zoned_value
-    (⟨Int.ofNat (fieldValue c.date.year),
-      Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-      Bounded.LE.ofNat' (fieldValue c.date.day) hd, hvalid⟩ : PlainDate)
-    (PlainTime.mk (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh)
-       (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin)
-       ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)) 0)
+    (⟨Int.ofNat (natOf c.date.year),
+      Bounded.LE.ofNat' (natOf c.date.month) hm,
+      Bounded.LE.ofNat' (natOf c.date.day) hd, hvalid⟩ : PlainDate)
+    (PlainTime.mk (Bounded.LE.ofNat' (natOf tp.time.hours) hh)
+       (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin)
+       ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)) 0)
     { offset := TimeZone.Offset.zero,
       name := (TimeZone.Offset.zero).toIsoString true,
       abbreviation := (TimeZone.Offset.zero).toIsoString true,
       isDST := false }
     0 (by rfl)
   rw [hzv]
-  have htsec : (PlainTime.mk (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh)
-      (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin)
-      ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)) 0
+  have htsec : (PlainTime.mk (Bounded.LE.ofNat' (natOf tp.time.hours) hh)
+      (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin)
+      ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)) 0
       : PlainTime).toSeconds.val
-      = (fieldValue tp.time.hours : Int) * 3600 + (fieldValue tp.time.minutes : Int) * 60
-          + (fieldValue tp.time.seconds : Int) :=
+      = (natOf tp.time.hours : Int) * 3600 + (natOf tp.time.minutes : Int) * 60
+          + (natOf tp.time.seconds : Int) :=
     toSeconds_mk _ _ _ _
   rw [htsec]
   have htz : ({ offset := TimeZone.Offset.zero,
@@ -2490,14 +2564,14 @@ theorem build_dateUTC_value {c : DatetimeComponents} (tp : TimePart)
                 abbreviation := (TimeZone.Offset.zero).toIsoString true,
                 isDST := false } : TimeZone).offset.second.val = 0 := rfl
   rw [htz]
-  have hday : (⟨Int.ofNat (fieldValue c.date.year),
-        Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-        Bounded.LE.ofNat' (fieldValue c.date.day) hd, hvalid⟩ : PlainDate).toEpochDay.val
-      = epochDays (fieldValue c.date.year) (fieldValue c.date.month) (fieldValue c.date.day) :=
-    (epochDays_eq (fieldValue c.date.year) (fieldValue c.date.month) (fieldValue c.date.day)
-      ⟨Int.ofNat (fieldValue c.date.year),
-        Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-        Bounded.LE.ofNat' (fieldValue c.date.day) hd, hvalid⟩ rfl rfl rfl).symm
+  have hday : (⟨Int.ofNat (natOf c.date.year),
+        Bounded.LE.ofNat' (natOf c.date.month) hm,
+        Bounded.LE.ofNat' (natOf c.date.day) hd, hvalid⟩ : PlainDate).toEpochDay.val
+      = epochDays (natOf c.date.year) (natOf c.date.month) (natOf c.date.day) :=
+    (epochDays_eq (natOf c.date.year) (natOf c.date.month) (natOf c.date.day)
+      ⟨Int.ofNat (natOf c.date.year),
+        Bounded.LE.ofNat' (natOf c.date.month) hm,
+        Bounded.LE.ofNat' (natOf c.date.day) hd, hvalid⟩ rfl rfl rfl).symm
   rw [hday]
   simp only [DatetimeComponents.toMillis, DateComponents.toMillis, TimePart.toMillis,
     htime, hutc, hmillis, Zone.offsetSeconds]
@@ -2534,8 +2608,8 @@ theorem dateUTC_parse_value {c : DatetimeComponents} (tp : TimePart)
 /-! ## DateUTCWithMillis slice: `DateUTCWithMillis.parse` value
 
 The `.SSS` millisecond analogue of the DateUTC slice (`yyyy-MM-dd'T'HH:mm:ss.SSS'Z'`): adds the
-fraction field before `Z`, with a nonzero `nano = fieldValue sss * 10⁶` fed to `zoned_value` as
-`ms = fieldValue sss`. The `digit_le`/`fieldValue_le_999` helpers bound a 3-digit `SSS` field. -/
+fraction field before `Z`, with a nonzero `nano = natOf sss * 10⁶` fed to `zoned_value` as
+`ms = natOf sss`. The `digit_le`/`natOf_le_999` helpers bound a 3-digit `SSS` field. -/
 
 theorem digit_le (c : Char) (h : c.isDigit = true) : c.toNat - 48 ≤ 9 := by
   unfold Char.isDigit at h
@@ -2546,9 +2620,9 @@ theorem digit_le (c : Char) (h : c.isDigit = true) : c.toNat - 48 ≤ 9 := by
   have h9 : ('9'.val.toNat) = 57 := by decide
   omega
 
-theorem fieldValue_le_999 {sss : String} (h : IsFixedDigits 3 sss) : fieldValue sss ≤ 999 := by
+theorem natOf_le_999 {sss : String} (h : IsFixedDigits 3 sss) : natOf sss ≤ 999 := by
   obtain ⟨hdig, hlen⟩ := h
-  rw [fieldValue_isDigits sss hdig]
+  rw [natOf_isDigits sss hdig]
   have hl3 : sss.toList.length = 3 := by rw [String.length_toList]; exact hlen
   match hm : sss.toList, hl3 with
   | [a, b, c], _ =>
@@ -2559,9 +2633,9 @@ theorem fieldValue_le_999 {sss : String} (h : IsFixedDigits 3 sss) : fieldValue 
     omega
 
 /-- A two-digit field's value is at most `99`. -/
-theorem fieldValue_le_99 {ss : String} (h : IsFixedDigits 2 ss) : fieldValue ss ≤ 99 := by
+theorem natOf_le_99 {ss : String} (h : IsFixedDigits 2 ss) : natOf ss ≤ 99 := by
   obtain ⟨hdig, hlen⟩ := h
-  rw [fieldValue_isDigits ss hdig]
+  rw [natOf_isDigits ss hdig]
   have hl2 : ss.toList.length = 2 := by rw [String.length_toList]; exact hlen
   match hm : ss.toList, hl2 with
   | [a, b], _ =>
@@ -2571,9 +2645,9 @@ theorem fieldValue_le_99 {ss : String} (h : IsFixedDigits 2 ss) : fieldValue ss 
     omega
 
 /-- A four-digit field's value is at most `9999`. -/
-theorem fieldValue_le_9999 {yyyy : String} (h : IsFixedDigits 4 yyyy) : fieldValue yyyy ≤ 9999 := by
+theorem natOf_le_9999 {yyyy : String} (h : IsFixedDigits 4 yyyy) : natOf yyyy ≤ 9999 := by
   obtain ⟨hdig, hlen⟩ := h
-  rw [fieldValue_isDigits yyyy hdig]
+  rw [natOf_isDigits yyyy hdig]
   have hl4 : yyyy.toList.length = 4 := by rw [String.length_toList]; exact hlen
   match hm : yyyy.toList, hl4 with
   | [a, b, c, d], _ =>
@@ -2588,11 +2662,11 @@ theorem fieldValue_le_9999 {yyyy : String} (h : IsFixedDigits 4 yyyy) : fieldVal
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal Std.Time.GenericFormat in
 theorem step_fraction {s : String} (p : s.Pos) (pre rest sss : String) (b : DateBuilder)
-    (config : FormatConfig) (hsss : IsFixedDigits 3 sss) (hb : fieldValue sss ≤ 999)
+    (config : FormatConfig) (hsss : IsFixedDigits 3 sss) (hb : natOf sss ≤ 999)
     (hsplit : p.Splits pre (sss ++ rest)) :
-    ∃ (p' : s.Pos) (h : 0 ≤ fieldValue sss * 1000000 ∧ fieldValue sss * 1000000 ≤ 999999999),
+    ∃ (p' : s.Pos) (h : 0 ≤ natOf sss * 1000000 ∧ natOf sss * 1000000 ≤ 999999999),
       parseWithDate b config (.modifier (.S (.truncated 3))) ⟨s, p⟩
-        = ParseResult.success ⟨s, p'⟩ { b with S := some (Bounded.LE.ofNat' (fieldValue sss * 1000000) h) } ∧
+        = ParseResult.success ⟨s, p'⟩ { b with S := some (Bounded.LE.ofNat' (natOf sss * 1000000) h) } ∧
       p'.Splits (pre ++ sss) rest := by
   obtain ⟨p', h, hpar, hsp⟩ := parseWith_fraction_at p pre rest sss config hsss hb hsplit
   refine ⟨p', h, ?_, hsp⟩
@@ -2608,12 +2682,12 @@ theorem parseWithDate_dateUTCWithMillis {c : DatetimeComponents} (tp : TimePart)
     (config : FormatConfig) (hcfg : config.allowLeapSeconds = false)
     (hsyn : c.syntaxWf) (hcon : c.constraintsWf)
     (htime : c.time = some tp) (hutc : tp.zone = Zone.utc) (hmillis : tp.millis = some sss) :
-    ∃ (hm : 1 ≤ fieldValue c.date.month ∧ fieldValue c.date.month ≤ 12)
-      (hd : 1 ≤ fieldValue c.date.day ∧ fieldValue c.date.day ≤ 31)
-      (hh : 0 ≤ fieldValue tp.time.hours ∧ fieldValue tp.time.hours ≤ 23)
-      (hmin : 0 ≤ fieldValue tp.time.minutes ∧ fieldValue tp.time.minutes ≤ 59)
-      (hsec : 0 ≤ fieldValue tp.time.seconds ∧ fieldValue tp.time.seconds ≤ 59)
-      (hms : 0 ≤ fieldValue sss * 1000000 ∧ fieldValue sss * 1000000 ≤ 999999999),
+    ∃ (hm : 1 ≤ natOf c.date.month ∧ natOf c.date.month ≤ 12)
+      (hd : 1 ≤ natOf c.date.day ∧ natOf c.date.day ≤ 31)
+      (hh : 0 ≤ natOf tp.time.hours ∧ natOf tp.time.hours ≤ 23)
+      (hmin : 0 ≤ natOf tp.time.minutes ∧ natOf tp.time.minutes ≤ 59)
+      (hsec : 0 ≤ natOf tp.time.seconds ∧ natOf tp.time.seconds ≤ 59)
+      (hms : 0 ≤ natOf sss * 1000000 ∧ natOf sss * 1000000 ≤ 999999999),
       parser.go config .any {}
           [.modifier (.y .fourDigit), .string "-", .modifier (.M (.inl {padding := 2})),
            .string "-", .modifier (.d {padding := 2}), .string "T",
@@ -2623,14 +2697,14 @@ theorem parseWithDate_dateUTCWithMillis {c : DatetimeComponents} (tp : TimePart)
           ⟨c.asString, c.asString.startPos⟩
         = parser.go config .any
             { ({} : DateBuilder) with
-              y := some (Int.ofNat (fieldValue c.date.year)),
-              M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-              d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-              H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-              m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-              s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)
+              y := some (Int.ofNat (natOf c.date.year)),
+              M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+              d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+              H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+              m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+              s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)
                           : Bounded.LE 0 60),
-              S := some (Bounded.LE.ofNat' (fieldValue sss * 1000000) hms) }
+              S := some (Bounded.LE.ofNat' (natOf sss * 1000000) hms) }
             [] ⟨c.asString, c.asString.endPos⟩ := by
   have ⟨_, htimesyn⟩ := hsyn
   simp only [htime] at htimesyn
@@ -2645,20 +2719,20 @@ theorem parseWithDate_dateUTCWithMillis {c : DatetimeComponents} (tp : TimePart)
       [.string ".", .modifier (.S (.truncated 3)), .string "Z"]
   let b : DateBuilder :=
     { ({} : DateBuilder) with
-      y := some (Int.ofNat (fieldValue c.date.year)),
-      M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-      d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-      H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-      m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-      s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop
+      y := some (Int.ofNat (natOf c.date.year)),
+      M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+      d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+      H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+      m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+      s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop
         (by decide) : Bounded.LE 0 60) }
   obtain ⟨p', hdot, hsp'⟩ := step_sep p
     (c.date.asString ++ "T" ++ tp.time.asString) (sss ++ "Z") "." b config hsp
   obtain ⟨p'', hms, hfrac, hsp''⟩ := step_fraction p'
     (c.date.asString ++ "T" ++ tp.time.asString ++ ".") "Z" sss b config htmillis
-    (fieldValue_le_999 htmillis) hsp'
+    (natOf_le_999 htmillis) hsp'
   let bS : DateBuilder :=
-    { b with S := some (Bounded.LE.ofNat' (fieldValue sss * 1000000) hms) }
+    { b with S := some (Bounded.LE.ofNat' (natOf sss * 1000000) hms) }
   obtain ⟨p''', hz, hsp'''⟩ := step_sep p''
     (c.date.asString ++ "T" ++ tp.time.asString ++ "." ++ sss) "" "Z" bS config
     (by rw [String.append_empty]; exact hsp'')
@@ -2675,96 +2749,96 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal S
 theorem build_dateUTCWithMillis_value {c : DatetimeComponents} (tp : TimePart) (sss : String)
     (_hsyn : c.syntaxWf) (hcon : c.constraintsWf)
     (htime : c.time = some tp) (hutc : tp.zone = Zone.utc) (hmillis : tp.millis = some sss)
-    (hm : 1 ≤ fieldValue c.date.month ∧ fieldValue c.date.month ≤ 12)
-    (hd : 1 ≤ fieldValue c.date.day ∧ fieldValue c.date.day ≤ 31)
-    (hh : 0 ≤ fieldValue tp.time.hours ∧ fieldValue tp.time.hours ≤ 23)
-    (hmin : 0 ≤ fieldValue tp.time.minutes ∧ fieldValue tp.time.minutes ≤ 59)
-    (hsec : 0 ≤ fieldValue tp.time.seconds ∧ fieldValue tp.time.seconds ≤ 59)
-    (hms : 0 ≤ fieldValue sss * 1000000 ∧ fieldValue sss * 1000000 ≤ 999999999)
+    (hm : 1 ≤ natOf c.date.month ∧ natOf c.date.month ≤ 12)
+    (hd : 1 ≤ natOf c.date.day ∧ natOf c.date.day ≤ 31)
+    (hh : 0 ≤ natOf tp.time.hours ∧ natOf tp.time.hours ≤ 23)
+    (hmin : 0 ≤ natOf tp.time.minutes ∧ natOf tp.time.minutes ≤ 59)
+    (hsec : 0 ≤ natOf tp.time.seconds ∧ natOf tp.time.seconds ≤ 59)
+    (hms : 0 ≤ natOf sss * 1000000 ∧ natOf sss * 1000000 ≤ 999999999)
     (bld : DateBuilder)
     (hbld : bld =
       { ({} : DateBuilder) with
-        y := some (Int.ofNat (fieldValue c.date.year)),
-        M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-        d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-        H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-        m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-        s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)
+        y := some (Int.ofNat (natOf c.date.year)),
+        M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+        d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+        H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+        m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+        s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)
                     : Bounded.LE 0 60),
-        S := some (Bounded.LE.ofNat' (fieldValue sss * 1000000) hms) }) :
+        S := some (Bounded.LE.ofNat' (natOf sss * 1000000) hms) }) :
     ∃ zt, bld.build .any = some zt ∧
       zt.toTimestamp.toMillisecondsSinceUnixEpoch.toInt = c.toMillis := by
   subst hbld
   obtain ⟨hdatecon, _⟩ := hcon
-  have hvalid : Year.Offset.Valid (Int.ofNat (fieldValue c.date.year))
-      (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-      (Bounded.LE.ofNat' (fieldValue c.date.day) hd) := by
-    show (Bounded.LE.ofNat' (fieldValue c.date.day) hd : Day.Ordinal).val
-      ≤ (Month.Ordinal.days (Year.Offset.isLeap (Int.ofNat (fieldValue c.date.year)))
-          (Bounded.LE.ofNat' (fieldValue c.date.month) hm)).val
+  have hvalid : Year.Offset.Valid (Int.ofNat (natOf c.date.year))
+      (Bounded.LE.ofNat' (natOf c.date.month) hm)
+      (Bounded.LE.ofNat' (natOf c.date.day) hd) := by
+    show (Bounded.LE.ofNat' (natOf c.date.day) hd : Day.Ordinal).val
+      ≤ (Month.Ordinal.days (Year.Offset.isLeap (Int.ofNat (natOf c.date.year)))
+          (Bounded.LE.ofNat' (natOf c.date.month) hm)).val
     obtain ⟨hm1, hm2, hd1, hd2⟩ := hdatecon
-    have hbridge := days_eq_daysInMonth (fieldValue c.date.year) (fieldValue c.date.month)
-      (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-      (Year.Offset.isLeap (Int.ofNat (fieldValue c.date.year)))
-      rfl (isLeap_ofNat (fieldValue c.date.year)).symm ⟨hm1, hm2⟩
+    have hbridge := days_eq_daysInMonth (natOf c.date.year) (natOf c.date.month)
+      (Bounded.LE.ofNat' (natOf c.date.month) hm)
+      (Year.Offset.isLeap (Int.ofNat (natOf c.date.year)))
+      rfl (isLeap_ofNat (natOf c.date.year)).symm ⟨hm1, hm2⟩
     rw [← hbridge]
-    show (fieldValue c.date.day : Int) ≤ (daysInMonth (fieldValue c.date.year) (fieldValue c.date.month) : Int)
+    show (natOf c.date.day : Int) ≤ (daysInMonth (natOf c.date.year) (natOf c.date.month) : Int)
     exact_mod_cast hd2
-  letI : Decidable (Year.Offset.Valid (Int.ofNat (fieldValue c.date.year))
-      (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-      (Bounded.LE.ofNat' (fieldValue c.date.day) hd)) := Day.instDecidableLeOrdinal
+  letI : Decidable (Year.Offset.Valid (Int.ofNat (natOf c.date.year))
+      (Bounded.LE.ofNat' (natOf c.date.month) hm)
+      (Bounded.LE.ofNat' (natOf c.date.day) hd)) := Day.instDecidableLeOrdinal
   have hbuild :
       ({ ({} : DateBuilder) with
-          y := some (Int.ofNat (fieldValue c.date.year)),
-          M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-          d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-          H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-          m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-          s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)
+          y := some (Int.ofNat (natOf c.date.year)),
+          M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+          d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+          H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+          m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+          s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)
                       : Bounded.LE 0 60),
-          S := some (Bounded.LE.ofNat' (fieldValue sss * 1000000) hms) }).build .any =
+          S := some (Bounded.LE.ofNat' (natOf sss * 1000000) hms) }).build .any =
         (fun x => ZonedDateTime.ofPlainDateTime x
             (TimeZone.ZoneRules.ofTimeZone
               { offset := TimeZone.Offset.zero,
                 name := (TimeZone.Offset.zero).toIsoString true,
                 abbreviation := (TimeZone.Offset.zero).toIsoString true,
                 isDST := false })) <$>
-          (if h : Year.Offset.Valid (Int.ofNat (fieldValue c.date.year))
-              (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-              (Bounded.LE.ofNat' (fieldValue c.date.day) hd) then
-            some { date := { year := Int.ofNat (fieldValue c.date.year),
-                             month := Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-                             day := Bounded.LE.ofNat' (fieldValue c.date.day) hd, valid := h },
-                   time := PlainTime.mk (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh)
-                             (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin)
-                             ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop
+          (if h : Year.Offset.Valid (Int.ofNat (natOf c.date.year))
+              (Bounded.LE.ofNat' (natOf c.date.month) hm)
+              (Bounded.LE.ofNat' (natOf c.date.day) hd) then
+            some { date := { year := Int.ofNat (natOf c.date.year),
+                             month := Bounded.LE.ofNat' (natOf c.date.month) hm,
+                             day := Bounded.LE.ofNat' (natOf c.date.day) hd, valid := h },
+                   time := PlainTime.mk (Bounded.LE.ofNat' (natOf tp.time.hours) hh)
+                             (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin)
+                             ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop
                                (by decide))
-                             (Bounded.LE.ofNat' (fieldValue sss * 1000000) hms) }
+                             (Bounded.LE.ofNat' (natOf sss * 1000000) hms) }
           else none) := by
     rfl
   rw [hbuild, dif_pos hvalid]
   refine ⟨_, rfl, ?_⟩
   have hzv := zoned_value
-    (⟨Int.ofNat (fieldValue c.date.year),
-      Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-      Bounded.LE.ofNat' (fieldValue c.date.day) hd, hvalid⟩ : PlainDate)
-    (PlainTime.mk (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh)
-       (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin)
-       ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide))
-       (Bounded.LE.ofNat' (fieldValue sss * 1000000) hms))
+    (⟨Int.ofNat (natOf c.date.year),
+      Bounded.LE.ofNat' (natOf c.date.month) hm,
+      Bounded.LE.ofNat' (natOf c.date.day) hd, hvalid⟩ : PlainDate)
+    (PlainTime.mk (Bounded.LE.ofNat' (natOf tp.time.hours) hh)
+       (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin)
+       ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide))
+       (Bounded.LE.ofNat' (natOf sss * 1000000) hms))
     { offset := TimeZone.Offset.zero,
       name := (TimeZone.Offset.zero).toIsoString true,
       abbreviation := (TimeZone.Offset.zero).toIsoString true,
       isDST := false }
-    (fieldValue sss) (by rfl)
+    (natOf sss) (by rfl)
   rw [hzv]
-  have htsec : (PlainTime.mk (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh)
-      (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin)
-      ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide))
-      (Bounded.LE.ofNat' (fieldValue sss * 1000000) hms)
+  have htsec : (PlainTime.mk (Bounded.LE.ofNat' (natOf tp.time.hours) hh)
+      (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin)
+      ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide))
+      (Bounded.LE.ofNat' (natOf sss * 1000000) hms)
       : PlainTime).toSeconds.val
-      = (fieldValue tp.time.hours : Int) * 3600 + (fieldValue tp.time.minutes : Int) * 60
-          + (fieldValue tp.time.seconds : Int) :=
+      = (natOf tp.time.hours : Int) * 3600 + (natOf tp.time.minutes : Int) * 60
+          + (natOf tp.time.seconds : Int) :=
     toSeconds_mk _ _ _ _
   rw [htsec]
   have htz : ({ offset := TimeZone.Offset.zero,
@@ -2772,14 +2846,14 @@ theorem build_dateUTCWithMillis_value {c : DatetimeComponents} (tp : TimePart) (
                 abbreviation := (TimeZone.Offset.zero).toIsoString true,
                 isDST := false } : TimeZone).offset.second.val = 0 := rfl
   rw [htz]
-  have hday : (⟨Int.ofNat (fieldValue c.date.year),
-        Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-        Bounded.LE.ofNat' (fieldValue c.date.day) hd, hvalid⟩ : PlainDate).toEpochDay.val
-      = epochDays (fieldValue c.date.year) (fieldValue c.date.month) (fieldValue c.date.day) :=
-    (epochDays_eq (fieldValue c.date.year) (fieldValue c.date.month) (fieldValue c.date.day)
-      ⟨Int.ofNat (fieldValue c.date.year),
-        Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-        Bounded.LE.ofNat' (fieldValue c.date.day) hd, hvalid⟩ rfl rfl rfl).symm
+  have hday : (⟨Int.ofNat (natOf c.date.year),
+        Bounded.LE.ofNat' (natOf c.date.month) hm,
+        Bounded.LE.ofNat' (natOf c.date.day) hd, hvalid⟩ : PlainDate).toEpochDay.val
+      = epochDays (natOf c.date.year) (natOf c.date.month) (natOf c.date.day) :=
+    (epochDays_eq (natOf c.date.year) (natOf c.date.month) (natOf c.date.day)
+      ⟨Int.ofNat (natOf c.date.year),
+        Bounded.LE.ofNat' (natOf c.date.month) hm,
+        Bounded.LE.ofNat' (natOf c.date.day) hd, hvalid⟩ rfl rfl rfl).symm
   rw [hday]
   simp only [DatetimeComponents.toMillis, DateComponents.toMillis, TimePart.toMillis,
     htime, hutc, hmillis, Zone.offsetSeconds]
@@ -2823,13 +2897,13 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal S
 /-- One `parseWithDate` step on the offset modifier `.x .hourMinute` (`±hhmm`). -/
 theorem step_offset {s} (p : s.Pos) (pre rest hh mm : String) (neg : Bool) (b : DateBuilder)
     (config : FormatConfig) (hhh : IsFixedDigits 2 hh) (hmm : IsFixedDigits 2 mm)
-    (hhb : fieldValue hh ≤ 23) (hmb : fieldValue mm ≤ 59)
+    (hhb : natOf hh ≤ 23) (hmb : natOf mm ≤ 59)
     (hsplit : p.Splits pre (String.singleton (if neg then '-' else '+') ++ (hh ++ (mm ++ rest)))) :
     ∃ p' : s.Pos,
       parseWithDate b config (.modifier (.x .hourMinute)) ⟨s, p⟩
         = ParseResult.success ⟨s, p'⟩
             { b with x := some (TimeZone.Offset.ofSeconds
-              ⟨((fieldValue hh : Int) * 3600 + (fieldValue mm : Int) * 60)
+              ⟨((natOf hh : Int) * 3600 + (natOf mm : Int) * 60)
                 * (if neg then -1 else 1)⟩) } ∧
       p'.Splits (pre ++ String.singleton (if neg then '-' else '+') ++ hh ++ mm) rest := by
   obtain ⟨p', hpar, hsp⟩ :=
@@ -2847,56 +2921,56 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal S
 theorem build_dateWithOffset_value {c : DatetimeComponents} (tp : TimePart) (o : OffsetComponents)
     (_hsyn : c.syntaxWf) (hcon : c.constraintsWf)
     (htime : c.time = some tp) (hzone : tp.zone = Zone.offset o) (hmillis : tp.millis = none)
-    (hm : 1 ≤ fieldValue c.date.month ∧ fieldValue c.date.month ≤ 12)
-    (hd : 1 ≤ fieldValue c.date.day ∧ fieldValue c.date.day ≤ 31)
-    (hh : 0 ≤ fieldValue tp.time.hours ∧ fieldValue tp.time.hours ≤ 23)
-    (hmin : 0 ≤ fieldValue tp.time.minutes ∧ fieldValue tp.time.minutes ≤ 59)
-    (hsec : 0 ≤ fieldValue tp.time.seconds ∧ fieldValue tp.time.seconds ≤ 59)
+    (hm : 1 ≤ natOf c.date.month ∧ natOf c.date.month ≤ 12)
+    (hd : 1 ≤ natOf c.date.day ∧ natOf c.date.day ≤ 31)
+    (hh : 0 ≤ natOf tp.time.hours ∧ natOf tp.time.hours ≤ 23)
+    (hmin : 0 ≤ natOf tp.time.minutes ∧ natOf tp.time.minutes ≤ 59)
+    (hsec : 0 ≤ natOf tp.time.seconds ∧ natOf tp.time.seconds ≤ 59)
     (bld : DateBuilder)
     (hbld : bld =
       { ({} : DateBuilder) with
-        y := some (Int.ofNat (fieldValue c.date.year)),
-        M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-        d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-        H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-        m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-        s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)
+        y := some (Int.ofNat (natOf c.date.year)),
+        M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+        d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+        H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+        m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+        s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)
                     : Bounded.LE 0 60),
         x := some (TimeZone.Offset.ofSeconds
-              ⟨((fieldValue o.hours : Int) * 3600 + (fieldValue o.minutes : Int) * 60)
+              ⟨((natOf o.hours : Int) * 3600 + (natOf o.minutes : Int) * 60)
                 * (if o.negative then -1 else 1)⟩) }) :
     ∃ zt, bld.build .any = some zt ∧
       zt.toTimestamp.toMillisecondsSinceUnixEpoch.toInt = c.toMillis := by
   subst hbld
   obtain ⟨hdatecon, _⟩ := hcon
   let off : TimeZone.Offset := TimeZone.Offset.ofSeconds
-    ⟨((fieldValue o.hours : Int) * 3600 + (fieldValue o.minutes : Int) * 60)
+    ⟨((natOf o.hours : Int) * 3600 + (natOf o.minutes : Int) * 60)
       * (if o.negative then -1 else 1)⟩
-  have hvalid : Year.Offset.Valid (Int.ofNat (fieldValue c.date.year))
-      (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-      (Bounded.LE.ofNat' (fieldValue c.date.day) hd) := by
-    show (Bounded.LE.ofNat' (fieldValue c.date.day) hd : Day.Ordinal).val
-      ≤ (Month.Ordinal.days (Year.Offset.isLeap (Int.ofNat (fieldValue c.date.year)))
-          (Bounded.LE.ofNat' (fieldValue c.date.month) hm)).val
+  have hvalid : Year.Offset.Valid (Int.ofNat (natOf c.date.year))
+      (Bounded.LE.ofNat' (natOf c.date.month) hm)
+      (Bounded.LE.ofNat' (natOf c.date.day) hd) := by
+    show (Bounded.LE.ofNat' (natOf c.date.day) hd : Day.Ordinal).val
+      ≤ (Month.Ordinal.days (Year.Offset.isLeap (Int.ofNat (natOf c.date.year)))
+          (Bounded.LE.ofNat' (natOf c.date.month) hm)).val
     obtain ⟨hm1, hm2, hd1, hd2⟩ := hdatecon
-    have hbridge := days_eq_daysInMonth (fieldValue c.date.year) (fieldValue c.date.month)
-      (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-      (Year.Offset.isLeap (Int.ofNat (fieldValue c.date.year)))
-      rfl (isLeap_ofNat (fieldValue c.date.year)).symm ⟨hm1, hm2⟩
+    have hbridge := days_eq_daysInMonth (natOf c.date.year) (natOf c.date.month)
+      (Bounded.LE.ofNat' (natOf c.date.month) hm)
+      (Year.Offset.isLeap (Int.ofNat (natOf c.date.year)))
+      rfl (isLeap_ofNat (natOf c.date.year)).symm ⟨hm1, hm2⟩
     rw [← hbridge]
-    show (fieldValue c.date.day : Int) ≤ (daysInMonth (fieldValue c.date.year) (fieldValue c.date.month) : Int)
+    show (natOf c.date.day : Int) ≤ (daysInMonth (natOf c.date.year) (natOf c.date.month) : Int)
     exact_mod_cast hd2
-  letI : Decidable (Year.Offset.Valid (Int.ofNat (fieldValue c.date.year))
-      (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-      (Bounded.LE.ofNat' (fieldValue c.date.day) hd)) := Day.instDecidableLeOrdinal
+  letI : Decidable (Year.Offset.Valid (Int.ofNat (natOf c.date.year))
+      (Bounded.LE.ofNat' (natOf c.date.month) hm)
+      (Bounded.LE.ofNat' (natOf c.date.day) hd)) := Day.instDecidableLeOrdinal
   have hbuild :
       ({ ({} : DateBuilder) with
-          y := some (Int.ofNat (fieldValue c.date.year)),
-          M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-          d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-          H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-          m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-          s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)
+          y := some (Int.ofNat (natOf c.date.year)),
+          M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+          d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+          H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+          m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+          s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)
                       : Bounded.LE 0 60),
           x := some off }).build .any =
         (fun x => ZonedDateTime.ofPlainDateTime x
@@ -2905,15 +2979,15 @@ theorem build_dateWithOffset_value {c : DatetimeComponents} (tp : TimePart) (o :
                 name := off.toIsoString true,
                 abbreviation := off.toIsoString true,
                 isDST := false })) <$>
-          (if h : Year.Offset.Valid (Int.ofNat (fieldValue c.date.year))
-              (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-              (Bounded.LE.ofNat' (fieldValue c.date.day) hd) then
-            some { date := { year := Int.ofNat (fieldValue c.date.year),
-                             month := Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-                             day := Bounded.LE.ofNat' (fieldValue c.date.day) hd, valid := h },
-                   time := PlainTime.mk (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh)
-                             (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin)
-                             ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop
+          (if h : Year.Offset.Valid (Int.ofNat (natOf c.date.year))
+              (Bounded.LE.ofNat' (natOf c.date.month) hm)
+              (Bounded.LE.ofNat' (natOf c.date.day) hd) then
+            some { date := { year := Int.ofNat (natOf c.date.year),
+                             month := Bounded.LE.ofNat' (natOf c.date.month) hm,
+                             day := Bounded.LE.ofNat' (natOf c.date.day) hd, valid := h },
+                   time := PlainTime.mk (Bounded.LE.ofNat' (natOf tp.time.hours) hh)
+                             (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin)
+                             ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop
                                (by decide))
                              0 }
           else none) := by
@@ -2921,41 +2995,41 @@ theorem build_dateWithOffset_value {c : DatetimeComponents} (tp : TimePart) (o :
   rw [hbuild, dif_pos hvalid]
   refine ⟨_, rfl, ?_⟩
   have hzv := zoned_value
-    (⟨Int.ofNat (fieldValue c.date.year),
-      Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-      Bounded.LE.ofNat' (fieldValue c.date.day) hd, hvalid⟩ : PlainDate)
-    (PlainTime.mk (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh)
-       (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin)
-       ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)) 0)
+    (⟨Int.ofNat (natOf c.date.year),
+      Bounded.LE.ofNat' (natOf c.date.month) hm,
+      Bounded.LE.ofNat' (natOf c.date.day) hd, hvalid⟩ : PlainDate)
+    (PlainTime.mk (Bounded.LE.ofNat' (natOf tp.time.hours) hh)
+       (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin)
+       ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)) 0)
     { offset := off,
       name := off.toIsoString true,
       abbreviation := off.toIsoString true,
       isDST := false }
     0 (by rfl)
   rw [hzv]
-  have htsec : (PlainTime.mk (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh)
-      (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin)
-      ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)) 0
+  have htsec : (PlainTime.mk (Bounded.LE.ofNat' (natOf tp.time.hours) hh)
+      (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin)
+      ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)) 0
       : PlainTime).toSeconds.val
-      = (fieldValue tp.time.hours : Int) * 3600 + (fieldValue tp.time.minutes : Int) * 60
-          + (fieldValue tp.time.seconds : Int) :=
+      = (natOf tp.time.hours : Int) * 3600 + (natOf tp.time.minutes : Int) * 60
+          + (natOf tp.time.seconds : Int) :=
     toSeconds_mk _ _ _ _
   rw [htsec]
   have htz : ({ offset := off,
                 name := off.toIsoString true,
                 abbreviation := off.toIsoString true,
                 isDST := false } : TimeZone).offset.second.val
-      = ((fieldValue o.hours : Int) * 3600 + (fieldValue o.minutes : Int) * 60)
+      = ((natOf o.hours : Int) * 3600 + (natOf o.minutes : Int) * 60)
           * (if o.negative then -1 else 1) := rfl
   rw [htz]
-  have hday : (⟨Int.ofNat (fieldValue c.date.year),
-        Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-        Bounded.LE.ofNat' (fieldValue c.date.day) hd, hvalid⟩ : PlainDate).toEpochDay.val
-      = epochDays (fieldValue c.date.year) (fieldValue c.date.month) (fieldValue c.date.day) :=
-    (epochDays_eq (fieldValue c.date.year) (fieldValue c.date.month) (fieldValue c.date.day)
-      ⟨Int.ofNat (fieldValue c.date.year),
-        Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-        Bounded.LE.ofNat' (fieldValue c.date.day) hd, hvalid⟩ rfl rfl rfl).symm
+  have hday : (⟨Int.ofNat (natOf c.date.year),
+        Bounded.LE.ofNat' (natOf c.date.month) hm,
+        Bounded.LE.ofNat' (natOf c.date.day) hd, hvalid⟩ : PlainDate).toEpochDay.val
+      = epochDays (natOf c.date.year) (natOf c.date.month) (natOf c.date.day) :=
+    (epochDays_eq (natOf c.date.year) (natOf c.date.month) (natOf c.date.day)
+      ⟨Int.ofNat (natOf c.date.year),
+        Bounded.LE.ofNat' (natOf c.date.month) hm,
+        Bounded.LE.ofNat' (natOf c.date.day) hd, hvalid⟩ rfl rfl rfl).symm
   rw [hday]
   simp only [DatetimeComponents.toMillis, DateComponents.toMillis, TimePart.toMillis,
     htime, hzone, hmillis, Zone.offsetSeconds, OffsetComponents.seconds]
@@ -2971,11 +3045,11 @@ theorem parseWithDate_dateWithOffset {c : DatetimeComponents} (tp : TimePart) (o
     (config : FormatConfig) (hcfg : config.allowLeapSeconds = false)
     (hsyn : c.syntaxWf) (hcon : c.constraintsWf)
     (htime : c.time = some tp) (hzone : tp.zone = Zone.offset o) (hmillis : tp.millis = none) :
-    ∃ (hm : 1 ≤ fieldValue c.date.month ∧ fieldValue c.date.month ≤ 12)
-      (hd : 1 ≤ fieldValue c.date.day ∧ fieldValue c.date.day ≤ 31)
-      (hh : 0 ≤ fieldValue tp.time.hours ∧ fieldValue tp.time.hours ≤ 23)
-      (hmin : 0 ≤ fieldValue tp.time.minutes ∧ fieldValue tp.time.minutes ≤ 59)
-      (hsec : 0 ≤ fieldValue tp.time.seconds ∧ fieldValue tp.time.seconds ≤ 59),
+    ∃ (hm : 1 ≤ natOf c.date.month ∧ natOf c.date.month ≤ 12)
+      (hd : 1 ≤ natOf c.date.day ∧ natOf c.date.day ≤ 31)
+      (hh : 0 ≤ natOf tp.time.hours ∧ natOf tp.time.hours ≤ 23)
+      (hmin : 0 ≤ natOf tp.time.minutes ∧ natOf tp.time.minutes ≤ 59)
+      (hsec : 0 ≤ natOf tp.time.seconds ∧ natOf tp.time.seconds ≤ 59),
       parser.go config .any {}
           [.modifier (.y .fourDigit), .string "-", .modifier (.M (.inl {padding := 2})),
            .string "-", .modifier (.d {padding := 2}), .string "T",
@@ -2984,15 +3058,15 @@ theorem parseWithDate_dateWithOffset {c : DatetimeComponents} (tp : TimePart) (o
           ⟨c.asString, c.asString.startPos⟩
         = parser.go config .any
             { ({} : DateBuilder) with
-              y := some (Int.ofNat (fieldValue c.date.year)),
-              M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-              d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-              H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-              m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-              s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)
+              y := some (Int.ofNat (natOf c.date.year)),
+              M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+              d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+              H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+              m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+              s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)
                           : Bounded.LE 0 60),
               x := some (TimeZone.Offset.ofSeconds
-                    ⟨((fieldValue o.hours : Int) * 3600 + (fieldValue o.minutes : Int) * 60)
+                    ⟨((natOf o.hours : Int) * 3600 + (natOf o.minutes : Int) * 60)
                       * (if o.negative then -1 else 1)⟩) }
             [] ⟨c.asString, c.asString.endPos⟩ := by
   have ⟨_, htimesyn⟩ := hsyn
@@ -3017,12 +3091,12 @@ theorem parseWithDate_dateWithOffset {c : DatetimeComponents} (tp : TimePart) (o
       [.modifier (.x .hourMinute)]
   let b : DateBuilder :=
     { ({} : DateBuilder) with
-      y := some (Int.ofNat (fieldValue c.date.year)),
-      M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-      d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-      H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-      m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-      s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop
+      y := some (Int.ofNat (natOf c.date.year)),
+      M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+      d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+      H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+      m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+      s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop
         (by decide) : Bounded.LE 0 60) }
   obtain ⟨p', hoff, hsp'⟩ := step_offset p
     (c.date.asString ++ "T" ++ tp.time.asString) "" o.hours o.minutes o.negative b config
@@ -3075,12 +3149,12 @@ theorem parseWithDate_dateWithOffsetAndMillis {c : DatetimeComponents} (tp : Tim
     (config : FormatConfig) (hcfg : config.allowLeapSeconds = false)
     (hsyn : c.syntaxWf) (hcon : c.constraintsWf)
     (htime : c.time = some tp) (hzone : tp.zone = Zone.offset o) (hmillis : tp.millis = some sss) :
-    ∃ (hm : 1 ≤ fieldValue c.date.month ∧ fieldValue c.date.month ≤ 12)
-      (hd : 1 ≤ fieldValue c.date.day ∧ fieldValue c.date.day ≤ 31)
-      (hh : 0 ≤ fieldValue tp.time.hours ∧ fieldValue tp.time.hours ≤ 23)
-      (hmin : 0 ≤ fieldValue tp.time.minutes ∧ fieldValue tp.time.minutes ≤ 59)
-      (hsec : 0 ≤ fieldValue tp.time.seconds ∧ fieldValue tp.time.seconds ≤ 59)
-      (hms : 0 ≤ fieldValue sss * 1000000 ∧ fieldValue sss * 1000000 ≤ 999999999),
+    ∃ (hm : 1 ≤ natOf c.date.month ∧ natOf c.date.month ≤ 12)
+      (hd : 1 ≤ natOf c.date.day ∧ natOf c.date.day ≤ 31)
+      (hh : 0 ≤ natOf tp.time.hours ∧ natOf tp.time.hours ≤ 23)
+      (hmin : 0 ≤ natOf tp.time.minutes ∧ natOf tp.time.minutes ≤ 59)
+      (hsec : 0 ≤ natOf tp.time.seconds ∧ natOf tp.time.seconds ≤ 59)
+      (hms : 0 ≤ natOf sss * 1000000 ∧ natOf sss * 1000000 ≤ 999999999),
       parser.go config .any {}
           [.modifier (.y .fourDigit), .string "-", .modifier (.M (.inl {padding := 2})),
            .string "-", .modifier (.d {padding := 2}), .string "T",
@@ -3090,16 +3164,16 @@ theorem parseWithDate_dateWithOffsetAndMillis {c : DatetimeComponents} (tp : Tim
           ⟨c.asString, c.asString.startPos⟩
         = parser.go config .any
             { ({} : DateBuilder) with
-              y := some (Int.ofNat (fieldValue c.date.year)),
-              M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-              d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-              H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-              m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-              s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)
+              y := some (Int.ofNat (natOf c.date.year)),
+              M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+              d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+              H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+              m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+              s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)
                           : Bounded.LE 0 60),
-              S := some (Bounded.LE.ofNat' (fieldValue sss * 1000000) hms),
+              S := some (Bounded.LE.ofNat' (natOf sss * 1000000) hms),
               x := some (TimeZone.Offset.ofSeconds
-                    ⟨((fieldValue o.hours : Int) * 3600 + (fieldValue o.minutes : Int) * 60)
+                    ⟨((natOf o.hours : Int) * 3600 + (natOf o.minutes : Int) * 60)
                       * (if o.negative then -1 else 1)⟩) }
             [] ⟨c.asString, c.asString.endPos⟩ := by
   have ⟨_, htimesyn⟩ := hsyn
@@ -3128,20 +3202,20 @@ theorem parseWithDate_dateWithOffsetAndMillis {c : DatetimeComponents} (tp : Tim
       [.string ".", .modifier (.S (.truncated 3)), .modifier (.x .hourMinute)]
   let b : DateBuilder :=
     { ({} : DateBuilder) with
-      y := some (Int.ofNat (fieldValue c.date.year)),
-      M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-      d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-      H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-      m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-      s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop
+      y := some (Int.ofNat (natOf c.date.year)),
+      M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+      d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+      H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+      m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+      s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop
         (by decide) : Bounded.LE 0 60) }
   obtain ⟨p', hdot, hsp'⟩ := step_sep p
     (c.date.asString ++ "T" ++ tp.time.asString) (sss ++ osfx) "." b config hsp
   obtain ⟨p'', hms, hfrac, hsp''⟩ := step_fraction p'
     (c.date.asString ++ "T" ++ tp.time.asString ++ ".") osfx sss b config htmillis
-    (fieldValue_le_999 htmillis) hsp'
+    (natOf_le_999 htmillis) hsp'
   let bS : DateBuilder :=
-    { b with S := some (Bounded.LE.ofNat' (fieldValue sss * 1000000) hms) }
+    { b with S := some (Bounded.LE.ofNat' (natOf sss * 1000000) hms) }
   obtain ⟨p''', hoff, hsp'''⟩ := step_offset p''
     (c.date.asString ++ "T" ++ tp.time.asString ++ "." ++ sss) ""
     o.hours o.minutes o.negative bS config hoh hom hohb homb hsp''
@@ -3159,60 +3233,60 @@ theorem build_dateWithOffsetAndMillis_value {c : DatetimeComponents} (tp : TimeP
     (o : OffsetComponents) (sss : String)
     (_hsyn : c.syntaxWf) (hcon : c.constraintsWf)
     (htime : c.time = some tp) (hzone : tp.zone = Zone.offset o) (hmillis : tp.millis = some sss)
-    (hm : 1 ≤ fieldValue c.date.month ∧ fieldValue c.date.month ≤ 12)
-    (hd : 1 ≤ fieldValue c.date.day ∧ fieldValue c.date.day ≤ 31)
-    (hh : 0 ≤ fieldValue tp.time.hours ∧ fieldValue tp.time.hours ≤ 23)
-    (hmin : 0 ≤ fieldValue tp.time.minutes ∧ fieldValue tp.time.minutes ≤ 59)
-    (hsec : 0 ≤ fieldValue tp.time.seconds ∧ fieldValue tp.time.seconds ≤ 59)
-    (hms : 0 ≤ fieldValue sss * 1000000 ∧ fieldValue sss * 1000000 ≤ 999999999)
+    (hm : 1 ≤ natOf c.date.month ∧ natOf c.date.month ≤ 12)
+    (hd : 1 ≤ natOf c.date.day ∧ natOf c.date.day ≤ 31)
+    (hh : 0 ≤ natOf tp.time.hours ∧ natOf tp.time.hours ≤ 23)
+    (hmin : 0 ≤ natOf tp.time.minutes ∧ natOf tp.time.minutes ≤ 59)
+    (hsec : 0 ≤ natOf tp.time.seconds ∧ natOf tp.time.seconds ≤ 59)
+    (hms : 0 ≤ natOf sss * 1000000 ∧ natOf sss * 1000000 ≤ 999999999)
     (bld : DateBuilder)
     (hbld : bld =
       { ({} : DateBuilder) with
-        y := some (Int.ofNat (fieldValue c.date.year)),
-        M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-        d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-        H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-        m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-        s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)
+        y := some (Int.ofNat (natOf c.date.year)),
+        M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+        d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+        H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+        m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+        s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)
                     : Bounded.LE 0 60),
-        S := some (Bounded.LE.ofNat' (fieldValue sss * 1000000) hms),
+        S := some (Bounded.LE.ofNat' (natOf sss * 1000000) hms),
         x := some (TimeZone.Offset.ofSeconds
-              ⟨((fieldValue o.hours : Int) * 3600 + (fieldValue o.minutes : Int) * 60)
+              ⟨((natOf o.hours : Int) * 3600 + (natOf o.minutes : Int) * 60)
                 * (if o.negative then -1 else 1)⟩) }) :
     ∃ zt, bld.build .any = some zt ∧
       zt.toTimestamp.toMillisecondsSinceUnixEpoch.toInt = c.toMillis := by
   subst hbld
   obtain ⟨hdatecon, _⟩ := hcon
   let off : TimeZone.Offset := TimeZone.Offset.ofSeconds
-    ⟨((fieldValue o.hours : Int) * 3600 + (fieldValue o.minutes : Int) * 60)
+    ⟨((natOf o.hours : Int) * 3600 + (natOf o.minutes : Int) * 60)
       * (if o.negative then -1 else 1)⟩
-  have hvalid : Year.Offset.Valid (Int.ofNat (fieldValue c.date.year))
-      (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-      (Bounded.LE.ofNat' (fieldValue c.date.day) hd) := by
-    show (Bounded.LE.ofNat' (fieldValue c.date.day) hd : Day.Ordinal).val
-      ≤ (Month.Ordinal.days (Year.Offset.isLeap (Int.ofNat (fieldValue c.date.year)))
-          (Bounded.LE.ofNat' (fieldValue c.date.month) hm)).val
+  have hvalid : Year.Offset.Valid (Int.ofNat (natOf c.date.year))
+      (Bounded.LE.ofNat' (natOf c.date.month) hm)
+      (Bounded.LE.ofNat' (natOf c.date.day) hd) := by
+    show (Bounded.LE.ofNat' (natOf c.date.day) hd : Day.Ordinal).val
+      ≤ (Month.Ordinal.days (Year.Offset.isLeap (Int.ofNat (natOf c.date.year)))
+          (Bounded.LE.ofNat' (natOf c.date.month) hm)).val
     obtain ⟨hm1, hm2, hd1, hd2⟩ := hdatecon
-    have hbridge := days_eq_daysInMonth (fieldValue c.date.year) (fieldValue c.date.month)
-      (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-      (Year.Offset.isLeap (Int.ofNat (fieldValue c.date.year)))
-      rfl (isLeap_ofNat (fieldValue c.date.year)).symm ⟨hm1, hm2⟩
+    have hbridge := days_eq_daysInMonth (natOf c.date.year) (natOf c.date.month)
+      (Bounded.LE.ofNat' (natOf c.date.month) hm)
+      (Year.Offset.isLeap (Int.ofNat (natOf c.date.year)))
+      rfl (isLeap_ofNat (natOf c.date.year)).symm ⟨hm1, hm2⟩
     rw [← hbridge]
-    show (fieldValue c.date.day : Int) ≤ (daysInMonth (fieldValue c.date.year) (fieldValue c.date.month) : Int)
+    show (natOf c.date.day : Int) ≤ (daysInMonth (natOf c.date.year) (natOf c.date.month) : Int)
     exact_mod_cast hd2
-  letI : Decidable (Year.Offset.Valid (Int.ofNat (fieldValue c.date.year))
-      (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-      (Bounded.LE.ofNat' (fieldValue c.date.day) hd)) := Day.instDecidableLeOrdinal
+  letI : Decidable (Year.Offset.Valid (Int.ofNat (natOf c.date.year))
+      (Bounded.LE.ofNat' (natOf c.date.month) hm)
+      (Bounded.LE.ofNat' (natOf c.date.day) hd)) := Day.instDecidableLeOrdinal
   have hbuild :
       ({ ({} : DateBuilder) with
-          y := some (Int.ofNat (fieldValue c.date.year)),
-          M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-          d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-          H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-          m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-          s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)
+          y := some (Int.ofNat (natOf c.date.year)),
+          M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+          d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+          H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+          m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+          s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)
                       : Bounded.LE 0 60),
-          S := some (Bounded.LE.ofNat' (fieldValue sss * 1000000) hms),
+          S := some (Bounded.LE.ofNat' (natOf sss * 1000000) hms),
           x := some off }).build .any =
         (fun x => ZonedDateTime.ofPlainDateTime x
             (TimeZone.ZoneRules.ofTimeZone
@@ -3220,59 +3294,59 @@ theorem build_dateWithOffsetAndMillis_value {c : DatetimeComponents} (tp : TimeP
                 name := off.toIsoString true,
                 abbreviation := off.toIsoString true,
                 isDST := false })) <$>
-          (if h : Year.Offset.Valid (Int.ofNat (fieldValue c.date.year))
-              (Bounded.LE.ofNat' (fieldValue c.date.month) hm)
-              (Bounded.LE.ofNat' (fieldValue c.date.day) hd) then
-            some { date := { year := Int.ofNat (fieldValue c.date.year),
-                             month := Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-                             day := Bounded.LE.ofNat' (fieldValue c.date.day) hd, valid := h },
-                   time := PlainTime.mk (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh)
-                             (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin)
-                             ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop
+          (if h : Year.Offset.Valid (Int.ofNat (natOf c.date.year))
+              (Bounded.LE.ofNat' (natOf c.date.month) hm)
+              (Bounded.LE.ofNat' (natOf c.date.day) hd) then
+            some { date := { year := Int.ofNat (natOf c.date.year),
+                             month := Bounded.LE.ofNat' (natOf c.date.month) hm,
+                             day := Bounded.LE.ofNat' (natOf c.date.day) hd, valid := h },
+                   time := PlainTime.mk (Bounded.LE.ofNat' (natOf tp.time.hours) hh)
+                             (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin)
+                             ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop
                                (by decide))
-                             (Bounded.LE.ofNat' (fieldValue sss * 1000000) hms) }
+                             (Bounded.LE.ofNat' (natOf sss * 1000000) hms) }
           else none) := by
     rfl
   rw [hbuild, dif_pos hvalid]
   refine ⟨_, rfl, ?_⟩
   have hzv := zoned_value
-    (⟨Int.ofNat (fieldValue c.date.year),
-      Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-      Bounded.LE.ofNat' (fieldValue c.date.day) hd, hvalid⟩ : PlainDate)
-    (PlainTime.mk (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh)
-       (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin)
-       ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide))
-       (Bounded.LE.ofNat' (fieldValue sss * 1000000) hms))
+    (⟨Int.ofNat (natOf c.date.year),
+      Bounded.LE.ofNat' (natOf c.date.month) hm,
+      Bounded.LE.ofNat' (natOf c.date.day) hd, hvalid⟩ : PlainDate)
+    (PlainTime.mk (Bounded.LE.ofNat' (natOf tp.time.hours) hh)
+       (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin)
+       ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide))
+       (Bounded.LE.ofNat' (natOf sss * 1000000) hms))
     { offset := off,
       name := off.toIsoString true,
       abbreviation := off.toIsoString true,
       isDST := false }
-    (fieldValue sss) (by rfl)
+    (natOf sss) (by rfl)
   rw [hzv]
-  have htsec : (PlainTime.mk (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh)
-      (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin)
-      ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide))
-      (Bounded.LE.ofNat' (fieldValue sss * 1000000) hms)
+  have htsec : (PlainTime.mk (Bounded.LE.ofNat' (natOf tp.time.hours) hh)
+      (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin)
+      ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide))
+      (Bounded.LE.ofNat' (natOf sss * 1000000) hms)
       : PlainTime).toSeconds.val
-      = (fieldValue tp.time.hours : Int) * 3600 + (fieldValue tp.time.minutes : Int) * 60
-          + (fieldValue tp.time.seconds : Int) :=
+      = (natOf tp.time.hours : Int) * 3600 + (natOf tp.time.minutes : Int) * 60
+          + (natOf tp.time.seconds : Int) :=
     toSeconds_mk _ _ _ _
   rw [htsec]
   have htz : ({ offset := off,
                 name := off.toIsoString true,
                 abbreviation := off.toIsoString true,
                 isDST := false } : TimeZone).offset.second.val
-      = ((fieldValue o.hours : Int) * 3600 + (fieldValue o.minutes : Int) * 60)
+      = ((natOf o.hours : Int) * 3600 + (natOf o.minutes : Int) * 60)
           * (if o.negative then -1 else 1) := rfl
   rw [htz]
-  have hday : (⟨Int.ofNat (fieldValue c.date.year),
-        Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-        Bounded.LE.ofNat' (fieldValue c.date.day) hd, hvalid⟩ : PlainDate).toEpochDay.val
-      = epochDays (fieldValue c.date.year) (fieldValue c.date.month) (fieldValue c.date.day) :=
-    (epochDays_eq (fieldValue c.date.year) (fieldValue c.date.month) (fieldValue c.date.day)
-      ⟨Int.ofNat (fieldValue c.date.year),
-        Bounded.LE.ofNat' (fieldValue c.date.month) hm,
-        Bounded.LE.ofNat' (fieldValue c.date.day) hd, hvalid⟩ rfl rfl rfl).symm
+  have hday : (⟨Int.ofNat (natOf c.date.year),
+        Bounded.LE.ofNat' (natOf c.date.month) hm,
+        Bounded.LE.ofNat' (natOf c.date.day) hd, hvalid⟩ : PlainDate).toEpochDay.val
+      = epochDays (natOf c.date.year) (natOf c.date.month) (natOf c.date.day) :=
+    (epochDays_eq (natOf c.date.year) (natOf c.date.month) (natOf c.date.day)
+      ⟨Int.ofNat (natOf c.date.year),
+        Bounded.LE.ofNat' (natOf c.date.month) hm,
+        Bounded.LE.ofNat' (natOf c.date.day) hd, hvalid⟩ rfl rfl rfl).symm
   rw [hday]
   simp only [DatetimeComponents.toMillis, DateComponents.toMillis, TimePart.toMillis,
     htime, hzone, hmillis, Zone.offsetSeconds, OffsetComponents.seconds]
@@ -3311,10 +3385,10 @@ theorem dateWithOffsetAndMillis_parse_value {c : DatetimeComponents} (tp : TimeP
   rw [Option.map_some, hval]
 
 
-/-! ## Bridge to `Std.Time`: `Datetime.parse` ↔ `computeValue`
+/-! ## Bridge to `Std.Time`: `Datetime.parse` ↔ the grammar value relation
 
 The lemmas above (roundtrip + `Parsec` foundations) are the parser-independent half — they relate
-`IsWfDatetime`, `computeValue`, the structural `parseComponents`, and the primitive `Parsec`
+`IsWfDatetime`, `IsDatetimeValue`, the proof-local structural decoder, and the primitive `Parsec`
 combinators, all of which we control. The lemmas below are the missing half: they relate the
 *actual* `Datetime.parse` (which delegates to `Std.Time.GenericFormat.parse`) to those definitions.
 Each is a self-contained obligation about `Std.Time`'s behavior on the five fixed datetime formats;
@@ -3488,12 +3562,12 @@ theorem exactlyChars_inv_at {s : String} (p p' : s.Pos) (pre suf out : String) (
 
 
 /-- **`parseNum` success-inversion.** If `parseNum n` succeeds at `p` returning value `v`, then the
-    consumed segment is a fixed `n`-digit string `out` with `v = fieldValue out`. -/
+    consumed segment is a fixed `n`-digit string `out` with `v = natOf out`. -/
 theorem parseNum_inv_at {s : String} (p p' : s.Pos) (pre suf : String) (n : Nat) (hn : 0 < n)
     (v : Nat) (hsplit : p.Splits pre suf)
     (hpar : parseNum n ⟨s, p⟩ = ParseResult.success ⟨s, p'⟩ v) :
     ∃ out rest : String,
-      IsFixedDigits n out ∧ v = fieldValue out ∧ suf = out ++ rest ∧
+      IsFixedDigits n out ∧ v = natOf out ∧ suf = out ++ rest ∧
       p'.Splits (pre ++ out) rest := by
   unfold parseNum at hpar
   rw [parsec_map_app] at hpar
@@ -3512,7 +3586,7 @@ theorem parseNum_inv_at {s : String} (p p' : s.Pos) (pre suf : String) (n : Nat)
     subst hpr
     obtain ⟨rest, hfd, hsuf, hsp⟩ := exactlyChars_inv_at p pr pre suf out n hn hsplit hec
     refine ⟨out, rest, hfd, ?_, hsuf, hsp⟩
-    rw [← hv, toNat!_eq_fieldValue out hfd.1]
+    rw [← hv, toNat!_eq_natOf out hfd.1]
 
 
 
@@ -3546,14 +3620,14 @@ theorem pstring_inv_at {s : String} (p p' : s.Pos) (pre suf sep : String) (out :
 
 
 /-- **`parseNatToBounded (parseFlexibleNum 2)` success-inversion.** Success at `p` forces a fixed
-    2-digit segment `out`, the bound `n ≤ fieldValue out ≤ m`, and the value `ofNat' (fieldValue out)`. -/
+    2-digit segment `out`, the bound `n ≤ natOf out ≤ m`, and the value `ofNat' (natOf out)`. -/
 theorem parseNatToBounded_two_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
     {n m : Nat} (v : Bounded.LE n m) (hsplit : p.Splits pre suf)
     (hpar : (parseNatToBounded (parseFlexibleNum 2) : Parser (Bounded.LE n m)) ⟨s, p⟩
         = ParseResult.success ⟨s, p'⟩ v) :
     ∃ out rest : String,
-      IsFixedDigits 2 out ∧ (n ≤ fieldValue out ∧ fieldValue out ≤ m) ∧
-      v.val = fieldValue out ∧ suf = out ++ rest ∧ p'.Splits (pre ++ out) rest := by
+      IsFixedDigits 2 out ∧ (n ≤ natOf out ∧ natOf out ≤ m) ∧
+      v.val = natOf out ∧ suf = out ++ rest ∧ p'.Splits (pre ++ out) rest := by
   unfold parseNatToBounded parseFlexibleNum at hpar
   simp only [Nat.reduceEqDiff, ↓reduceIte, bind, Bind.bind] at hpar
   rw [parsec_bind_app] at hpar
@@ -3585,7 +3659,7 @@ theorem parseWith_year_inv_at {s : String} (p p' : s.Pos) (pre suf : String) (co
     (v : Int) (hsplit : p.Splits pre suf)
     (hpar : parseWith config (.y .fourDigit) ⟨s, p⟩ = ParseResult.success ⟨s, p'⟩ v) :
     ∃ out rest : String,
-      IsFixedDigits 4 out ∧ v = Int.ofNat (fieldValue out) ∧ suf = out ++ rest ∧
+      IsFixedDigits 4 out ∧ v = Int.ofNat (natOf out) ∧ suf = out ++ rest ∧
       p'.Splits (pre ++ out) rest := by
   -- parseWith config (.y .fourDigit) = Int.ofNat <$> parseNum 4
   rw [show parseWith config (.y .fourDigit) = (Int.ofNat <$> parseNum 4) from rfl] at hpar
@@ -3612,8 +3686,8 @@ theorem parseWith_month_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
     (hpar : parseWith config (.M (.inl {padding := 2})) ⟨s, p⟩
         = ParseResult.success ⟨s, p'⟩ v) :
     ∃ out rest : String,
-      IsFixedDigits 2 out ∧ (1 ≤ fieldValue out ∧ fieldValue out ≤ 12) ∧
-      (v.val = fieldValue out) ∧
+      IsFixedDigits 2 out ∧ (1 ≤ natOf out ∧ natOf out ≤ 12) ∧
+      (v.val = natOf out) ∧
       suf = out ++ rest ∧ p'.Splits (pre ++ out) rest := by
   rw [show parseWith config (.M (.inl {padding := 2}))
         = (parseNatToBounded (parseFlexibleNum 2) : Parser (Bounded.LE 1 12)) from rfl] at hpar
@@ -3626,8 +3700,8 @@ theorem parseWith_day_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
     (config : FormatConfig) (v : Day.Ordinal) (hsplit : p.Splits pre suf)
     (hpar : parseWith config (.d {padding := 2}) ⟨s, p⟩ = ParseResult.success ⟨s, p'⟩ v) :
     ∃ out rest : String,
-      IsFixedDigits 2 out ∧ (1 ≤ fieldValue out ∧ fieldValue out ≤ 31) ∧
-      (v.val = fieldValue out) ∧
+      IsFixedDigits 2 out ∧ (1 ≤ natOf out ∧ natOf out ≤ 31) ∧
+      (v.val = natOf out) ∧
       suf = out ++ rest ∧ p'.Splits (pre ++ out) rest := by
   rw [show parseWith config (.d {padding := 2})
         = (parseNatToBounded (parseFlexibleNum 2) : Parser (Bounded.LE 1 31)) from rfl] at hpar
@@ -3640,7 +3714,7 @@ theorem parseWith_hour_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
     (config : FormatConfig) (v : Hour.Ordinal) (hsplit : p.Splits pre suf)
     (hpar : parseWith config (.H {padding := 2}) ⟨s, p⟩ = ParseResult.success ⟨s, p'⟩ v) :
     ∃ out rest : String,
-      IsFixedDigits 2 out ∧ fieldValue out ≤ 23 ∧
+      IsFixedDigits 2 out ∧ natOf out ≤ 23 ∧
       suf = out ++ rest ∧ p'.Splits (pre ++ out) rest := by
   rw [show parseWith config (.H {padding := 2})
         = (parseNatToBounded (parseFlexibleNum 2) : Parser (Bounded.LE 0 23)) from rfl] at hpar
@@ -3653,7 +3727,7 @@ theorem parseWith_minute_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
     (config : FormatConfig) (v : Minute.Ordinal) (hsplit : p.Splits pre suf)
     (hpar : parseWith config (.m {padding := 2}) ⟨s, p⟩ = ParseResult.success ⟨s, p'⟩ v) :
     ∃ out rest : String,
-      IsFixedDigits 2 out ∧ fieldValue out ≤ 59 ∧
+      IsFixedDigits 2 out ∧ natOf out ≤ 59 ∧
       suf = out ++ rest ∧ p'.Splits (pre ++ out) rest := by
   rw [show parseWith config (.m {padding := 2})
         = (parseNatToBounded (parseFlexibleNum 2) : Parser (Bounded.LE 0 59)) from rfl] at hpar
@@ -3668,7 +3742,7 @@ theorem parseWith_second_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
     (hsplit : p.Splits pre suf)
     (hpar : parseWith config (.s {padding := 2}) ⟨s, p⟩ = ParseResult.success ⟨s, p'⟩ v) :
     ∃ out rest : String,
-      IsFixedDigits 2 out ∧ fieldValue out ≤ 59 ∧
+      IsFixedDigits 2 out ∧ natOf out ≤ 59 ∧
       suf = out ++ rest ∧ p'.Splits (pre ++ out) rest := by
   rw [show parseWith config (.s {padding := 2})
         = (if config.allowLeapSeconds then parseNatToBounded (parseFlexibleNum 2)
@@ -4146,7 +4220,7 @@ theorem parseOneOrTwoNum_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
     (v : Nat) (hsplit : p.Splits pre suf)
     (hpar : parseOneOrTwoNum ⟨s, p⟩ = ParseResult.success ⟨s, p'⟩ v) :
     ∃ out rest : String,
-      IsDigitsUpTo 2 out ∧ v = fieldValue out ∧ suf = out ++ rest ∧
+      IsDigitsUpTo 2 out ∧ v = natOf out ∧ suf = out ++ rest ∧
       p'.Splits (pre ++ out) rest := by
   unfold parseOneOrTwoNum at hpar
   simp only [bind, Bind.bind] at hpar
@@ -4185,7 +4259,7 @@ theorem parseOneOrTwoNum_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
           subst c
           exact hc₁
         refine ⟨out, rest₁, ⟨hdig, by simp [out]⟩, ?_, ?_, ?_⟩
-        · rw [← hv, fieldValue_isDigits out hdig]
+        · rw [← hv, natOf_isDigits out hdig]
           simp [out]
         · simpa [out] using hsuf₁
         · simpa [out] using hsp₁
@@ -4212,7 +4286,7 @@ theorem parseOneOrTwoNum_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
           · subst c
             exact hc₂
         refine ⟨out, rest₂, ⟨hdig, by simp [out]⟩, ?_, ?_, ?_⟩
-        · rw [← hv, fieldValue_isDigits out hdig]
+        · rw [← hv, natOf_isDigits out hdig]
           simp [out]
         · rw [hsuf₁, hsuf₂]
           change String.singleton c₁ ++ (String.singleton c₂ ++ rest₂) =
@@ -4343,7 +4417,7 @@ theorem parseWith_offset_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
     (hpar : parseWith config (.x .hourMinute) ⟨s, p⟩ = ParseResult.success ⟨s, p'⟩ v) :
     ∃ (neg : Bool) (hh mm rest : String),
       IsDigitsUpTo 2 hh ∧ IsDigitsUpTo 2 mm ∧
-      fieldValue hh ≤ 23 ∧ fieldValue mm ≤ 59 ∧
+      natOf hh ≤ 23 ∧ natOf mm ≤ 59 ∧
       suf = String.singleton (if neg then '-' else '+') ++ (hh ++ (mm ++ rest)) ∧
       p'.Splits (pre ++ String.singleton (if neg then '-' else '+') ++ hh ++ mm) rest := by
   rw [show parseWith config (.x .hourMinute) = Std.Time.parseOffset .yes .no false from rfl] at hpar
@@ -4384,7 +4458,7 @@ theorem parseWith_offset_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
       by_cases hg : ((vh : Int) < 0 ∨ (vh : Int) > 23)
       · rw [if_pos hg] at hpar; simp [Std.Internal.Parsec.fail, Std.Internal.Parsec.bind] at hpar
       · rw [if_neg hg] at hpar
-        have hhb : fieldValue hh ≤ 23 := by
+        have hhb : natOf hh ≤ 23 := by
           simp only [not_or, Int.not_lt] at hg
           have : (vh : Int) ≤ 23 := by omega
           rw [← hhval]; exact_mod_cast this
@@ -4420,7 +4494,7 @@ theorem parseWith_offset_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
           by_cases hgm : ((vm : Int) > 59)
           · rw [if_pos hgm] at hpar; simp [Std.Internal.Parsec.fail, Std.Internal.Parsec.bind] at hpar
           · rw [if_neg hgm] at hpar
-            have hmb : fieldValue mm ≤ 59 := by
+            have hmb : natOf mm ≤ 59 := by
               simp only [Int.not_lt] at hgm
               have : (vm : Int) ≤ 59 := by omega
               rw [← hmval]; exact_mod_cast this
@@ -4621,14 +4695,14 @@ theorem dateOnly_full_inv {s : String} (config : FormatConfig) (zt : Std.Time.Zo
          .string "-", .modifier (.d {padding := 2})]
         ⟨s, s.startPos⟩ = ParseResult.success ⟨s, s.endPos⟩ zt) :
     ∃ (year month day : String)
-      (hm : 1 ≤ fieldValue month ∧ fieldValue month ≤ 12)
-      (hd : 1 ≤ fieldValue day ∧ fieldValue day ≤ 31),
+      (hm : 1 ≤ natOf month ∧ natOf month ≤ 12)
+      (hd : 1 ≤ natOf day ∧ natOf day ≤ 31),
       IsFixedDigits 4 year ∧ IsFixedDigits 2 month ∧ IsFixedDigits 2 day ∧
       s = year ++ "-" ++ month ++ "-" ++ day ∧
       ({ ({} : DateBuilder) with
-              y := some (Int.ofNat (fieldValue year)),
-              M := some (Bounded.LE.ofNat' (fieldValue month) hm),
-              d := some (Bounded.LE.ofNat' (fieldValue day) hd) }).build .any = some zt := by
+              y := some (Int.ofNat (natOf year)),
+              M := some (Bounded.LE.ofNat' (natOf month) hm),
+              d := some (Bounded.LE.ofNat' (natOf day) hd) }).build .any = some zt := by
   have hsplit0 : s.startPos.Splits "" s := String.splits_startPos s
   -- Step 1: year modifier.
   rw [go_cons_app] at hgo
@@ -4759,9 +4833,9 @@ theorem dateOnly_full_inv {s : String} (config : FormatConfig) (zt : Std.Time.Zo
                       rw [← hbuild, ← hb5, ← hb4, ← hb3, ← hb2, ← hb1]
                       -- Rewrite the parsed values into the grammar's field values.
                       subst hyval
-                      have hvm : vm = Bounded.LE.ofNat' (fieldValue month) hmb :=
+                      have hvm : vm = Bounded.LE.ofNat' (natOf month) hmb :=
                         Subtype.ext (by rw [hmval]; rfl)
-                      have hvd : vd = Bounded.LE.ofNat' (fieldValue day) hdb :=
+                      have hvd : vd = Bounded.LE.ofNat' (natOf day) hdb :=
                         Subtype.ext (by rw [hdval]; rfl)
                       rw [hvm, hvd]
                       rfl
@@ -4933,7 +5007,7 @@ theorem dateOnly_wf_inv (str : String) (zt : Std.Time.ZonedDateTime)
   obtain ⟨year, month, day, hm, hd, hyfd, hmfd, hdfd, hstr, hbuild⟩ :=
     dateOnly_full_inv DateOnly.config zt hgo
   -- The day bound tightens to `≤ daysInMonth` via `build`.
-  have hdayle : fieldValue day ≤ daysInMonth (fieldValue year) (fieldValue month) :=
+  have hdayle : natOf day ≤ daysInMonth (natOf year) (natOf month) :=
     build_dateOnly_inv hm hd zt hbuild
   refine ⟨{ date := { year, month, day }, time := none }, ?_, ?_, ?_⟩
   · -- asString
@@ -5033,21 +5107,21 @@ theorem datetimePrefix_inv {s : String} (config : FormatConfig)
         .string ":", .modifier (.s {padding := 2})] ++ tail)
       ⟨s, s.startPos⟩ = ParseResult.success out zt) :
     ∃ (year month day hh mm ss rest : String)
-      (hm : 1 ≤ fieldValue month ∧ fieldValue month ≤ 12)
-      (hd : 1 ≤ fieldValue day ∧ fieldValue day ≤ 31)
+      (hm : 1 ≤ natOf month ∧ natOf month ≤ 12)
+      (hd : 1 ≤ natOf day ∧ natOf day ≤ 31)
       (H : Hour.Ordinal) (m : Minute.Ordinal) (sec : Second.Ordinal true)
       (p : s.Pos),
       IsFixedDigits 4 year ∧ IsFixedDigits 2 month ∧ IsFixedDigits 2 day ∧
       IsFixedDigits 2 hh ∧ IsFixedDigits 2 mm ∧ IsFixedDigits 2 ss ∧
-      fieldValue hh ≤ 23 ∧ fieldValue mm ≤ 59 ∧ fieldValue ss ≤ 59 ∧
+      natOf hh ≤ 23 ∧ natOf mm ≤ 59 ∧ natOf ss ≤ 59 ∧
       s = year ++ "-" ++ month ++ "-" ++ day ++ "T" ++ hh ++ ":" ++ mm ++ ":" ++ ss ++ rest ∧
       p.Splits (year ++ "-" ++ month ++ "-" ++ day ++ "T" ++ hh ++ ":" ++ mm ++ ":" ++ ss)
         rest ∧
       parser.go config .any
         { ({} : DateBuilder) with
-          y := some (Int.ofNat (fieldValue year)),
-          M := some (Bounded.LE.ofNat' (fieldValue month) hm),
-          d := some (Bounded.LE.ofNat' (fieldValue day) hd),
+          y := some (Int.ofNat (natOf year)),
+          M := some (Bounded.LE.ofNat' (natOf month) hm),
+          d := some (Bounded.LE.ofNat' (natOf day) hd),
           H := some H, m := some m, s := some sec }
         tail ⟨s, p⟩ = ParseResult.success out zt := by
   have hsplit0 : s.startPos.Splits "" s := String.splits_startPos s
@@ -5108,9 +5182,9 @@ theorem datetimePrefix_inv {s : String} (config : FormatConfig)
       hC2suf, hsssuf]
     simp only [String.append_assoc]
   subst hyval
-  have hvm : vm = Bounded.LE.ofNat' (fieldValue month) hm :=
+  have hvm : vm = Bounded.LE.ofNat' (natOf month) hm :=
     Subtype.ext (by rw [hmval]; rfl)
-  have hvd : vd = Bounded.LE.ofNat' (fieldValue day) hd :=
+  have hvd : vd = Bounded.LE.ofNat' (natOf day) hd :=
     Subtype.ext (by rw [hdval]; rfl)
   subst hvm
   subst hvd
@@ -5134,17 +5208,17 @@ theorem dateUTC_full_inv {s : String} (config : FormatConfig)
          .string ":", .modifier (.s {padding := 2}), .string "Z"]
         ⟨s, s.startPos⟩ = ParseResult.success ⟨s, s.endPos⟩ zt) :
     ∃ (year month day hh mm ss : String)
-      (hm : 1 ≤ fieldValue month ∧ fieldValue month ≤ 12)
-      (hd : 1 ≤ fieldValue day ∧ fieldValue day ≤ 31),
+      (hm : 1 ≤ natOf month ∧ natOf month ≤ 12)
+      (hd : 1 ≤ natOf day ∧ natOf day ≤ 31),
       IsFixedDigits 4 year ∧ IsFixedDigits 2 month ∧ IsFixedDigits 2 day ∧
       IsFixedDigits 2 hh ∧ IsFixedDigits 2 mm ∧ IsFixedDigits 2 ss ∧
-      fieldValue hh ≤ 23 ∧ fieldValue mm ≤ 59 ∧ fieldValue ss ≤ 59 ∧
+      natOf hh ≤ 23 ∧ natOf mm ≤ 59 ∧ natOf ss ≤ 59 ∧
       s = year ++ "-" ++ month ++ "-" ++ day ++ "T" ++ hh ++ ":" ++ mm ++ ":" ++ ss ++ "Z" ∧
       ∃ (H : Hour.Ordinal) (m : Minute.Ordinal) (sec : Second.Ordinal true),
         ({ ({} : DateBuilder) with
-                y := some (Int.ofNat (fieldValue year)),
-                M := some (Bounded.LE.ofNat' (fieldValue month) hm),
-                d := some (Bounded.LE.ofNat' (fieldValue day) hd),
+                y := some (Int.ofNat (natOf year)),
+                M := some (Bounded.LE.ofNat' (natOf month) hm),
+                d := some (Bounded.LE.ofNat' (natOf day) hd),
                 H := some H, m := some m, s := some sec }).build .any = some zt := by
   obtain ⟨year, month, day, hh, mm, ss, rest, hm, hd, H, m, sec, p,
       hyfd, hmfd, hdfd, hhfd, hmmfd, hssfd, hhbound, hmmbound, hssbound,
@@ -5259,7 +5333,7 @@ theorem dateUTC_wf_inv (str : String) (zt : Std.Time.ZonedDateTime)
   obtain ⟨year, month, day, hh, mm, ss, hm, hd, hyfd, hmfd, hdfd, hhfd, hmmfd, hssfd,
       hhbound, hmmbound, hssbound, hstr, H, m, sec, hbuild⟩ :=
     dateUTC_full_inv DateUTC.config rfl zt hgo
-  have hdayle : fieldValue day ≤ daysInMonth (fieldValue year) (fieldValue month) :=
+  have hdayle : natOf day ≤ daysInMonth (natOf year) (natOf month) :=
     build_dateUTC_inv H m sec hm hd zt hbuild
   refine ⟨{ date := { year, month, day },
             time := some ⟨⟨hh, mm, ss⟩, none, Zone.utc⟩ }, ?_, ?_, ?_⟩
@@ -5335,19 +5409,19 @@ theorem dateUTCWithMillis_full_inv {s : String} (config : FormatConfig)
          .modifier (.S (.truncated 3)), .string "Z"]
         ⟨s, s.startPos⟩ = ParseResult.success ⟨s, s.endPos⟩ zt) :
     ∃ (year month day hh mm ss sss : String)
-      (hm : 1 ≤ fieldValue month ∧ fieldValue month ≤ 12)
-      (hd : 1 ≤ fieldValue day ∧ fieldValue day ≤ 31),
+      (hm : 1 ≤ natOf month ∧ natOf month ≤ 12)
+      (hd : 1 ≤ natOf day ∧ natOf day ≤ 31),
       IsFixedDigits 4 year ∧ IsFixedDigits 2 month ∧ IsFixedDigits 2 day ∧
       IsFixedDigits 2 hh ∧ IsFixedDigits 2 mm ∧ IsFixedDigits 2 ss ∧ IsFixedDigits 3 sss ∧
-      fieldValue hh ≤ 23 ∧ fieldValue mm ≤ 59 ∧ fieldValue ss ≤ 59 ∧
+      natOf hh ≤ 23 ∧ natOf mm ≤ 59 ∧ natOf ss ≤ 59 ∧
       s = year ++ "-" ++ month ++ "-" ++ day ++ "T" ++ hh ++ ":" ++ mm ++ ":" ++ ss
           ++ "." ++ sss ++ "Z" ∧
       ∃ (H : Hour.Ordinal) (m : Minute.Ordinal) (sec : Second.Ordinal true)
         (S : Nanosecond.Ordinal),
         ({ ({} : DateBuilder) with
-                y := some (Int.ofNat (fieldValue year)),
-                M := some (Bounded.LE.ofNat' (fieldValue month) hm),
-                d := some (Bounded.LE.ofNat' (fieldValue day) hd),
+                y := some (Int.ofNat (natOf year)),
+                M := some (Bounded.LE.ofNat' (natOf month) hm),
+                d := some (Bounded.LE.ofNat' (natOf day) hd),
                 H := some H, m := some m, s := some sec, S := some S }).build .any = some zt := by
   obtain ⟨year, month, day, hh, mm, ss, rest, hm, hd, H, m, sec, p,
       hyfd, hmfd, hdfd, hhfd, hmmfd, hssfd, hhbound, hmmbound, hssbound,
@@ -5445,7 +5519,7 @@ theorem dateUTCWithMillis_wf_inv (str : String) (zt : Std.Time.ZonedDateTime)
   obtain ⟨year, month, day, hh, mm, ss, sss, hm, hd, hyfd, hmfd, hdfd, hhfd, hmmfd, hssfd, hsssfd,
       hhbound, hmmbound, hssbound, hstr, H, m, sec, S, hbuild⟩ :=
     dateUTCWithMillis_full_inv DateUTCWithMillis.config rfl zt hgo
-  have hdayle : fieldValue day ≤ daysInMonth (fieldValue year) (fieldValue month) :=
+  have hdayle : natOf day ≤ daysInMonth (natOf year) (natOf month) :=
     build_dateUTCWithMillis_inv H m sec S hm hd zt hbuild
   refine ⟨{ date := { year, month, day },
             time := some ⟨⟨hh, mm, ss⟩, some sss, Zone.utc⟩ }, ?_, ?_, ?_⟩
@@ -5607,21 +5681,21 @@ theorem dateWithOffset_full_inv {s : String} (config : FormatConfig)
          .string ":", .modifier (.s {padding := 2}), .modifier (.x .hourMinute)]
         ⟨s, s.startPos⟩ = ParseResult.success ⟨s, s.endPos⟩ zt) :
     ∃ (year month day hh mm ss : String) (neg : Bool) (ohh omm : String)
-      (hm : 1 ≤ fieldValue month ∧ fieldValue month ≤ 12)
-      (hd : 1 ≤ fieldValue day ∧ fieldValue day ≤ 31),
+      (hm : 1 ≤ natOf month ∧ natOf month ≤ 12)
+      (hd : 1 ≤ natOf day ∧ natOf day ≤ 31),
       IsFixedDigits 4 year ∧ IsFixedDigits 2 month ∧ IsFixedDigits 2 day ∧
       IsFixedDigits 2 hh ∧ IsFixedDigits 2 mm ∧ IsFixedDigits 2 ss ∧
       IsFixedDigits 2 ohh ∧ IsFixedDigits 2 omm ∧
-      fieldValue hh ≤ 23 ∧ fieldValue mm ≤ 59 ∧ fieldValue ss ≤ 59 ∧
-      fieldValue ohh ≤ 23 ∧ fieldValue omm ≤ 59 ∧
+      natOf hh ≤ 23 ∧ natOf mm ≤ 59 ∧ natOf ss ≤ 59 ∧
+      natOf ohh ≤ 23 ∧ natOf omm ≤ 59 ∧
       s = year ++ "-" ++ month ++ "-" ++ day ++ "T" ++ hh ++ ":" ++ mm ++ ":" ++ ss
           ++ ((if neg then "-" else "+") ++ ohh ++ omm) ∧
       ∃ (H : Hour.Ordinal) (m : Minute.Ordinal) (sec : Second.Ordinal true)
         (off : Std.Time.TimeZone.Offset),
         ({ ({} : DateBuilder) with
-                y := some (Int.ofNat (fieldValue year)),
-                M := some (Bounded.LE.ofNat' (fieldValue month) hm),
-                d := some (Bounded.LE.ofNat' (fieldValue day) hd),
+                y := some (Int.ofNat (natOf year)),
+                M := some (Bounded.LE.ofNat' (natOf month) hm),
+                d := some (Bounded.LE.ofNat' (natOf day) hd),
                 H := some H, m := some m, s := some sec, x := some off }).build .any = some zt := by
   obtain ⟨year, month, day, hh, mm, ss, rest, hm, hd, H, m, sec, p,
       hyfd, hmfd, hdfd, hhfd, hmmfd, hssfd, hhbound, hmmbound, hssbound,
@@ -5735,7 +5809,7 @@ theorem dateWithOffset_wf_inv (str : String) (zt : Std.Time.ZonedDateTime)
   obtain ⟨year, month, day, hh, mm, ss, neg, ohh, omm, hm, hd, hyfd, hmfd, hdfd, hhfd, hmmfd, hssfd,
       hohfd, hommfd, hhbound, hmmbound, hssbound, hohb, hommb, hstr, H, m, sec, off, hbuild⟩ :=
     dateWithOffset_full_inv DateWithOffset.config rfl hlen zt hgo
-  have hdayle : fieldValue day ≤ daysInMonth (fieldValue year) (fieldValue month) :=
+  have hdayle : natOf day ≤ daysInMonth (natOf year) (natOf month) :=
     build_dateWithOffset_inv H m sec off hm hd zt hbuild
   refine ⟨{ date := { year, month, day },
             time := some ⟨⟨hh, mm, ss⟩, none, Zone.offset ⟨neg, ohh, omm⟩⟩ }, ?_, ?_, ?_⟩
@@ -5764,21 +5838,21 @@ theorem dateWithOffsetAndMillis_full_inv {s : String} (config : FormatConfig)
          .modifier (.S (.truncated 3)), .modifier (.x .hourMinute)]
         ⟨s, s.startPos⟩ = ParseResult.success ⟨s, s.endPos⟩ zt) :
     ∃ (year month day hh mm ss sss : String) (neg : Bool) (ohh omm : String)
-      (hm : 1 ≤ fieldValue month ∧ fieldValue month ≤ 12)
-      (hd : 1 ≤ fieldValue day ∧ fieldValue day ≤ 31),
+      (hm : 1 ≤ natOf month ∧ natOf month ≤ 12)
+      (hd : 1 ≤ natOf day ∧ natOf day ≤ 31),
       IsFixedDigits 4 year ∧ IsFixedDigits 2 month ∧ IsFixedDigits 2 day ∧
       IsFixedDigits 2 hh ∧ IsFixedDigits 2 mm ∧ IsFixedDigits 2 ss ∧ IsFixedDigits 3 sss ∧
       IsFixedDigits 2 ohh ∧ IsFixedDigits 2 omm ∧
-      fieldValue hh ≤ 23 ∧ fieldValue mm ≤ 59 ∧ fieldValue ss ≤ 59 ∧
-      fieldValue ohh ≤ 23 ∧ fieldValue omm ≤ 59 ∧
+      natOf hh ≤ 23 ∧ natOf mm ≤ 59 ∧ natOf ss ≤ 59 ∧
+      natOf ohh ≤ 23 ∧ natOf omm ≤ 59 ∧
       s = year ++ "-" ++ month ++ "-" ++ day ++ "T" ++ hh ++ ":" ++ mm ++ ":" ++ ss
           ++ "." ++ sss ++ ((if neg then "-" else "+") ++ ohh ++ omm) ∧
       ∃ (H : Hour.Ordinal) (m : Minute.Ordinal) (sec : Second.Ordinal true)
         (S : Nanosecond.Ordinal) (off : Std.Time.TimeZone.Offset),
         ({ ({} : DateBuilder) with
-                y := some (Int.ofNat (fieldValue year)),
-                M := some (Bounded.LE.ofNat' (fieldValue month) hm),
-                d := some (Bounded.LE.ofNat' (fieldValue day) hd),
+                y := some (Int.ofNat (natOf year)),
+                M := some (Bounded.LE.ofNat' (natOf month) hm),
+                d := some (Bounded.LE.ofNat' (natOf day) hd),
                 H := some H, m := some m, s := some sec, S := some S,
                 x := some off }).build .any = some zt := by
   obtain ⟨year, month, day, hh, mm, ss, rest, hm, hd, H, m, sec, p,
@@ -5925,7 +5999,7 @@ theorem dateWithOffsetAndMillis_wf_inv (str : String) (zt : Std.Time.ZonedDateTi
       hssfd, hsssfd, hohfd, hommfd, hhbound, hmmbound, hssbound, hohb, hommb, hstr,
       H, m, sec, S, off, hbuild⟩ :=
     dateWithOffsetAndMillis_full_inv DateWithOffsetAndMillis.config rfl hlen zt hgo
-  have hdayle : fieldValue day ≤ daysInMonth (fieldValue year) (fieldValue month) :=
+  have hdayle : natOf day ≤ daysInMonth (natOf year) (natOf month) :=
     build_dateWithOffsetAndMillis_inv H m sec S off hm hd zt hbuild
   refine ⟨{ date := { year, month, day },
             time := some ⟨⟨hh, mm, ss⟩, some sss, Zone.offset ⟨neg, ohh, omm⟩⟩ }, ?_, ?_, ?_⟩
@@ -6049,8 +6123,8 @@ open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal S
     date builder at the position splitting `c.date.asString | tail`. -/
 theorem dateOnly_go_on_prefix {d : DateComponents} (tail : String) (config : FormatConfig)
     (hsyn : d.syntaxWf) (hcon : d.constraintsWf) :
-    ∃ (hm : 1 ≤ fieldValue d.month ∧ fieldValue d.month ≤ 12)
-      (hd : 1 ≤ fieldValue d.day ∧ fieldValue d.day ≤ 31)
+    ∃ (hm : 1 ≤ natOf d.month ∧ natOf d.month ≤ 12)
+      (hd : 1 ≤ natOf d.day ∧ natOf d.day ≤ 31)
       (p : (d.asString ++ tail).Pos),
       parser.go config .any {}
           [.modifier (.y .fourDigit), .string "-", .modifier (.M (.inl {padding := 2})),
@@ -6058,22 +6132,22 @@ theorem dateOnly_go_on_prefix {d : DateComponents} (tail : String) (config : For
           ⟨d.asString ++ tail, (d.asString ++ tail).startPos⟩
         = parser.go config .any
             { ({} : DateBuilder) with
-              y := some (Int.ofNat (fieldValue d.year)),
-              M := some (Bounded.LE.ofNat' (fieldValue d.month) hm),
-              d := some (Bounded.LE.ofNat' (fieldValue d.day) hd) }
+              y := some (Int.ofNat (natOf d.year)),
+              M := some (Bounded.LE.ofNat' (natOf d.month) hm),
+              d := some (Bounded.LE.ofNat' (natOf d.day) hd) }
             [] ⟨d.asString ++ tail, p⟩ ∧
       p.Splits d.asString tail := by
   obtain ⟨hy, hmm, hdd⟩ := hsyn
   obtain ⟨hm1, hm2, hd1, hd2⟩ := hcon
-  have hmbound : 1 ≤ fieldValue d.month ∧ fieldValue d.month ≤ 12 := ⟨hm1, hm2⟩
-  have hdaysle : daysInMonth (fieldValue d.year) (fieldValue d.month) ≤ 31 := by
+  have hmbound : 1 ≤ natOf d.month ∧ natOf d.month ≤ 12 := ⟨hm1, hm2⟩
+  have hdaysle : daysInMonth (natOf d.year) (natOf d.month) ≤ 31 := by
     unfold daysInMonth
     split
     · omega
     · split
       · split <;> omega
       · omega
-  have hdbound : 1 ≤ fieldValue d.day ∧ fieldValue d.day ≤ 31 := ⟨hd1, Nat.le_trans hd2 hdaysle⟩
+  have hdbound : 1 ≤ natOf d.day ∧ natOf d.day ≤ 31 := ⟨hd1, Nat.le_trans hd2 hdaysle⟩
   -- Re-associate so each date field sits at the front of the remaining suffix, tail at the end.
   have hassoc : d.asString ++ tail = d.year ++ ("-" ++ (d.month ++ ("-" ++ (d.day ++ tail)))) := by
     unfold DateComponents.asString
@@ -6087,13 +6161,13 @@ theorem dateOnly_go_on_prefix {d : DateComponents} (tail : String) (config : For
   rw [String.empty_append] at hsp1
   obtain ⟨p2, hpar2, hsp2⟩ :=
     step_sep p1 d.year (d.month ++ ("-" ++ (d.day ++ tail))) "-"
-      { ({} : DateBuilder) with y := some (Int.ofNat (fieldValue d.year)) } config hsp1
+      { ({} : DateBuilder) with y := some (Int.ofNat (natOf d.year)) } config hsp1
   obtain ⟨p3, hm', hpar3, hsp3⟩ :=
     step_month p2 (d.year ++ "-") ("-" ++ (d.day ++ tail)) d.month
-      { ({} : DateBuilder) with y := some (Int.ofNat (fieldValue d.year)) } config hmm hmbound hsp2
+      { ({} : DateBuilder) with y := some (Int.ofNat (natOf d.year)) } config hmm hmbound hsp2
   let bYM : DateBuilder :=
-    { ({} : DateBuilder) with y := some (Int.ofNat (fieldValue d.year)),
-                              M := some (Bounded.LE.ofNat' (fieldValue d.month) hm') }
+    { ({} : DateBuilder) with y := some (Int.ofNat (natOf d.year)),
+                              M := some (Bounded.LE.ofNat' (natOf d.month) hm') }
   obtain ⟨p4, hpar4, hsp4⟩ :=
     step_sep p3 (d.year ++ "-" ++ d.month) (d.day ++ tail) "-" bYM config hsp3
   obtain ⟨p5, hd', hpar5, hsp5⟩ :=
@@ -6242,11 +6316,11 @@ theorem prefix_thread {c : DatetimeComponents} (tp : TimePart) (tail : String)
     (config : FormatConfig) (hcfg : config.allowLeapSeconds = false)
     (hsyn : c.syntaxWf) (hcon : c.constraintsWf) (htime : c.time = some tp)
     (suf : FormatString) :
-    ∃ (hm : 1 ≤ fieldValue c.date.month ∧ fieldValue c.date.month ≤ 12)
-      (hd : 1 ≤ fieldValue c.date.day ∧ fieldValue c.date.day ≤ 31)
-      (hh : 0 ≤ fieldValue tp.time.hours ∧ fieldValue tp.time.hours ≤ 23)
-      (hmin : 0 ≤ fieldValue tp.time.minutes ∧ fieldValue tp.time.minutes ≤ 59)
-      (hsec : 0 ≤ fieldValue tp.time.seconds ∧ fieldValue tp.time.seconds ≤ 59)
+    ∃ (hm : 1 ≤ natOf c.date.month ∧ natOf c.date.month ≤ 12)
+      (hd : 1 ≤ natOf c.date.day ∧ natOf c.date.day ≤ 31)
+      (hh : 0 ≤ natOf tp.time.hours ∧ natOf tp.time.hours ≤ 23)
+      (hmin : 0 ≤ natOf tp.time.minutes ∧ natOf tp.time.minutes ≤ 59)
+      (hsec : 0 ≤ natOf tp.time.seconds ∧ natOf tp.time.seconds ≤ 59)
       (p : (c.date.asString ++ "T" ++ tp.time.asString ++ tail).Pos),
       parser.go config .any {}
           ([.modifier (.y .fourDigit), .string "-", .modifier (.M (.inl {padding := 2})),
@@ -6257,12 +6331,12 @@ theorem prefix_thread {c : DatetimeComponents} (tp : TimePart) (tail : String)
             (c.date.asString ++ "T" ++ tp.time.asString ++ tail).startPos⟩
         = parser.go config .any
             { ({} : DateBuilder) with
-              y := some (Int.ofNat (fieldValue c.date.year)),
-              M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-              d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-              H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-              m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-              s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)
+              y := some (Int.ofNat (natOf c.date.year)),
+              M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+              d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+              H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+              m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+              s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)
                           : Bounded.LE 0 60) }
             suf ⟨c.date.asString ++ "T" ++ tp.time.asString ++ tail, p⟩ ∧
       p.Splits (c.date.asString ++ "T" ++ tp.time.asString) tail :=
@@ -6472,7 +6546,7 @@ theorem dateUTCWithMillis_parse_error_of_offsetMillis {c : DatetimeComponents} (
       have := hsyn.2; rw [htime] at this; exact this
     have := htsyn.2.1
     rw [hmillis] at this; exact this
-  have hsssb : fieldValue sss ≤ 999 := fieldValue_le_999 hsssdig
+  have hsssb : natOf sss ≤ 999 := natOf_le_999 hsssdig
   have hcstr := asString_prefix_tail tp htime
   -- Thread the shared prefix with suffix [".", .S trunc3, "Z"].
   obtain ⟨hm, hd, hh, hmin, hsec, p, hgo, hsp⟩ :=
@@ -6482,12 +6556,12 @@ theorem dateUTCWithMillis_parse_error_of_offsetMillis {c : DatetimeComponents} (
   -- The six-field builder that `prefix_thread` leaves.
   let b6 : DateBuilder :=
     { ({} : DateBuilder) with
-      y := some (Int.ofNat (fieldValue c.date.year)),
-      M := some (Bounded.LE.ofNat' (fieldValue c.date.month) hm),
-      d := some (Bounded.LE.ofNat' (fieldValue c.date.day) hd),
-      H := some (Bounded.LE.ofNat' (fieldValue tp.time.hours) hh),
-      m := some (Bounded.LE.ofNat' (fieldValue tp.time.minutes) hmin),
-      s := some ((Bounded.LE.ofNat' (fieldValue tp.time.seconds) hsec).expandTop (by decide)
+      y := some (Int.ofNat (natOf c.date.year)),
+      M := some (Bounded.LE.ofNat' (natOf c.date.month) hm),
+      d := some (Bounded.LE.ofNat' (natOf c.date.day) hd),
+      H := some (Bounded.LE.ofNat' (natOf tp.time.hours) hh),
+      m := some (Bounded.LE.ofNat' (natOf tp.time.minutes) hmin),
+      s := some ((Bounded.LE.ofNat' (natOf tp.time.seconds) hsec).expandTop (by decide)
                   : Bounded.LE 0 60) }
   rw [hcstr]
   -- tail = "." ++ sss ++ (sign ++ hh ++ mm)
@@ -6515,7 +6589,7 @@ theorem dateUTCWithMillis_parse_error_of_offsetMillis {c : DatetimeComponents} (
   obtain ⟨pos, e, herr⟩ :=
     parseWithDate_string_error p2 _ (o.hours ++ o.minutes)
       (if o.negative then '-' else '+') 'Z'
-      { b6 with S := some (Bounded.LE.ofNat' (fieldValue sss * 1000000) _hh2) }
+      { b6 with S := some (Bounded.LE.ofNat' (natOf sss * 1000000) _hh2) }
       DateUTCWithMillis.config hsp2
       (by cases o.negative <;> decide)
   have hparser : parser DateUTCWithMillis.string DateUTCWithMillis.config .any
@@ -6556,7 +6630,7 @@ theorem case1_value {c : DatetimeComponents} (hsyn : c.syntaxWf) (hcon : c.const
   rw [case1_asString htime, hparse, except_ok_orElse]
   show (some zt).map _ = _
   have : c.date.toMillis
-      = epochDays (fieldValue c.date.year) (fieldValue c.date.month) (fieldValue c.date.day)
+      = epochDays (natOf c.date.year) (natOf c.date.month) (natOf c.date.day)
         * 86400000 := rfl
   rw [Option.map_some, hval, ← this, ← case1_toMillis htime]
 
@@ -6662,7 +6736,7 @@ end AlternationProof
 `Datetime.parse` applies three Boolean guards (`dateContainsLeapSeconds`, `checkOffsetLen`,
 `tzOffsetMinsLt60`) before the format alternation. On a well-formed rendering `c.asString` all three
 pass; these lemmas discharge them for `parse_complete`. The offset-minutes guard reduces to the
-grammar bound `fieldValue o.minutes ≤ 59`, which requires the `String.Slice`-level fact that
+grammar bound `natOf o.minutes ≤ 59`, which requires the `String.Slice`-level fact that
 `toNat?` and `isNat` depend only on the character list. -/
 
 /-- `String.Slice.isNat` and `String.Slice.toNat?` see only the underlying character list, so two
@@ -6689,14 +6763,14 @@ theorem toNat?_congr (s t : String) (h : s.toList = t.toList) : s.toNat? = t.toN
   apply slice_toNat?_congr
   rw [String.copy_toSlice, String.copy_toSlice, h]
 
-/-- On a digit string, `toNat?` succeeds with the grammar's `fieldValue`. -/
-theorem toNat?_eq_fieldValue (s : String) (h : IsDigits s) : s.toNat? = some (fieldValue s) := by
+/-- On a digit string, `toNat?` succeeds with the grammar's `natOf`. -/
+theorem toNat?_eq_natOf (s : String) (h : IsDigits s) : s.toNat? = some (natOf s) := by
   have hsome : (toNat?' s).isSome = true := toNat?'_isSome_of_isDigits h
   rw [← toNat?'_eq_toNat? s h]
-  unfold fieldValue
+  unfold natOf
   cases hv : toNat?' s with
   | none => rw [hv] at hsome; simp at hsome
-  | some v => rfl
+  | some v => simp
 
 /-- Taking the last two characters of `pre ++ mm`, where `mm` has length two, yields exactly `mm`
     (at the level of character lists). -/
@@ -6763,14 +6837,14 @@ theorem tzOffsetMinsLt60_asString {c : DatetimeComponents} (hsyn : c.syntaxWf)
               ++ ((if o.negative then "-" else "+") ++ o.hours)), ?_⟩
         simp only [Zone.asString, OffsetComponents.asString, String.append_assoc]
       obtain ⟨pre, hpre⟩ := hstr
-      have htne : ((c.asString.takeEnd 2).toNat?) = some (fieldValue o.minutes) := by
+      have htne : ((c.asString.takeEnd 2).toNat?) = some (natOf o.minutes) := by
         rw [slice_toNat?_congr (c.asString.takeEnd 2) o.minutes.toSlice ?_]
         · show o.minutes.toNat? = _
-          rw [toNat?_eq_fieldValue o.minutes homm.1]
+          rw [toNat?_eq_natOf o.minutes homm.1]
         · rw [String.copy_toSlice, hpre]
           exact takeEnd_two_toList homm.2
       rw [htne]
-      have : fieldValue o.minutes < 60 := Nat.lt_succ_of_le hommb
+      have : natOf o.minutes < 60 := Nat.lt_succ_of_le hommb
       simp [this]
 
 /-- List-level: splitting `pre ++ sep :: suf` on `P`, with `pre` separator-free and `P sep`, yields
@@ -7117,14 +7191,14 @@ theorem dateWithOffset_parse_tz {c : DatetimeComponents} (tp : TimePart) (o : Of
     (htime : c.time = some tp) (hzone : tp.zone = Zone.offset o) (hmillis : tp.millis = none) :
     ∃ zt, DateWithOffset.parse c.asString = .ok zt ∧
       zt.timezone.offset.second.val
-        = ((fieldValue o.hours : Int) * 3600 + (fieldValue o.minutes : Int) * 60)
+        = ((natOf o.hours : Int) * 3600 + (natOf o.minutes : Int) * 60)
             * (if o.negative then -1 else 1) := by
   obtain ⟨hm, hd, hh, hmin, hsec, hgo⟩ :=
     parseWithDate_dateWithOffset tp o DateWithOffset.config rfl hsyn hcon htime hzone hmillis
   obtain ⟨zt, hbuild, _⟩ :=
     build_dateWithOffset_value tp o hsyn hcon htime hzone hmillis hm hd hh hmin hsec _ rfl
   have htz : zt.timezone.offset.second.val
-      = ((fieldValue o.hours : Int) * 3600 + (fieldValue o.minutes : Int) * 60)
+      = ((natOf o.hours : Int) * 3600 + (natOf o.minutes : Int) * 60)
           * (if o.negative then -1 else 1) :=
     build_tz_offset_x _ zt _ hbuild ⟨rfl, rfl, rfl, rfl⟩
   refine ⟨zt, ?_, htz⟩
@@ -7152,7 +7226,7 @@ theorem dateWithOffsetAndMillis_parse_tz {c : DatetimeComponents} (tp : TimePart
     (htime : c.time = some tp) (hzone : tp.zone = Zone.offset o) (hmillis : tp.millis = some sss) :
     ∃ zt, DateWithOffsetAndMillis.parse c.asString = .ok zt ∧
       zt.timezone.offset.second.val
-        = ((fieldValue o.hours : Int) * 3600 + (fieldValue o.minutes : Int) * 60)
+        = ((natOf o.hours : Int) * 3600 + (natOf o.minutes : Int) * 60)
             * (if o.negative then -1 else 1) := by
   obtain ⟨hm, hd, hh, hmin, hsec, hms, hgo⟩ :=
     parseWithDate_dateWithOffsetAndMillis tp o sss DateWithOffsetAndMillis.config rfl hsyn hcon
@@ -7161,7 +7235,7 @@ theorem dateWithOffsetAndMillis_parse_tz {c : DatetimeComponents} (tp : TimePart
     build_dateWithOffsetAndMillis_value tp o sss hsyn hcon htime hzone hmillis hm hd hh hmin hsec
       hms _ rfl
   have htz : zt.timezone.offset.second.val
-      = ((fieldValue o.hours : Int) * 3600 + (fieldValue o.minutes : Int) * 60)
+      = ((natOf o.hours : Int) * 3600 + (natOf o.minutes : Int) * 60)
           * (if o.negative then -1 else 1) :=
     build_tz_offset_x _ zt _ hbuild ⟨rfl, rfl, rfl, rfl⟩
   refine ⟨zt, ?_, htz⟩
@@ -7196,9 +7270,9 @@ theorem offset_lt_max_of_syntaxWf {c : DatetimeComponents} (hsyn : c.syntaxWf)
   -- Identify which parser succeeds (as in `stdTime_alternation_value`) and read off its offset:
   -- either zero (DateOnly/UTC/UTCmillis) or `±(hh·3600+mm·60)` bounded by `hcon` (offset forms).
   have hztval : zt.timezone.offset.second.val = 0 ∨
-      (∃ (o : OffsetComponents), fieldValue o.hours ≤ 23 ∧ fieldValue o.minutes ≤ 59 ∧
+      (∃ (o : OffsetComponents), natOf o.hours ≤ 23 ∧ natOf o.minutes ≤ 59 ∧
         zt.timezone.offset.second.val
-          = ((fieldValue o.hours : Int) * 3600 + (fieldValue o.minutes : Int) * 60)
+          = ((natOf o.hours : Int) * 3600 + (natOf o.minutes : Int) * 60)
               * (if o.negative then -1 else 1)) := by
     match htime : c.time with
     | none =>
@@ -7253,16 +7327,6 @@ theorem offset_lt_max_of_syntaxWf {c : DatetimeComponents} (hsyn : c.syntaxWf)
     cases o.negative with
     | false => rw [if_neg (by decide), Int.mul_one]; omega
     | true => rw [if_pos rfl, Int.mul_neg, Int.mul_one, Int.natAbs_neg]; omega
-
-/-- **`computeValue` equals the components' value.** Pure book-keeping bridging the two views of the
-    value: `computeValue str` (the structural re-parse) and `c.toMillis` (the record's value), for
-    `str = c.asString`. This one is parser-independent and provable from `parseComponents_asString`
-    once the `.map DatetimeComponents.toMillis` is unfolded. -/
-theorem computeValue_asString {c : DatetimeComponents} (hsyn : c.syntaxWf) :
-    computeValue c.asString = some c.toMillis := by
-  unfold computeValue
-  rw [parseComponents_asString hsyn]
-  rfl
 
 /-! ## Leap-seconds guard
 
@@ -7425,8 +7489,8 @@ theorem dateContainsLeapSeconds_asString {c : DatetimeComponents} (hsyn : c.synt
       · exfalso
         simp only [Bool.and_eq_true, beq_iff_eq, Option.some.injEq] at h
         obtain ⟨hs0, hs1⟩ := h
-        have hfv : fieldValue tp.time.seconds = 60 := by
-          rw [fieldValue_isDigits _ hts.1, hsec_eq, hs0, hs1]; decide
+        have hfv : natOf tp.time.seconds = 60 := by
+          rw [natOf_isDigits _ hts.1, hsec_eq, hs0, hs1]; decide
         omega
       · exact h
     rw [Bool.and_assoc, hkey, Bool.and_false]
@@ -7527,12 +7591,12 @@ theorem toMillis_range {c : DatetimeComponents} (hsyn : c.syntaxWf) (hcon : c.co
   obtain ⟨hdsyn, htsyn⟩ := hsyn
   obtain ⟨hdcon, htcon⟩ := hcon
   obtain ⟨hysyn, hmsyn, hdsyn'⟩ := hdsyn
-  have hyle : fieldValue c.date.year ≤ 9999 := fieldValue_le_9999 hysyn
+  have hyle : natOf c.date.year ≤ 9999 := natOf_le_9999 hysyn
   simp only [DateComponents.constraintsWf] at hdcon
   obtain ⟨hm1, hm2, hd1, hd2⟩ := hdcon
-  have hdle : fieldValue c.date.day ≤ 31 := Nat.le_trans hd2 (daysInMonth_le_31 _ _)
-  have hepoch := epochDays_bounds (y := fieldValue c.date.year) (m := fieldValue c.date.month)
-    (d := fieldValue c.date.day) hyle ⟨hm1, hm2⟩ ⟨hd1, hdle⟩
+  have hdle : natOf c.date.day ≤ 31 := Nat.le_trans hd2 (daysInMonth_le_31 _ _)
+  have hepoch := epochDays_bounds (y := natOf c.date.year) (m := natOf c.date.month)
+    (d := natOf c.date.day) hyle ⟨hm1, hm2⟩ ⟨hd1, hdle⟩
   simp only [DatetimeComponents.toMillis, DateComponents.toMillis]
   cases htime : c.time with
   | none => simp only []; omega
@@ -7551,7 +7615,7 @@ theorem toMillis_range {c : DatetimeComponents} (hsyn : c.syntaxWf) (hcon : c.co
     | some sss =>
       rw [hmm] at hmillissyn
       simp only [IsWfOptionalMillis] at hmillissyn
-      have hsssb := fieldValue_le_999 hmillissyn
+      have hsssb := natOf_le_999 hmillissyn
       simp only []
       omega
 

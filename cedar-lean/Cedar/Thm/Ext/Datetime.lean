@@ -30,48 +30,37 @@ open Datetime
 
 /-! # Datetime parser correctness
 
-`parse_sound`, `parse_complete`, and `parse_eq_none_iff` characterize exactly when parsing
-succeeds, stated in terms of the grammar-level `IsWfDatetime` predicate and the `computeValue`
-function (both in `Cedar.Thm.Ext.Datetime.Grammar`) that maps well-formed components to their
-epoch-millisecond value. On top of them sit the serialization results — `parse_toString_roundtrip`,
-`toString?_injective`, and `normalize_eq_iff_parse_eq` — the datetime analogues of the decimal and
-duration surfaces, adapted to the *partial* serializer `toString?` (datetime rendering only covers
-the grammar-representable range). The parser-independent roundtrip lemmas they build on live in
-`Cedar.Thm.Ext.Datetime.Lemmas`. -/
-
-/-- A well-formed datetime string always has a computed value. -/
-public theorem computeValue_isSome_of_isWfDatetime {str : String} (h : IsWfDatetime str) :
-    (computeValue str).isSome = true := by
-  obtain ⟨c, hsyn, _, hstr⟩ := h
-  unfold computeValue
-  rw [hstr, parseComponents_asString hsyn]
-  rfl
+`parse_sound`, `parse_complete`, and `parse_eq_none_iff` characterize parsing against the
+grammar-level `IsDatetimeValue` relation. On top of them sit the serialization results —
+`parse_toString_roundtrip`, `toString?_injective`, and `normalize_eq_iff_parse_eq` — the datetime
+analogues of the decimal and duration surfaces, adapted to the *partial* serializer `toString?`
+(datetime rendering only covers the grammar-representable range). The parser-independent
+roundtrip lemmas they build on live in `Cedar.Thm.Ext.Datetime.Lemmas`. -/
 
 /-! ## Soundness, completeness, and failure characterization
 
-The three theorems below relate `Datetime.parse` to the parser-independent `IsWfDatetime` and
-`computeValue`. Unlike the decimal and duration parsers — hand-written character manipulation we
-reason about directly — `Datetime.parse` delegates to `Std.Time.GenericFormat.parse`, whose field
-parsers use well-founded recursion. The bulk of the work is therefore a parser-inversion library
-(in `Cedar.Thm.Ext.Datetime.Lemmas`) that symbolically evaluates that recursion once and for all,
-showing a successful `Std.Time` parse is *exactly* the rendering of well-formed witnessing
+The theorems below relate `Datetime.parse` to the parser-independent `IsDatetimeValue` relation.
+Unlike the decimal and duration parsers — hand-written character manipulation we reason about
+directly — `Datetime.parse` delegates to `Std.Time.GenericFormat.parse`, whose field parsers use
+well-founded recursion. The bulk of the work is therefore a parser-inversion library (in
+`Cedar.Thm.Ext.Datetime.Lemmas`) that symbolically evaluates that recursion once and for all,
+showing a successful `Std.Time` parse is exactly the rendering of well-formed witnessing
 components. That reduces both soundness and completeness to reasoning about the components, not
 about the parser's recursion.
 
 All three are proven with no proof placeholders or custom axioms (`propext`, `Classical.choice`,
 `Quot.sound` only). -/
 
-/-- Soundness of `Datetime.parse`: if parsing succeeds, then the input is well-formed and
-    `computeValue` yields exactly the returned datetime's value. (The value is in `Int64` range
-    automatically, since it equals `d.val.toInt` for `d.val : Int64`.)
+/-- Soundness of `Datetime.parse`: if parsing succeeds, the declarative grammar relation assigns
+    the input exactly the returned datetime's value. The value is automatically in `Int64` range,
+    since it equals `d.val.toInt` for `d.val : Int64`.
 
     Idea: read the successful parse backwards to recover the witnessing components, which are
-    well-formed by construction — that gives `IsWfDatetime`. Both the parser and `computeValue`
-    then evaluate those same components with the same value formula, so the value the parser
-    returned is exactly the one `computeValue` computes. -/
+    well-formed by construction, then use the `Std.Time` value bridge to identify their
+    `toMillis` denotation with the returned value. -/
 public theorem parse_sound (str : String) (d : Datetime)
     (h : Datetime.parse str = some d) :
-    IsWfDatetime str ∧ computeValue str = some d.val.toInt := by
+    IsDatetimeValue str d.val.toInt := by
   -- Read the successful parse backwards: guards passed, the alternation produced `zt`, its offset
   -- was in range, and `datetime? zt`'s epoch-ms value returned `d`. (Pure `Option` reasoning.)
   obtain ⟨_hleap, _hlen, _htz, zt, halt, _hrange, hdt⟩ := parse_some_decompose h
@@ -84,29 +73,23 @@ public theorem parse_sound (str : String) (d : Datetime)
   have hcmillis : c.toMillis = d.val.toInt := by
     have haltval := stdTime_alternation_value hsyn hcon
     rw [← hstr, halt, Option.map_some] at haltval
-    have hzt : zt.toTimestamp.toMillisecondsSinceUnixEpoch.toInt = c.toMillis := Option.some.inj haltval
+    have hzt : zt.toTimestamp.toMillisecondsSinceUnixEpoch.toInt = c.toMillis :=
+      Option.some.inj haltval
     omega
-  refine ⟨⟨c, hsyn, hcon, hstr⟩, ?_⟩
-  -- Value side is fully discharged: `computeValue str = some c.toMillis = some d.val.toInt`.
-  rw [hstr, computeValue_asString hsyn, hcmillis]
+  exact ⟨c, hsyn, hcon, hstr, hcmillis.symm⟩
 
-/-- Completeness of `Datetime.parse`: if a string is well-formed and its computed value matches
-    `d.val.toInt`, then parsing accepts the string as `d`.
+/-- Completeness of `Datetime.parse`: if the grammar assigns a string the value `d.val.toInt`,
+    then parsing accepts the string as `d`. Well-formedness is already part of
+    `IsDatetimeValue`.
 
-    Idea: well-formedness gives witnessing components whose rendering is the input. On such a
-    rendering every guard passes (a well-formed time can't spell a leap second, the fixed widths
-    satisfy the length check, the offset is grammar-bounded) and the `Std.Time` parse succeeds
-    with the components' value. That value is `d`'s, so parsing lands on `d`. -/
+    Idea: the relation gives witnessing components whose rendering is the input. On such a
+    rendering every guard passes and the `Std.Time` parse succeeds with the components' value.
+    That value is `d`'s, so parsing lands on `d`. -/
 public theorem parse_complete (str : String) (d : Datetime)
-    (hwf : IsWfDatetime str) (hval : computeValue str = some d.val.toInt) :
+    (hval : IsDatetimeValue str d.val.toInt) :
     Datetime.parse str = some d := by
-  obtain ⟨c, hsyn, hcon, hstr⟩ := hwf
-  -- Identify the target value `c.toMillis = d.val.toInt`.
-  have hvc : c.toMillis = d.val.toInt := by
-    have := computeValue_asString hsyn
-    rw [hstr, this] at hval
-    exact Option.some.inj hval
-  subst hstr
+  obtain ⟨c, hsyn, hcon, hstr, hvc⟩ := hval
+  subst str
   -- The format alternation evaluates to `some c.toMillis`; extract the witnessing `zt`.
   have haltval := stdTime_alternation_value hsyn hcon
   obtain ⟨zt, hzt, hztval⟩ := Option.map_eq_some_iff.mp haltval
@@ -121,18 +104,23 @@ public theorem parse_complete (str : String) (d : Datetime)
   simp only [bind, Option.bind, hzt, hrange, if_pos]
   -- Final: `datetime? (zt value) = some d`, since that value is `c.toMillis = d.val.toInt`.
   show datetime? zt.toTimestamp.toMillisecondsSinceUnixEpoch.toInt = some d
-  rw [hztval, hvc]
+  rw [hztval, ← hvc]
   unfold datetime?
   rw [Int64.ofInt?_toInt d.val]
   simp only [bind, Option.bind, pure]
+
+/-- Exact parser characterization: parsing succeeds with `d` precisely when the declarative
+    grammar relation assigns the input the value `d.val.toInt`. -/
+public theorem parse_eq_some_iff_isDatetimeValue (str : String) (d : Datetime) :
+    Datetime.parse str = some d ↔ IsDatetimeValue str d.val.toInt :=
+  ⟨parse_sound str d, parse_complete str d⟩
 
 /-- `parse ∘ toString?` roundtrip: every successfully serialized datetime parses back to the
     original value. -/
 public theorem parse_toString_roundtrip {d : Datetime} {str : String}
     (h : toString? d = some str) :
     Datetime.parse str = some d := by
-  obtain ⟨hwf, hvalue⟩ := toString?_some_wf_value h
-  exact parse_complete str d hwf hvalue
+  exact parse_complete str d (toString?_some_value h)
 
 /-- Total `Option` formulation of the partial serialization roundtrip. -/
 public theorem bind_parse_toString? (d : Datetime) :
@@ -154,84 +142,55 @@ public theorem toString?_injective {d d' : Datetime} {str : String}
   rw [h1] at h2
   exact Option.some.inj h2
 
-/-- Failure characterization for `Datetime.parse`: parsing rejects exactly strings that are
-    not well-formed or whose computed value overflows the `Int64` range.
-
-    Idea: the `Option` contrapositive of soundness and completeness, with no `Std.Time` reasoning
-    of its own. If parsing fails yet the string is well-formed, its value must be out of range —
-    otherwise completeness would have accepted it. Conversely a successful parse is well-formed
-    with an in-range value (it is stored in an `Int64`), so it can meet neither failure clause. -/
-public theorem parse_eq_none_iff (str : String) :
-    Datetime.parse str = none ↔
-    ¬ IsWfDatetime str ∨
-    ∃ v, computeValue str = some v ∧ (v < Int64.MIN ∨ v > Int64.MAX) := by
+/-- Because the grammar bounds years to four digits and zone offsets to `±23:59`, every
+    well-formed datetime value fits in `Int64`. Parsing therefore rejects exactly malformed
+    strings. -/
+public theorem parse_eq_none_iff_not_wf (str : String) :
+    Datetime.parse str = none ↔ ¬ IsWfDatetime str := by
   constructor
   · intro hnone
-    -- Contrapose against `parse_complete`: if well-formed and in range, parsing would succeed.
-    by_cases hwf : IsWfDatetime str
-    · right
-      -- Well-formed ⟹ the value exists; it must be out of range or `parse_complete` bites.
-      have hsome := computeValue_isSome_of_isWfDatetime hwf
-      obtain ⟨v, hv⟩ := Option.isSome_iff_exists.mp hsome
-      refine ⟨v, hv, ?_⟩
-      by_contra hin
-      -- In range ⟹ `ofInt? v` succeeds; its witness `i` satisfies `i.toInt = v`.
-      have hrange : Int64.MIN ≤ v ∧ v ≤ Int64.MAX := by
-        simp only [Int64.MIN, Int64.MAX] at hin ⊢; omega
-      have hsome' := (Int64.ofInt?_some_iff (i := v)).mp hrange
-      have htoInt : (Int64.ofInt v).toInt = v := Int64.ofInt?_some_toInt hsome'
-      -- `parse_complete` then parses `str` as `⟨Int64.ofInt v⟩`, contradicting `hnone`.
-      have hval : computeValue str = some (Datetime.mk (Int64.ofInt v)).val.toInt := by
-        show computeValue str = some (Int64.ofInt v).toInt
-        rw [htoInt]; exact hv
-      have hparse := parse_complete str ⟨Int64.ofInt v⟩ hwf hval
-      rw [hparse] at hnone
-      exact absurd hnone (by simp)
-    · exact Or.inl hwf
-  · intro hbad
-    -- A successful parse would contradict either branch via `parse_sound`.
+    intro hwf
+    obtain ⟨v, hvalue⟩ := isWfDatetime_iff_exists_value.mp hwf
+    obtain ⟨components, hsyntax, hconstraints, hstr, hv⟩ := hvalue
+    have hrange : Int64.MIN ≤ v ∧ v ≤ Int64.MAX := by
+      rw [hv]
+      exact toMillis_int64_range hsyntax hconstraints
+    have hsome := (Int64.ofInt?_some_iff (i := v)).mp hrange
+    have htoInt : (Int64.ofInt v).toInt = v := Int64.ofInt?_some_toInt hsome
+    let d : Datetime := ⟨Int64.ofInt v⟩
+    have hvalue' : IsDatetimeValue str d.val.toInt := by
+      change IsDatetimeValue str (Int64.ofInt v).toInt
+      rw [htoInt]
+      exact ⟨components, hsyntax, hconstraints, hstr, hv⟩
+    have hparse := parse_complete str d hvalue'
+    rw [hparse] at hnone
+    exact absurd hnone (by simp)
+  · intro hnwf
     cases hparse : Datetime.parse str with
     | none => rfl
     | some d =>
       exfalso
-      obtain ⟨hwf, hval⟩ := parse_sound str d hparse
-      rcases hbad with hnwf | ⟨v, hv, hout⟩
-      · exact hnwf hwf
-      · -- `v = d.val.toInt`, which is always in `Int64` range — contradiction with `hout`.
-        rw [hval] at hv
-        have hveq : v = d.val.toInt := (Option.some.inj hv).symm
-        subst hveq
-        -- `ofInt? d.val.toInt = some d.val` (the roundtrip), so it is not `none`;
-        -- out-of-range would force `none` by `ofInt?_none_iff`.
-        have hnone' := (Int64.ofInt?_none_iff (i := d.val.toInt)).mp hout
-        rw [Int64.ofInt?_toInt d.val] at hnone'
-        exact absurd hnone' (by simp)
+      exact hnwf (isWfDatetime_iff_exists_value.mpr
+        ⟨d.val.toInt, parse_sound str d hparse⟩)
 
-/-- Sharpened failure characterization: because the grammar bounds years to four digits and
-    zone offsets to `±23:59`, a well-formed datetime's value always fits in `Int64`, so the
-    overflow branch of `parse_eq_none_iff` is vacuous and parsing rejects *exactly* the malformed
-    strings.
-
-    Idea: take the previous characterization and discharge its overflow disjunct using the proven
-    range bound on well-formed values. -/
-public theorem parse_eq_none_iff_not_wf (str : String) :
-    Datetime.parse str = none ↔ ¬ IsWfDatetime str := by
-  rw [parse_eq_none_iff]
+/-- Failure characterization in the same uniform form as Decimal and Duration: parsing rejects
+    malformed strings or well-formed values outside `Int64`. For Datetime the overflow branch is
+    impossible by the grammar's four-digit-year and offset bounds. -/
+public theorem parse_eq_none_iff (str : String) :
+    Datetime.parse str = none ↔
+    ¬ IsWfDatetime str ∨
+      ∃ v, IsDatetimeValue str v ∧ (v < Int64.MIN ∨ v > Int64.MAX) := by
+  rw [parse_eq_none_iff_not_wf]
   constructor
-  · rintro (hnwf | ⟨v, hv, hout⟩)
-    · exact hnwf
-    · -- The overflow branch contradicts the grammar's range bound on well-formed strings —
-      -- and on malformed ones the left disjunct would have been taken; either way ¬wf holds
-      -- unless `str` is well-formed, in which case `v = c.toMillis` is in range.
-      intro hwf
-      obtain ⟨c, hsyn, hcon, hstr⟩ := hwf
-      rw [hstr, computeValue_asString hsyn] at hv
-      have hveq : v = c.toMillis := (Option.some.inj hv).symm
-      subst hveq
-      have hrange := toMillis_int64_range hsyn hcon
-      simp only [Int64.MIN, Int64.MAX] at hrange hout
-      omega
   · exact Or.inl
+  · rintro (hnwf | ⟨v, hvalue, hoverflow⟩)
+    · exact hnwf
+    · exfalso
+      obtain ⟨components, hsyntax, hconstraints, _, hv⟩ := hvalue
+      have hrange := toMillis_int64_range hsyntax hconstraints
+      rw [hv] at hoverflow
+      simp only [Int64.MIN, Int64.MAX] at hrange hoverflow
+      omega
 
 /-- Equal normal form iff equal parse — normalization decides datetime equality.
 

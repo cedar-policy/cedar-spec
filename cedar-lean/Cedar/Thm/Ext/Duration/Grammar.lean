@@ -23,16 +23,18 @@ import all Cedar.Data.Int64
 import all Cedar.Spec.Ext.Util
 import all Cedar.Spec.Ext.Datetime
 import all Cedar.Thm.Data.String
-import all Init.Data.String.Search
-import Std.Data.String.ToNat
 
 namespace Cedar.Thm.Duration
 open Cedar.Spec.Ext
 open Datetime
 
-/-- Apply the duration sign to a natural number: negates if `isNegative`, otherwise coerces. -/
-public def signedQuantity (isNegative : Bool) (n : Nat) : Int :=
-  if isNegative then Int.negOfNat n else Int.ofNat n
+/-! # Duration grammar: definitions
+
+This file contains only grammar-level definitions: the well-formedness predicates and the value
+relation. `IsWfDuration` states the syntax, `value` gives the denotation of already identified
+components, and `IsDurationValue str v` combines the same witnesses to say that `str` denotes `v`.
+The executable extraction machinery used to connect these definitions to `Duration.parse` lives
+in `Cedar.Thm.Ext.Duration.Lemmas`. -/
 
 /-- Render an optional duration component as its string representation.
     `none` produces `""`, `some digits` produces `digits ++ suffix`. -/
@@ -96,6 +98,30 @@ public def Components.asString (components : Components) : String :=
   durationChunk components.milliseconds "ms"
 -- ANCHOR_END: asString
 
+/-- Natural-number value of an optional duration quantity. An absent component denotes zero;
+    a present well-formed component is read by the shared grammar-level `natOf`. -/
+-- ANCHOR: optionalNatOf
+public def optionalNatOf : Option String → Nat
+  | none => 0
+  | some digits => natOf digits
+-- ANCHOR_END: optionalNatOf
+
+/-- Unsigned millisecond value of already identified duration components. -/
+-- ANCHOR: toMillis
+public def Components.toMillis (components : Components) : Int :=
+  (optionalNatOf components.days : Int) * MILLISECONDS_PER_DAY +
+  (optionalNatOf components.hours : Int) * MILLISECONDS_PER_HOUR +
+  (optionalNatOf components.minutes : Int) * MILLISECONDS_PER_MINUTE +
+  (optionalNatOf components.seconds : Int) * MILLISECONDS_PER_SECOND +
+  optionalNatOf components.milliseconds
+-- ANCHOR_END: toMillis
+
+/-- The grammar's value function, applied to an already identified sign and component record. -/
+-- ANCHOR: value
+public def value (sign : String) (components : Components) : Int :=
+  signOf sign * components.toMillis
+-- ANCHOR_END: value
+
 /-- Canonical maximized components for a duration value split into days, hours, minutes,
     seconds, and milliseconds. All five fields are present, including zero-valued fields. -/
 public def canonicalComponents (days hours minutes seconds ms : Nat) :
@@ -124,9 +150,9 @@ public def IsWfBody (body : String) : Prop :=
 -- ANCHOR_END: IsWfBody
 
 /-- A duration string is well-formed iff it is the rendering of an optional `Sign` (`['-']`,
-    the shared `IsWfSign`) followed by a well-formed body. Phrasing it as a rendering existential
-    over the sign — rather than a disjunction that spells the `"-"` case separately — matches the
-    decimal and datetime grammars. -/
+    the shared `IsWfSign`) followed by a well-formed body. Phrasing it as a rendering
+    existential over the sign — rather than a disjunction that spells the `"-"` case
+    separately — matches the decimal and datetime grammars. -/
 -- ANCHOR: IsWfDuration
 public def IsWfDuration (str : String) : Prop :=
   ∃ sign body,
@@ -135,49 +161,18 @@ public def IsWfDuration (str : String) : Prop :=
     IsWfBody body
 -- ANCHOR_END: IsWfDuration
 
-/-- Extract the trailing natural-number token immediately before a duration suffix.
-    When the suffix is absent the component is simply not present, so this yields `(0, s)`;
-    when the suffix is present but the preceding digits are missing or unparseable the string is
-    malformed, so this yields `none`. Mirrors the spec's `parseUnit?` failure structure. -/
--- ANCHOR: extractTrailingQuantity
-public def extractTrailingQuantity (s : String) (suffix : String) : Option (Nat × String) :=
-  if s.endsWith suffix then
-    let rest := (s.dropEnd suffix.length).toString
-    let digits := rest.toList.reverse.takeWhile Char.isDigit |>.reverse
-    match toNat?' (String.ofList digits) with
-    | some n => some (n, (rest.dropEnd digits.length).toString)
-    | none => none
-  else
-    some (0, s)
--- ANCHOR_END: extractTrailingQuantity
-
-/-- Compute the unsigned millisecond total of a duration body by extracting each component
-    right-to-left (ms, s, m, h, d), failing (`none`) if any present component is unparseable. -/
--- ANCHOR: computeBodyValue
-public def computeBodyValue (body : String) : Option Int := do
-  let (ms, body) ← extractTrailingQuantity body "ms"
-  let (sec, body) ← extractTrailingQuantity body "s"
-  let (min, body) ← extractTrailingQuantity body "m"
-  let (hr, body) ← extractTrailingQuantity body "h"
-  let (day, _) ← extractTrailingQuantity body "d"
-  some (↑day * MILLISECONDS_PER_DAY +
-    ↑hr * MILLISECONDS_PER_HOUR +
-    ↑min * MILLISECONDS_PER_MINUTE +
-    ↑sec * MILLISECONDS_PER_SECOND +
-    ↑ms)
--- ANCHOR_END: computeBodyValue
-
-/-- Compute the signed millisecond value: negates the unsigned total when `isNegative`. -/
-public def computeSignedBodyValue (isNegative : Bool) (body : String) : Option Int :=
-  (computeBodyValue body).map (fun value => if isNegative then -value else value)
-
-/-- Compute the total signed millisecond value of a full duration string, first splitting off the
-    sign via `isNegativeDuration`. Returns `none` when the body is structurally unparseable. -/
--- ANCHOR: computeValue
-public def computeValue (str : String) : Option Int :=
-  let (isNegative, body) := isNegativeDuration str
-  computeSignedBodyValue isNegative body
--- ANCHOR_END: computeValue
+/-- `v` is the value of the duration literal `str`: `str` is the rendering of a well-formed
+    optional sign and nonempty component record, and `v` is the weighted millisecond sum assigned
+    to those fields by the grammar's value function. -/
+-- ANCHOR: IsDurationValue
+public def IsDurationValue (str : String) (v : Int) : Prop :=
+  ∃ sign components,
+    str = sign ++ components.asString ∧
+    IsWfSign sign ∧
+    components.nonempty ∧
+    components.quantitiesWf ∧
+    v = value sign components
+-- ANCHOR_END: IsDurationValue
 
 /-- Canonical-form normalizer: parse the string and re-serialize.
     Returns `none` for malformed or out-of-range inputs. -/

@@ -27,142 +27,75 @@ import all Cedar.Thm.Ext.Decimal.Lemmas
 namespace Cedar.Thm.Decimal
 open Cedar.Spec.Ext
 
-/-- Completeness of `Decimal.parse`: if a string is well-formed and its computed value
-    matches `d.toInt`, then parsing accepts the string as `d`. -/
+/-- Completeness of `Decimal.parse`: if the grammar assigns `s` the value `d.toInt`, then parsing
+    accepts the string as `d`. Well-formedness is not a separate hypothesis — `IsDecimalValue`
+    already asserts that `s` is a rendering of the grammar's productions. -/
 public theorem parse_complete (s : String) (d : Decimal)
-    (hwf : IsWfDecimal s) (hval : computeValue s = some d.toInt) :
-    Decimal.parse s = some d := by
-  obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := isWfDecimal_iff.mp hwf
-  unfold Decimal.parse
-  rw [h_split]
-  split
-  · rename_i heq; exact absurd ((List.cons.inj heq).1) h_ne
-  · rename_i _ _ _ heq; simp at heq; obtain ⟨hl', hr'⟩ := heq; subst hl'; subst hr'
-    simp only [show 0 < right.length ∧ right.length ≤ DECIMAL_DIGITS from ⟨h_rpos, h_rle⟩]
-    obtain ⟨l, hl⟩ := Option.isSome_iff_exists.mp h_lint
-    obtain ⟨r, hr⟩ := Option.isSome_iff_exists.mp h_rnat
-    simp only [hl, hr, Decimal.decimal?]
-    have hval' : (if !left.startsWith "-"
-        then l * Int.pow 10 DECIMAL_DIGITS + ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length)
-        else l * Int.pow 10 DECIMAL_DIGITS - ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length))
-        = d.toInt := by
-      have := hval
-      rw [computeValue_eq_parser_value hwf h_split hl hr] at this
-      exact Option.some.inj this
-    rw [hval']
-    exact Int64.ofInt?_toInt d
-  · rename_i h; exact (h left right rfl).elim
+    (hval : IsDecimalValue s d.toInt) : Decimal.parse s = some d := by
+  rw [parse_eq_decimal?_of_isDecimalValue hval]
+  exact Int64.ofInt?_toInt d
+
+/-- Soundness of `Decimal.parse`: if parsing succeeds, then the input is a well-formed rendering
+    whose grammar value is exactly the returned decimal's value. (The value is automatically in
+    `Int64` range, since `d : Decimal = Int64`, so no range conjunct is stated.) -/
+public theorem parse_sound (s : String) (d : Decimal) (h : Decimal.parse s = some d) :
+    IsDecimalValue s d.toInt := by
+  unfold Decimal.parse at h
+  split at h
+  · exact absurd h (by simp)
+  · rename_i left right h_ne h_split
+    split at h
+    · rename_i l r heq_l heq_r
+      have h_len : 0 < right.length ∧ right.length ≤ DECIMAL_DIGITS := by
+        by_contra hc; simp [hc] at h
+      simp only [show 0 < right.length ∧ right.length ≤ DECIMAL_DIGITS from h_len,
+        Decimal.decimal?] at h
+      -- the left field's `toInt?'` witness splits into the grammar's `Sign` and `Natural`
+      obtain ⟨sign, natural, rfl, hs, hn⟩ :=
+        sign_nat_of_toInt?'_isSome (s := left) (by rw [heq_l]; rfl)
+      have hf : IsWfFrac right := ⟨isDigits_of_toNat?'_isSome (by rw [heq_r]; rfl), h_len.2⟩
+      refine ⟨sign, natural, right, ?_, hs, hn, hf, ?_⟩
+      · have hjoin := join_splitToList h_split
+        simp only [String.append_assoc] at hjoin ⊢
+        exact hjoin
+      · rw [← parser_value_eq_value hs hn heq_l heq_r]
+        exact Int64.ofInt?_some_toInt h
+    · exact absurd h (by simp)
+  · exact absurd h (by simp)
+
+/-- Exact parser characterization: parsing succeeds with `d` precisely when the declarative
+    grammar relation assigns the input the value `d.toInt`. -/
+public theorem parse_eq_some_iff_isDecimalValue (s : String) (d : Decimal) :
+    Decimal.parse s = some d ↔ IsDecimalValue s d.toInt :=
+  ⟨parse_sound s d, parse_complete s d⟩
 
 /-- Parsing the canonical string representation of a decimal returns the same decimal. -/
 public theorem parse_toString_roundtrip (d : Decimal) :
     Decimal.parse (toString d) = some d :=
-  parse_complete (toString d) d (toString_isWfDecimal d) (computeValue_toString d)
+  parse_complete (toString d) d (isDecimalValue_toString d)
 
-/-- Failure characterization for `Decimal.parse`: parsing rejects exactly strings that are
-    not well-formed or whose computed value overflows the `Int64` range. -/
+/-- Failure characterization for `Decimal.parse`: parsing rejects exactly malformed strings and
+    well-formed strings whose grammar value overflows the `Int64` range. The value relation is
+    total on well-formed syntax, so these cases are exhaustive and mutually exclusive. -/
 public theorem parse_eq_none_iff (s : String) :
     Decimal.parse s = none ↔ ¬ IsWfDecimal s ∨
-    ∃ v, computeValue s = some v ∧ (v < Int64.MIN ∨ v > Int64.MAX) := by
+    ∃ v, IsDecimalValue s v ∧ (v < Int64.MIN ∨ v > Int64.MAX) := by
   constructor
-  · -- → direction: parse s = none implies malformed or overflow
+  · -- → direction: parse s = none implies malformed syntax or an out-of-range value
     intro h
     by_cases hwf : IsWfDecimal s
-    · -- s is well-formed, so it must be overflow
-      right
-      obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := isWfDecimal_iff.mp hwf
-      obtain ⟨l, hl⟩ := Option.isSome_iff_exists.mp h_lint
-      obtain ⟨r, hr⟩ := Option.isSome_iff_exists.mp h_rnat
-      -- parse returned none despite well-formedness → decimal? returned none → overflow
-      unfold Decimal.parse at h
-      rw [h_split] at h
-      simp only [show 0 < right.length ∧ right.length ≤ DECIMAL_DIGITS from ⟨h_rpos, h_rle⟩,
-        hl, hr, Decimal.decimal?, ite_true, and_true] at h
-      -- h : Int64.ofInt? (if ... then ... + ... else ... - ...) = none
-      refine ⟨_, ?_, Int64.ofInt?_none_iff.mpr h⟩
-      exact computeValue_eq_parser_value hwf h_split hl hr
-    · left; exact hwf
-  · -- ← direction: malformed or overflow implies parse s = none
-    intro h
-    rcases h with h | ⟨v, hcv, hovf⟩
-    · -- ¬ IsWfDecimal s → parse s = none
-      by_contra hne
+    · -- s has a value, so the failure came from the range check
+      obtain ⟨v, hv⟩ := isWfDecimal_iff_exists_value.mp hwf
+      rw [parse_eq_decimal?_of_isDecimalValue hv] at h
+      exact Or.inr ⟨v, hv, Int64.ofInt?_none_iff.mpr h⟩
+    · exact Or.inl hwf
+  · -- ← direction: malformed syntax, or an out-of-range value, implies parse s = none
+    rintro (h | ⟨v, hv, hovf⟩)
+    · by_contra hne
       have ⟨d, hd⟩ := Option.ne_none_iff_exists'.mp hne
-      exact absurd (parse_some_isWfDecimal s d hd) h
-    · -- overflow → parse s = none
-      -- If s is not well-formed, parse = none trivially
-      by_cases hwf : IsWfDecimal s
-      · -- s is well-formed but overflows
-        obtain ⟨left, right, h_split, h_ne, h_rpos, h_rle, h_lint, h_rnat⟩ := isWfDecimal_iff.mp hwf
-        obtain ⟨l, hl⟩ := Option.isSome_iff_exists.mp h_lint
-        obtain ⟨r, hr⟩ := Option.isSome_iff_exists.mp h_rnat
-        unfold Decimal.parse
-        rw [h_split]
-        simp only [show 0 < right.length ∧ right.length ≤ DECIMAL_DIGITS from ⟨h_rpos, h_rle⟩,
-          hl, hr, Decimal.decimal?, ite_true, and_true]
-        -- Goal: Int64.ofInt? (if ... then ... else ...) = none
-        -- computeValue s = some v is out of range, and equals this branching expression
-        have hcv' : (if !left.startsWith "-"
-            then l * Int.pow 10 DECIMAL_DIGITS + ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length)
-            else l * Int.pow 10 DECIMAL_DIGITS - ↑r * Int.pow 10 (DECIMAL_DIGITS - right.length))
-            = v := by
-          have := hcv
-          rw [computeValue_eq_parser_value hwf h_split hl hr] at this
-          exact Option.some.inj this
-        rw [hcv']
-        exact Int64.ofInt?_none_iff.mp hovf
-      · -- s is not well-formed → parse = none (same as the other branch)
-        by_contra hne
-        have ⟨d, hd⟩ := Option.ne_none_iff_exists'.mp hne
-        exact absurd (parse_some_isWfDecimal s d hd) hwf
-
-where
-  parse_some_isWfDecimal (s : String) (d : Decimal) (h : Decimal.parse s = some d) : IsWfDecimal s := by
-    unfold Decimal.parse at h
-    split at h
-    · exact absurd h (by simp)
-    · rename_i left right h_ne h_split
-      split at h
-      · rename_i l r heq_l heq_r
-        have h_len : 0 < right.length ∧ right.length ≤ DECIMAL_DIGITS := by
-          by_contra hc; simp [hc] at h
-        exact isWfDecimal_iff.mpr ⟨left, right, h_split, h_ne, h_len.1, h_len.2,
-          by rw [heq_l]; rfl, by rw [heq_r]; rfl⟩
-      · simp at h
-    · simp at h
-
-/-- Soundness of `Decimal.parse`: if parsing succeeds, then the input is well-formed and its
-    computed value is exactly the returned decimal's value. (The value is automatically in `Int64`
-    range, since `d : Decimal = Int64`, so no range conjunct is stated.) -/
-public theorem parse_sound (s : String) (d : Decimal) (h : Decimal.parse s = some d) :
-    IsWfDecimal s ∧ computeValue s = some d.toInt := by
-  -- parse succeeded, so `parse_eq_none_iff` rules out both malformedness and overflow.
-  have hnot_bad : ¬ (¬ IsWfDecimal s ∨
-      ∃ v, computeValue s = some v ∧ (v < Int64.MIN ∨ v > Int64.MAX)) := by
-    intro hbad
-    have hnone := (parse_eq_none_iff s).mpr hbad
-    simp [h] at hnone
-  have hwf : IsWfDecimal s := by
-    by_contra hnwf
-    exact hnot_bad (Or.inl hnwf)
-  -- well-formed ⇒ `computeValue s = some v` for some value `v`.
-  obtain ⟨v, hv⟩ := Option.isSome_iff_exists.mp (computeValue_isSome_of_isWfDecimal hwf)
-  have hnot_ovf : ¬ (v < Int64.MIN ∨ v > Int64.MAX) := fun hovf =>
-    hnot_bad (Or.inr ⟨v, hv, hovf⟩)
-  have hmin : Int64.MIN ≤ v := by omega
-  have hmax : v ≤ Int64.MAX := by omega
-  -- reconstruct the decimal from `v` and show it is exactly `d`.
-  let d' : Decimal := Int64.ofInt v
-  have hd'_toInt : d'.toInt = v := by
-    dsimp [d']
-    exact Int64.toInt_ofInt_of_le
-      (by simp only [Int64.MIN] at hmin ⊢; omega)
-      (by simp only [Int64.MAX] at hmax ⊢; omega)
-  have hparse' : Decimal.parse s = some d' :=
-    parse_complete s d' hwf (by rw [hv, hd'_toInt])
-  have hd_eq : d = d' := by
-    rw [h] at hparse'
-    exact Option.some.inj hparse'
-  exact ⟨hwf, by rw [hv, hd_eq, hd'_toInt]⟩
+      exact h (isWfDecimal_iff_exists_value.mpr ⟨d.toInt, parse_sound s d hd⟩)
+    · rw [parse_eq_decimal?_of_isDecimalValue hv]
+      exact Int64.ofInt?_none_iff.mp hovf
 
 /-- `toString` is injective: distinct decimals produce distinct strings. -/
 public theorem toString_injective (d d' : Decimal) (h : toString d = toString d') : d = d' := by

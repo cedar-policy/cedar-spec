@@ -59,12 +59,12 @@ private def isHexGroupB (s : String) : Bool :=
 private def isWfV4B (str : String) : Bool :=
   match str.splitToList (· = '/') with
   | [addr] => wfAddr addr
-  | [addr, p] => wfAddr addr && isCanonicalNatB p && p.length ≤ 2 && numValue p ≤ 32
+  | [addr, p] => wfAddr addr && isCanonicalNatB p && p.length ≤ 2 && natOf p ≤ 32
   | _ => false
   where wfAddr (addr : String) : Bool :=
     match addr.splitToList (· = '.') with
     | [g0, g1, g2, g3] =>
-      [g0, g1, g2, g3].all (fun g => isCanonicalNatB g && g.length ≤ 3 && numValue g ≤ 255)
+      [g0, g1, g2, g3].all (fun g => isCanonicalNatB g && g.length ≤ 3 && natOf g ≤ 255)
     | _ => false
 
 /-- Mirror of `IsWfV6`: full 8-group form or one `::` with the sides totalling < 8 groups,
@@ -72,7 +72,7 @@ private def isWfV4B (str : String) : Bool :=
 private def isWfV6B (str : String) : Bool :=
   match str.splitToList (· = '/') with
   | [addr] => wfAddr addr
-  | [addr, p] => wfAddr addr && isCanonicalNatB p && p.length ≤ 3 && numValue p ≤ 128
+  | [addr, p] => wfAddr addr && isCanonicalNatB p && p.length ≤ 3 && natOf p ≤ 128
   | _ => false
   where
     sideGroups (s : String) : Option (List String) :=
