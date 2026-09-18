@@ -138,8 +138,8 @@ test = false
 doc = false
 
 [[bin]]
-name = "lean-parser-drt"
-path = "fuzz_targets/lean-parser-drt.rs"
+name = "policy-parser-drt"
+path = "fuzz_targets/policy-parser-drt.rs"
 test = false
 doc = false
 
