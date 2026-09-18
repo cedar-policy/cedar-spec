@@ -726,3 +726,25 @@ public def Policy.toPolicy? : Policy → Option Spec.Policy
 
 public def Policies.toPolicies? (ps : Policies) : Option Spec.Policies := do
   ps.ps.mapM Policy.toPolicy?
+
+/--
+  Assign positional policy IDs `policy0`, `policy1`, ... to a list of policies,
+  overwriting whatever id each policy currently carries.
+
+  This matches Cedar's Rust parser, which assigns IDs purely by position at
+  CST->AST conversion (`cst_to_ast.rs`, `with_generated_policyids`:
+  `format!("policy{count}")`) and does *not* derive the id from any `@id`
+  annotation. The Lean policy parser leaves every policy's id empty (`""`), so
+  this step is required for the parsed policy set to match Rust's ids.
+-/
+public def assignPositionalIds (ps : Spec.Policies) : Spec.Policies :=
+  ps.zipIdx.map (fun (p, i) => { p with id := s!"policy{i}" })
+
+/--
+  Convert `cst::Policies` to `Spec.Policies`, assigning positional policy IDs
+  (`policy0`, `policy1`, ...) as Cedar's Rust parser does. This is the form a
+  pure-Lean tool (CLI or FFI) should use so that policy IDs match Rust.
+-/
+public def Policies.toPoliciesWithIds? (ps : Policies) : Option Spec.Policies := do
+  let policies ← ps.toPolicies?
+  some (assignPositionalIds policies)

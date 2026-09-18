@@ -17,6 +17,7 @@
 pub use libfuzzer_sys::fuzz_target;
 
 pub mod abac;
+pub mod is_authorized_str;
 pub mod props;
 pub mod proto_gen;
 pub mod pst_equiv;

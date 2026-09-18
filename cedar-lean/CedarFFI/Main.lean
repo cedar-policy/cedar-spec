@@ -936,7 +936,7 @@ def parseResidualReauthorizationRequest (req: ByteArray):
 def parsePoliciesPipeline (input : String) : Option Spec.Policies := do
   let toks ← (Cedar.Frontend.Parsers.PolicyLexer.tokenize input).toOption
   let cst ← Cedar.Frontend.Parsers.PolicyParser.parse toks
-  Cedar.Frontend.Cst.Policies.toPolicies? cst
+  Cedar.Frontend.Cst.Policies.toPoliciesWithIds? cst
 
 /--
   `req`: the raw policy source text, as a UTF-8 `ByteArray`
@@ -951,7 +951,65 @@ def parsePoliciesPipeline (input : String) : Option Spec.Policies := do
       | none => .error "failed to decode input as UTF-8"
     runAndTime (λ () => (parsePoliciesPipeline input).isSome)
 
---------------------------------- FFI Test Utils ---------------------------------
+/--
+  `req`: binary protobuf for an `AuthorizationRequestP`, i.e. a request whose
+  policies are supplied as raw Cedar source text (`policyText`) rather than
+  pre-parsed.
+
+  Parses the policy text with Lean's own policy parser (`parsePoliciesPipeline`)
+  and then authorizes, so this exercises Lean's parse -> authorize path end to
+  end. Returns a string containing JSON encoding `Timed AuthorizationResponse`.
+
+  Returns an error if the protobuf could not be parsed or if the policy text
+  failed to parse/translate to a `Spec.Policies` AST.
+-/
+@[export isAuthorizedP] unsafe def isAuthorizedPFFI (req : ByteArray) : String :=
+  runFfiM do
+    let p ← (@Proto.Message.interpret? AuthorizationRequestP) req |>.mapError (s!"failed to parse input: {·}")
+    let policies ← match parsePoliciesPipeline p.policyText with
+      | some ps => .ok ps
+      | none => .error s!"failed to parse policies from text: {p.policyText}"
+    runAndTime (λ () => isAuthorized p.request p.entities policies)
+
+/--
+  Fully text/JSON-based authorization, mirroring `isAuthorized` but with every
+  input entering as a string, deserialized entirely on the Lean side:
+
+  - `policyTextBytes`: raw Cedar policy source text (UTF-8), parsed by Lean's
+    own policy parser (`parsePoliciesPipeline`).
+  - `entitiesJsonBytes`: Cedar entities JSON (UTF-8), read by the pure-Lean
+    `Cedar.Frontend.Json.entitiesOfJsonStr`.
+  - `requestJsonBytes`: Cedar request JSON (UTF-8), read by the pure-Lean
+    `Cedar.Frontend.Json.requestOfJsonStr`.
+
+  This exercises Lean's own text/JSON ingestion end to end (verified policy
+  parser + `Lean.Data.Json`-based entity/request readers) and then authorizes,
+  with no protobuf in the loop. The readers are plain `Spec`-level functions,
+  reusable by a future pure-Lean CLI.
+
+  Returns a string containing JSON encoding `Timed AuthorizationResponse`, or an
+  error if any of the three inputs fails to decode/parse.
+-/
+@[export isAuthorizedStr] unsafe def isAuthorizedStrFFI
+    (policyTextBytes entitiesJsonBytes requestJsonBytes : ByteArray) : String :=
+  runFfiM do
+    let policyText ← match String.fromUTF8? policyTextBytes with
+      | some s => .ok s
+      | none => .error "failed to decode policy text as UTF-8"
+    let entitiesJson ← match String.fromUTF8? entitiesJsonBytes with
+      | some s => .ok s
+      | none => .error "failed to decode entities JSON as UTF-8"
+    let requestJson ← match String.fromUTF8? requestJsonBytes with
+      | some s => .ok s
+      | none => .error "failed to decode request JSON as UTF-8"
+    let policies ← match parsePoliciesPipeline policyText with
+      | some ps => .ok ps
+      | none => .error s!"failed to parse policies from text: {policyText}"
+    let entities ← Cedar.Frontend.Json.entitiesOfJsonStr entitiesJson
+      |>.mapError (s!"failed to parse entities JSON: {·}")
+    let request ← Cedar.Frontend.Json.requestOfJsonStr requestJson
+      |>.mapError (s!"failed to parse request JSON: {·}")
+    runAndTime (λ () => isAuthorized request entities policies)
 /- Some definitions used to test lean object decoding in Rust -/
 
 @[export ffiTestString] def ffiTestString : String := "ffiTestString"

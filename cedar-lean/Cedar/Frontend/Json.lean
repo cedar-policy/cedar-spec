@@ -16,12 +16,10 @@
 
 module
 
-/- Those are the modules part of Cedar's frontend (e.g. parsers and internal representation
-     transformations).
-   As of this writing, only the CST for policies is implemented in Lean.
- -/
+/- Pure-Lean JSON readers for Cedar `Spec` values, entities, and requests,
+   matching Cedar's on-the-wire JSON formats. Frontend/ingestion code, reusable
+   by any pure-Lean tool (e.g. a future CLI), not just the FFI. -/
 
-public import Cedar.Frontend.Cst
-public import Cedar.Frontend.Parsers.PolicyLexer
-public import Cedar.Frontend.Parsers.PolicyParser
-public import Cedar.Frontend.Json
+public import Cedar.Frontend.Json.Value
+public import Cedar.Frontend.Json.Entities
+public import Cedar.Frontend.Json.Request
