@@ -11,6 +11,8 @@ The table below lists all available fuzz targets, including which component of t
 | ----------- | ----------- | ----------- | ----------- |
 | [`abac-type-directed`](fuzz/fuzz_targets/abac-type-directed.rs) | Authorizer | DRT | Diff test authorizer on ABAC policies using (mostly) well-typed inputs |
 | [`abac`](fuzz/fuzz_targets/abac.rs) | Authorizer | DRT | Diff test authorizer on ABAC policies |
+| [`is-authorized-str`](fuzz/fuzz_targets/is-authorized-str.rs) | Authorizer, policy parser, entity/request JSON readers | DRT | Diff test the Lean `isAuthorizedStr` FFI: policies as Cedar text, entities and request as JSON, all parsed/deserialized on the Lean side. Compares decision + determining + erroring policies against Rust over the same three strings |
+| [`is-authorized-str-bytes`](fuzz/fuzz_targets/is-authorized-str-bytes.rs) | Authorizer, policy parser, entity/request JSON readers | DRT | The same as `is-authorized-str`, but the three inputs are arbitrary bytes instead of serialized from a generated input. Fails on any Rust/Lean difference, including accept/reject divergence |
 | [`eval-type-directed`](fuzz/fuzz_targets/eval-type-directed.rs) | Evaluator | DRT | Diff test evaluator on (mostly) well-typed expressions |
 | [`rbac-authorizer`](fuzz/fuzz_targets/rbac-authorizer.rs) | Authorizer | DRT | Test for correct authorization responses over a set of simple policies |
 | [`rbac`](fuzz/fuzz_targets/rbac.rs) | Authorizer | DRT | Diff test authorizer on sets of RBAC policies, including template instantiations |

@@ -17,6 +17,7 @@
 import CedarProto.ActionConstraint
 import CedarProto.ActionDecl
 import CedarProto.AuthorizationRequest
+import CedarProto.AuthorizationRequestP
 import CedarProto.Data
 import CedarProto.Entities
 import CedarProto.Entity

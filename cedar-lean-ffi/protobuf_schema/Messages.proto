@@ -31,6 +31,16 @@ message AuthorizationRequest {
     cedar_policy_core.Entities entities = 3;
 }
 
+// Like `AuthorizationRequest`, but the policies are supplied as raw Cedar
+// source text. Lean parses the text with its own (verified) policy parser and
+// then authorizes, so this exercises Lean's parse -> authorize path end to end
+// rather than accepting pre-parsed policies.
+message AuthorizationRequestFromPolicyText {
+    cedar_policy_core.Request request = 1;
+    string policy_text = 2;
+    cedar_policy_core.Entities entities = 3;
+}
+
 message EvaluationRequestChecked {
     cedar_policy_core.Expr expr = 1;
     cedar_policy_core.Request request = 2;

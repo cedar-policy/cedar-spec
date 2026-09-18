@@ -78,6 +78,18 @@ test = false
 doc = false
 
 [[bin]]
+name = "is-authorized-str"
+path = "fuzz_targets/is-authorized-str.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "is-authorized-str-bytes"
+path = "fuzz_targets/is-authorized-str-bytes.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "roundtrip"
 path = "fuzz_targets/roundtrip.rs"
 test = false
