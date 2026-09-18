@@ -57,7 +57,7 @@ theorem parseNumV4_eq_some {s : String} (hwf : IsCanonicalNat s ∧ s.length ≤
   by
   unfold parseNumV4
   dsimp only
-  rw [if_pos]
+  rw [ite_eq_left]
   · cases hnat : toNat?' s with
     | none =>
       have hs := hwf.1.1.toNat?'_isSome
@@ -148,7 +148,7 @@ theorem parseNumV6_eq_some {s : String} (hwf : IsHexGroup s) :
       Nat.pow_le_pow_right (by omega) hwf.2.1
     omega
   unfold parseNumV6
-  rw [if_pos, if_pos hbound]
+  rw [ite_eq_left, ite_eq_left hbound]
   · simp [hexValue, String.foldl_eq_foldl_toList]
   · simp only [Bool.and_eq_true, decide_eq_true_eq]
     exact ⟨⟨hwf.1, hwf.2.1⟩, by
@@ -166,7 +166,7 @@ theorem parseNumV6_isSome_wf {s : String} (h : (parseNumV6 s).isSome) : IsHexGro
       simpa only [List.all_eq_true] using hsyn.2⟩
   ·
     simp only [parseNumV6] at h
-    rw [if_neg hsyn] at h
+    rw [ite_eq_right hsyn] at h
     simp at h
 
 /-- `parsePrefixNat` accepts exactly the canonical numbers with at most `digits` digits and value
@@ -176,7 +176,7 @@ theorem parsePrefixNat_eq_some {s : String} {digits size : Nat}
     (parsePrefixNat s digits size).isSome :=
   by
   unfold parsePrefixNat
-  rw [if_pos]
+  rw [ite_eq_left]
   · cases hnat : toNat?' s with
     | none =>
       have hs := hwf.1.1.toNat?'_isSome
@@ -192,7 +192,7 @@ private theorem parsePrefixNat_eq_value {s : String} {digits size : Nat}
     (hwf : IsCanonicalNat s ∧ s.length ≤ digits ∧ natOf s ≤ size) :
     parsePrefixNat s digits size = some (Fin.ofNat (size + 1) (natOf s)) := by
   unfold parsePrefixNat
-  rw [if_pos]
+  rw [ite_eq_left]
   · cases hnat : toNat?' s with
     | none =>
       have hs := hwf.1.1.toNat?'_isSome
@@ -655,7 +655,7 @@ private theorem parseNumSegsV6_eq_some {parts : List String}
       have hnonempty : String.intercalate ":" (part :: parts) ≠ "" := by
         cases parts <;> simp [hpartNonempty]
       unfold parseNumSegsV6
-      rw [if_neg (by simpa [String.isEmpty_iff] using hnonempty), hsplit]
+      rw [ite_eq_right (by simpa [String.isEmpty_iff] using hnonempty), hsplit]
       exact mapM_parseNumV6_eq_some hall
 
 private theorem parseNumSegsV6_some_wf {str : String} {values : List (BitVec 16)}
@@ -750,7 +750,7 @@ private theorem splitOnAux_doubleColon_eq_scan :
     simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, Bool.false_eq_true,
       ↓reduceIte, List.append_nil, splitDoubleColonScan]
     rw [String.splitOnAux]
-    rw [if_pos]
+    rw [ite_eq_left]
     · rw [String.utf8Len_append]
       have hextract :
           String.Pos.Raw.extract (String.ofList (pre ++ current))
@@ -769,7 +769,7 @@ private theorem splitOnAux_doubleColon_eq_scan :
           ⟨String.utf8Len (pre ++ current)⟩ := by
       simpa using
         (not_congr (String.atEnd_of_valid (pre ++ current) (':' :: rest))).2 (by simp)
-    rw [String.splitOnAux, if_neg hnot]
+    rw [String.splitOnAux, ite_eq_right hnot]
     rw [show
       String.Pos.Raw.get (String.ofList ((pre ++ current) ++ ':' :: rest))
           ⟨String.utf8Len (pre ++ current)⟩ = ':' by
@@ -782,24 +782,24 @@ private theorem splitOnAux_doubleColon_eq_scan :
             ⟨String.utf8Len (pre ++ current) + ':'.utf8Size⟩ by
         simpa using String.next_of_valid (pre ++ current) ':' rest]
     rw [show String.Pos.Raw.next "::" 0 = ⟨1⟩ by rfl]
-    rw [if_neg (show ¬String.Pos.Raw.atEnd "::" ⟨1⟩ by decide)]
+    rw [ite_eq_right (show ¬String.Pos.Raw.atEnd "::" ⟨1⟩ by decide)]
     simpa [splitDoubleColonScannedChars, splitDoubleColonSepPos, String.utf8Len_append,
       List.append_assoc, Nat.add_assoc] using ih pre acc
   case case3 current c rest hc ih =>
     simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, Bool.false_eq_true,
-      ↓reduceIte, List.append_nil, splitDoubleColonScan, if_neg hc]
+      ↓reduceIte, List.append_nil, splitDoubleColonScan, ite_eq_right hc]
     have hnot :
         ¬String.Pos.Raw.atEnd (String.ofList ((pre ++ current) ++ c :: rest))
           ⟨String.utf8Len (pre ++ current)⟩ := by
       simpa using
         (not_congr (String.atEnd_of_valid (pre ++ current) (c :: rest))).2 (by simp)
-    rw [String.splitOnAux, if_neg hnot]
+    rw [String.splitOnAux, ite_eq_right hnot]
     rw [show
       String.Pos.Raw.get (String.ofList ((pre ++ current) ++ c :: rest))
           ⟨String.utf8Len (pre ++ current)⟩ = c by
         simpa using String.get_of_valid (pre ++ current) (c :: rest)]
     rw [show String.Pos.Raw.get "::" 0 = ':' by rfl]
-    rw [if_neg (by simpa using hc)]
+    rw [ite_eq_right (by simpa using hc)]
     simp only [String.Pos.Raw.unoffsetBy_zero]
     rw [show
       String.Pos.Raw.next (String.ofList ((pre ++ current) ++ c :: rest))
@@ -812,7 +812,7 @@ private theorem splitOnAux_doubleColon_eq_scan :
     simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, ↓reduceIte,
       List.append_nil, splitDoubleColonScan]
     rw [String.splitOnAux]
-    rw [if_pos]
+    rw [ite_eq_left]
     · simp only [String.utf8Len_append]
       have hextract :
           String.Pos.Raw.extract (String.ofList (pre ++ current ++ [':']))
@@ -836,7 +836,7 @@ private theorem splitOnAux_doubleColon_eq_scan :
         (not_congr
           (String.atEnd_of_valid (pre ++ current ++ [':']) (':' :: rest))).2
           (by simp)
-    rw [String.splitOnAux, if_neg hnot]
+    rw [String.splitOnAux, ite_eq_right hnot]
     rw [show
       String.Pos.Raw.get
           (String.ofList ((pre ++ current ++ [':']) ++ ':' :: rest))
@@ -851,7 +851,7 @@ private theorem splitOnAux_doubleColon_eq_scan :
             ⟨String.utf8Len (pre ++ current ++ [':']) + ':'.utf8Size⟩ by
         simpa using String.next_of_valid (pre ++ current ++ [':']) ':' rest]
     rw [show String.Pos.Raw.next "::" ⟨1⟩ = ⟨2⟩ by rfl]
-    rw [if_pos (show String.Pos.Raw.atEnd "::" ⟨2⟩ by decide)]
+    rw [ite_eq_left (show String.Pos.Raw.atEnd "::" ⟨2⟩ by decide)]
     have hunoffset :
         (⟨String.utf8Len (pre ++ current ++ [':']) + ':'.utf8Size⟩ :
           String.Pos.Raw).unoffsetBy ⟨2⟩ =
@@ -873,7 +873,7 @@ private theorem splitOnAux_doubleColon_eq_scan :
         ih (pre ++ current ++ [':', ':']) (String.ofList current :: acc)
   case case6 current c rest hc ih =>
     simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, ↓reduceIte,
-      splitDoubleColonScan, if_neg hc]
+      splitDoubleColonScan, ite_eq_right hc]
     have hnot :
         ¬String.Pos.Raw.atEnd
           (String.ofList ((pre ++ current ++ [':']) ++ c :: rest))
@@ -882,14 +882,14 @@ private theorem splitOnAux_doubleColon_eq_scan :
         (not_congr
           (String.atEnd_of_valid (pre ++ current ++ [':']) (c :: rest))).2
           (by simp)
-    rw [String.splitOnAux, if_neg hnot]
+    rw [String.splitOnAux, ite_eq_right hnot]
     rw [show
       String.Pos.Raw.get
           (String.ofList ((pre ++ current ++ [':']) ++ c :: rest))
           ⟨String.utf8Len (pre ++ current ++ [':'])⟩ = c by
         simpa using String.get_of_valid (pre ++ current ++ [':']) (c :: rest)]
     rw [show String.Pos.Raw.get "::" ⟨1⟩ = ':' by rfl]
-    rw [if_neg (by simpa using hc)]
+    rw [ite_eq_right (by simpa using hc)]
     have hunoffset :
         (⟨String.utf8Len (pre ++ current ++ [':'])⟩ :
           String.Pos.Raw).unoffsetBy ⟨1⟩ =
@@ -904,7 +904,7 @@ private theorem splitOnAux_doubleColon_eq_scan :
             ⟨String.utf8Len (pre ++ current) + ':'.utf8Size⟩ by
         have h := String.next_of_valid (pre ++ current) ':' (c :: rest)
         simpa [List.append_assoc] using h]
-    simpa [splitDoubleColonScan, if_neg hc, splitDoubleColonScannedChars,
+    simpa [splitDoubleColonScan, ite_eq_right hc, splitDoubleColonScannedChars,
       splitDoubleColonSepPos, String.utf8Len_append, List.append_assoc, Nat.add_assoc] using
         ih pre acc
 
@@ -912,7 +912,7 @@ private theorem splitOnAux_doubleColon_eq_scan :
 public theorem splitOn_doubleColon_eq (s : String) :
     s.splitOn "::" = splitDoubleColonModel s := by
   unfold String.splitOn
-  rw [if_neg (by decide)]
+  rw [ite_eq_right (by decide)]
   have h := splitOnAux_doubleColon_eq_scan false [] s.toList [] []
   simpa [splitDoubleColonScannedChars, splitDoubleColonSepPos,
     splitDoubleColonScan_eq_model, splitDoubleColonModelState, splitDoubleColonModel] using h
@@ -1122,7 +1122,7 @@ theorem parseSegsV6_asString {v : V6Components} (hsyn : v.syntaxWf) :
       simp only
       rw [hleftParse, hrightParse]
       simp only [bind, Option.bind]
-      rw [if_pos hvalueCount]
+      rw [ite_eq_left hvalueCount]
       change
         finishV6
             (groupValues left ++

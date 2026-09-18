@@ -101,7 +101,7 @@ public theorem parse_complete (str : String) (d : Datetime)
   rw [dateContainsLeapSeconds_asString hsyn hcon, checkComponentLen_asString hsyn,
     tzOffsetMinsLt60_asString hsyn hcon]
   simp only [Bool.false_eq_true, reduceIte, Bool.not_true]
-  simp only [bind, Option.bind, hzt, hrange, if_pos]
+  simp only [bind, Option.bind, hzt, hrange, ite_eq_left]
   -- Final: `datetime? (zt value) = some d`, since that value is `c.toMillis = d.val.toInt`.
   show datetime? zt.toTimestamp.toMillisecondsSinceUnixEpoch.toInt = some d
   rw [hztval, ← hvc]

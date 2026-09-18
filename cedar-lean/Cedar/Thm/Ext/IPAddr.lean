@@ -259,7 +259,7 @@ private theorem v4Prefix_of_toNat (pre : IPv4Prefix) :
       have hbound := BitVec.isLt pre
       change pre.toNat < 2 ^ 5 at hbound
       change (if pre.toNat < 32 then some (BitVec.ofNat 5 pre.toNat) else none) = some pre
-      rw [if_pos (by omega)]
+      rw [ite_eq_left (by omega)]
       congr
       apply BitVec.eq_of_toNat_eq
       simp
@@ -399,7 +399,7 @@ private theorem toHexNat_digitChar {n : Nat} (h : n < 16) :
     have hdigit : n.digitChar.isDigit = true := by
       rw [Nat.isDigit_digitChar]
       simp [hten]
-    rw [if_pos hdigit]
+    rw [ite_eq_left hdigit]
     exact Nat.toNat_digitChar_sub_48_of_lt_ten hten
   · have hn : n = 10 ∨ n = 11 ∨ n = 12 ∨ n = 13 ∨ n = 14 ∨ n = 15 := by omega
     rcases hn with rfl | rfl | rfl | rfl | rfl | rfl
@@ -474,7 +474,7 @@ private theorem v6Prefix_of_toNat (pre : IPv6Prefix) :
       have hbound := BitVec.isLt pre
       change pre.toNat < 2 ^ 7 at hbound
       change (if pre.toNat < 128 then some (BitVec.ofNat 7 pre.toNat) else none) = some pre
-      rw [if_pos hbound]
+      rw [ite_eq_left hbound]
       congr
       apply BitVec.eq_of_toNat_eq
       simp

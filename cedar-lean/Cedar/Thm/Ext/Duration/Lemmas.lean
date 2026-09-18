@@ -88,7 +88,7 @@ private theorem extractPair_eq_of_some (s suffix : String) (p : Nat × String)
   unfold extractTrailingQuantity at h
   unfold extractPair
   by_cases hew : s.endsWith suffix
-  · simp only [hew, if_true] at h ⊢
+  · simp only [hew, ite_true] at h ⊢
     cases hn : toNat?' (String.ofList
         ((List.takeWhile Char.isDigit (s.dropEnd suffix.length).toString.toList.reverse).reverse)) with
     | none => rw [hn] at h; simp at h
@@ -239,7 +239,7 @@ private theorem parseUnit?_none_of_extract_none (isNeg : Bool) (s suffix : Strin
   unfold parseUnit?_norm
   unfold extractTrailingQuantity at h
   by_cases hew : s.endsWith suffix
-  · simp only [hew, if_true] at h ⊢
+  · simp only [hew, ite_true] at h ⊢
     cases hn : toNat?' (String.ofList
         ((List.takeWhile Char.isDigit (s.dropEnd suffix.length).toString.toList.reverse).reverse)) with
     | none =>

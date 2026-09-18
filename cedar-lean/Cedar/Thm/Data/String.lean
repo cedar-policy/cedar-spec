@@ -196,7 +196,7 @@ theorem splitOnPPrepend_one_sep (P : α → Bool) (as bs acc : List α) (sep : �
     List.splitOnPPrepend P (as ++ sep :: bs) acc = (acc.reverse ++ as) :: [bs] := by
   induction as generalizing acc with
   | nil =>
-    rw [List.nil_append, List.splitOnPPrepend_cons_eq_if, hsep]
+    rw [List.nil_append, List.splitOnPPrepend_cons_eq_ite, hsep]
     rw [List.splitOnP_eq_splitOnPPrepend, splitOnPPrepend_no_sep P bs [] hbs]
     simp
   | cons a t ih =>
@@ -246,7 +246,7 @@ theorem splitOnPPrepend_two_sep (P : α → Bool) (as bs cs acc : List α) (sep 
     List.splitOnPPrepend P (as ++ sep :: (bs ++ sep :: cs)) acc = (acc.reverse ++ as) :: bs :: [cs] := by
   induction as generalizing acc with
   | nil =>
-    rw [List.nil_append, List.splitOnPPrepend_cons_eq_if, hsep]
+    rw [List.nil_append, List.splitOnPPrepend_cons_eq_ite, hsep]
     rw [List.splitOnP_eq_splitOnPPrepend, splitOnPPrepend_one_sep P bs cs [] sep hsep hbs hcs]
     simp
   | cons a t ih =>

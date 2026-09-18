@@ -4,12 +4,12 @@ defaultTargets = ["CedarDoc", "generate-doc"]
 [[require]]
 name = "verso"
 git = "https://github.com/leanprover/verso"
-rev = "v4.33.0"
+rev = "v4.34.0"
 
 [[require]]
 name = "subverso"
 git = "https://github.com/leanprover/subverso"
-rev = "3a75ede05278806fd3249bb0c97a6fb5777a4f7d"
+rev = "9b90b7f938d6169246325df002351014f49945ef"
 
 [[require]]
 name = "Cedar"

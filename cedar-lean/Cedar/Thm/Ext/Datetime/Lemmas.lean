@@ -558,7 +558,7 @@ public theorem toString?_eq_none_of_not_representable (d : Cedar.Spec.Ext.Dateti
     toString? d = none := by
   have hlocal : canonicalLocalTime? d.val.toInt = none := by
     unfold canonicalLocalTime?
-    rw [if_pos h]
+    rw [ite_eq_left h]
   unfold toString? canonicalComponents?
   rw [hlocal]
   rfl
@@ -657,7 +657,7 @@ theorem exactlyChars_go_digits (L : List Char) (hdig : ∀ c ∈ L, c.isDigit = 
   | nil =>
     have hge : count ≥ size := by simp at hcnt; omega
     refine ⟨p, ?_, ?_⟩
-    · rw [exactlyChars_go_eq, if_pos hge]
+    · rw [exactlyChars_go_eq, ite_eq_left hge]
       simp only [String.ofList_nil, String.append_empty, Std.Internal.Parsec.pure]
     · simpa using hsplit
   | cons c L' ih =>
@@ -672,14 +672,14 @@ theorem exactlyChars_go_digits (L : List Char) (hdig : ∀ c ∈ L, c.isDigit = 
       rw [String.singleton_append_inj] at ht
       exact ht.1.symm
     have hcdig : c.isDigit = true := hdig c (List.mem_cons_self ..)
-    rw [exactlyChars_go_eq, if_neg hlt, parsec_bind_app]
+    rw [exactlyChars_go_eq, ite_eq_right hlt, parsec_bind_app]
     have hhn : Input.hasNext (⟨s, p⟩ : ParseIt) = true := (hasNext_iff s p).mpr hp
     rw [satisfy_eq]
-    simp only [hhn, dif_pos]
+    simp only [hhn, dite_eq_left]
     rw [curr'_eq, next'_eq]
     have hcurr : Char.isDigit (p.get ((hasNext_iff s p).mp hhn)) = true := by
       rw [hgetc]; exact hcdig
-    simp only [hcurr, if_pos]
+    simp only [hcurr, ite_eq_left]
     rw [show (p.get ((hasNext_iff s p).mp hhn)) = c from hgetc]
     have hcnt' : size - count.succ = L'.length := by
       simp only [List.length_cons] at hcnt; omega
@@ -738,7 +738,7 @@ theorem toNat!_eq_getD_toNat? (s : String) (h : s.isNat = true) :
   unfold String.toNat! String.toNat?
   unfold String.Slice.toNat! String.Slice.toNat?
   rw [String.isNat_toSlice]
-  simp only [h, if_true, Option.getD_some]
+  simp only [h, ite_true, Option.getD_some]
 
 /-- On a digit string (which contains no `'_'`), Cedar's underscore-rejecting `toNat?'` coincides
     with the stdlib `String.toNat?`. -/
@@ -839,7 +839,7 @@ theorem parseWith_month {digits rest : String} (config : Std.Time.FormatConfig)
   unfold parseNatToBounded parseFlexibleNum
   simp only [Nat.reduceEqDiff, ↓reduceIte, bind, Bind.bind]
   rw [parsec_bind_app, hpar]
-  simp only [hbound, and_self, dif_pos]
+  simp only [hbound, and_self, dite_eq_left]
   rfl
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal in
@@ -861,7 +861,7 @@ theorem parseWith_day {digits rest : String} (config : Std.Time.FormatConfig)
   unfold parseNatToBounded parseFlexibleNum
   simp only [Nat.reduceEqDiff, ↓reduceIte, bind, Bind.bind]
   rw [parsec_bind_app, hpar]
-  simp only [hbound, and_self, dif_pos]
+  simp only [hbound, and_self, dite_eq_left]
   rfl
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal in
@@ -881,7 +881,7 @@ theorem parseWith_hour {digits rest : String} (config : Std.Time.FormatConfig)
   unfold parseNatToBounded parseFlexibleNum
   simp only [Nat.reduceEqDiff, ↓reduceIte, bind, Bind.bind]
   rw [parsec_bind_app, hpar]
-  simp only [hbound', and_self, dif_pos]
+  simp only [hbound', and_self, dite_eq_left]
   rfl
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal in
@@ -901,7 +901,7 @@ theorem parseWith_minute {digits rest : String} (config : Std.Time.FormatConfig)
   unfold parseNatToBounded parseFlexibleNum
   simp only [Nat.reduceEqDiff, ↓reduceIte, bind, Bind.bind]
   rw [parsec_bind_app, hpar]
-  simp only [hbound', and_self, dif_pos]
+  simp only [hbound', and_self, dite_eq_left]
   rfl
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal in
@@ -934,7 +934,7 @@ theorem parseWith_second {digits rest : String} (config : Std.Time.FormatConfig)
     unfold parseNatToBounded parseFlexibleNum
     simp only [Nat.reduceEqDiff, ↓reduceIte, bind, Bind.bind]
     rw [parsec_bind_app, hpar]
-    simp only [hbound', and_self, dif_pos]
+    simp only [hbound', and_self, dite_eq_left]
     rfl
   show (Std.Internal.Parsec.bind
         (parseNatToBounded (parseFlexibleNum 2) : Std.Internal.Parsec ParseIt (Bounded.LE 0 59))
@@ -1051,7 +1051,7 @@ theorem parseWith_fraction {sss rest : String} (config : Std.Time.FormatConfig)
   simp only [bind, Bind.bind]
   rw [parsec_bind_app, parsec_map_app, parsec_map_app, hpar]
   simp only []
-  rw [hfval, dif_pos hbound]
+  rw [hfval, dite_eq_left hbound]
   rfl
 
 open Std.Internal.Parsec Std.Internal.Parsec.String in
@@ -1159,7 +1159,7 @@ theorem parseWith_month_at {s : String} (p : s.Pos) (pre rest digits : String)
   unfold parseNatToBounded parseFlexibleNum
   simp only [Nat.reduceEqDiff, ↓reduceIte, bind, Bind.bind]
   rw [parsec_bind_app, hpar]
-  simp only [hbound, and_self, dif_pos]
+  simp only [hbound, and_self, dite_eq_left]
   rfl
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal in
@@ -1179,7 +1179,7 @@ theorem parseWith_day_at {s : String} (p : s.Pos) (pre rest digits : String)
   unfold parseNatToBounded parseFlexibleNum
   simp only [Nat.reduceEqDiff, ↓reduceIte, bind, Bind.bind]
   rw [parsec_bind_app, hpar]
-  simp only [hbound, and_self, dif_pos]
+  simp only [hbound, and_self, dite_eq_left]
   rfl
 
 open Std.Internal.Parsec Std.Internal.Parsec.String in
@@ -1239,10 +1239,10 @@ theorem pchar_at {s : String} (p : s.Pos) (pre rest : String) (c : Char)
   refine ⟨p.next hp, ?_, hnext⟩
   rw [pchar_eq]
   have hhn : Input.hasNext (⟨s, p⟩ : ParseIt) = true := (hasNext_iff s p).mpr hp
-  simp only [hhn, dif_pos]
+  simp only [hhn, dite_eq_left]
   rw [curr'_eq, next'_eq]
   have hcurr : p.get ((hasNext_iff s p).mp hhn) = c := hgetc
-  simp only [hcurr, if_pos]
+  simp only [hcurr, ite_eq_left]
 
 open Std.Internal.Parsec Std.Internal.Parsec.String in
 /-- `satisfy Char.isDigit` consumes a known digit at an interior position. -/
@@ -1262,10 +1262,10 @@ theorem satisfy_digit_at {s : String} (p : s.Pos) (pre rest : String) (c : Char)
   refine ⟨p.next hp, ?_, hnext⟩
   rw [satisfy_eq]
   have hhn : Input.hasNext (⟨s, p⟩ : ParseIt) = true := (hasNext_iff s p).mpr hp
-  simp only [hhn, dif_pos]
+  simp only [hhn, dite_eq_left]
   rw [curr'_eq, next'_eq]
   have hcurr : p.get ((hasNext_iff s p).mp hhn) = c := hgetc
-  simp only [hcurr, hdig, if_true]
+  simp only [hcurr, hdig, ite_true]
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time in
 /-- On a known two-digit field, `parseOneOrTwoNum` consumes both digits. -/
@@ -1359,13 +1359,13 @@ theorem sign_at {s : String} (p : s.Pos) (pre rest : String) (neg : Bool)
       p'.Splits (pre ++ String.singleton (if neg then '-' else '+')) rest := by
   cases neg with
   | false =>
-    simp only [Bool.false_eq_true, if_false] at hsplit ⊢
+    simp only [Bool.false_eq_true, ite_false] at hsplit ⊢
     obtain ⟨p', hpar, hsp⟩ := pchar_at p pre rest '+' hsplit
     refine ⟨p', ?_, hsp⟩
     rw [orElse_app, seqRight_app, hpar]
     rfl
   | true =>
-    simp only [if_true] at hsplit ⊢
+    simp only [ite_true] at hsplit ⊢
     obtain ⟨p', hpar, hsp⟩ := pchar_at p pre rest '-' hsplit
     refine ⟨p', ?_, hsp⟩
     have hp : p ≠ s.endPos := hsplit.ne_endPos_of_singleton
@@ -1377,10 +1377,10 @@ theorem sign_at {s : String} (p : s.Pos) (pre rest : String) (neg : Bool)
     have hplus : pchar '+' (⟨s, p⟩ : ParseIt)
         = ParseResult.error ⟨s, p⟩ (.other s!"expected: '{'+'}'") := by
       rw [pchar_eq]
-      simp only [hhn, dif_pos]
+      simp only [hhn, dite_eq_left]
       rw [curr'_eq]
       have hne : ¬ (p.get ((hasNext_iff s p).mp hhn) = '+') := by rw [hgetc]; decide
-      simp only [hne, if_false]
+      simp only [hne, ite_false]
     rw [orElse_app, seqRight_app, hplus]
     simp only [Input.pos]
     rw [seqRight_app, hpar]
@@ -1428,10 +1428,10 @@ theorem parseWith_hourMinute_at {s : String} (p : s.Pos) (pre rest hh mm : Strin
   have hhle : ¬ (((natOf hh : Int)) < 0 ∨ ((natOf hh : Int)) > 23) := by
     have : ((natOf hh : Int)) ≤ 23 := by exact_mod_cast hhb
     omega
-  simp only [hhle, if_false]
+  simp only [hhle, ite_false]
   rw [parsec_bind_app, parsec_map_app, seqRight_app]
   have hcolon : (if false = true then pchar ':' else Pure.pure ':') (⟨s, p2⟩ : ParseIt)
-      = ParseResult.success ⟨s, p2⟩ ':' := by simp only [Bool.false_eq_true, if_false]; rfl
+      = ParseResult.success ⟨s, p2⟩ ':' := by simp only [Bool.false_eq_true, ite_false]; rfl
   rw [hcolon]
   simp only []
   rw [parsec_map_app, parsec_bind_app, hpar3]
@@ -1439,7 +1439,7 @@ theorem parseWith_hourMinute_at {s : String} (p : s.Pos) (pre rest hh mm : Strin
   have hmle : ¬ (((natOf mm : Int)) > 59) := by
     have : ((natOf mm : Int)) ≤ 59 := by exact_mod_cast hmb
     omega
-  simp only [hmle, if_false]
+  simp only [hmle, ite_false]
   rw [parsec_bind_app]
   show ParseResult.success (⟨s, p3⟩ : ParseIt)
       (TimeZone.Offset.ofSeconds { val :=
@@ -1479,7 +1479,7 @@ theorem parseWith_hour_at {s : String} (p : s.Pos) (pre rest digits : String)
   unfold parseNatToBounded parseFlexibleNum
   simp only [Nat.reduceEqDiff, ↓reduceIte, bind, Bind.bind]
   rw [parsec_bind_app, hpar]
-  simp only [hbound', and_self, dif_pos]
+  simp only [hbound', and_self, dite_eq_left]
   rfl
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal in
@@ -1499,7 +1499,7 @@ theorem parseWith_minute_at {s : String} (p : s.Pos) (pre rest digits : String)
   unfold parseNatToBounded parseFlexibleNum
   simp only [Nat.reduceEqDiff, ↓reduceIte, bind, Bind.bind]
   rw [parsec_bind_app, hpar]
-  simp only [hbound', and_self, dif_pos]
+  simp only [hbound', and_self, dite_eq_left]
   rfl
 
 open Std.Internal.Parsec Std.Internal.Parsec.String Std.Time Std.Time.Internal in
@@ -1531,7 +1531,7 @@ theorem parseWith_second_at {s : String} (p : s.Pos) (pre rest digits : String)
     unfold parseNatToBounded parseFlexibleNum
     simp only [Nat.reduceEqDiff, ↓reduceIte, bind, Bind.bind]
     rw [parsec_bind_app, hpar]
-    simp only [hbound', and_self, dif_pos]
+    simp only [hbound', and_self, dite_eq_left]
     rfl
   show (Std.Internal.Parsec.bind
         (parseNatToBounded (parseFlexibleNum 2) : Std.Internal.Parsec ParseIt (Bounded.LE 0 59))
@@ -1568,7 +1568,7 @@ theorem parseWith_fraction_at {s : String} (p : s.Pos) (pre rest sss : String)
   simp only [bind, Bind.bind]
   rw [parsec_bind_app, parsec_map_app, parsec_map_app, hpar]
   simp only []
-  rw [hfval, dif_pos hbound]
+  rw [hfval, dite_eq_left hbound]
   rfl
 
 open Std.Time.GenericFormat
@@ -2253,7 +2253,7 @@ theorem build_dateOnly_value {d : DateComponents}
                    time := PlainTime.mk ⟨0, by decide⟩ 0 0 0 }
           else none) := by
     rfl
-  rw [hbuild, dif_pos hvalid]
+  rw [hbuild, dite_eq_left hvalid]
   refine ⟨_, rfl, ?_⟩
   -- Evaluate the timestamp of the resulting DateTime.
   rw [ofPlainDateTime_zero_timestamp _ _ rfl, midnight_toTimestampAssumingUTC, toMillis_ofSeconds]
@@ -2536,7 +2536,7 @@ theorem build_dateUTC_value {c : DatetimeComponents} (tp : TimePart)
                              0 }
           else none) := by
     rfl
-  rw [hbuild, dif_pos hvalid]
+  rw [hbuild, dite_eq_left hvalid]
   refine ⟨_, rfl, ?_⟩
   have hzv := zoned_value
     (⟨Int.ofNat (natOf c.date.year),
@@ -2816,7 +2816,7 @@ theorem build_dateUTCWithMillis_value {c : DatetimeComponents} (tp : TimePart) (
                              (Bounded.LE.ofNat' (natOf sss * 1000000) hms) }
           else none) := by
     rfl
-  rw [hbuild, dif_pos hvalid]
+  rw [hbuild, dite_eq_left hvalid]
   refine ⟨_, rfl, ?_⟩
   have hzv := zoned_value
     (⟨Int.ofNat (natOf c.date.year),
@@ -2992,7 +2992,7 @@ theorem build_dateWithOffset_value {c : DatetimeComponents} (tp : TimePart) (o :
                              0 }
           else none) := by
     rfl
-  rw [hbuild, dif_pos hvalid]
+  rw [hbuild, dite_eq_left hvalid]
   refine ⟨_, rfl, ?_⟩
   have hzv := zoned_value
     (⟨Int.ofNat (natOf c.date.year),
@@ -3307,7 +3307,7 @@ theorem build_dateWithOffsetAndMillis_value {c : DatetimeComponents} (tp : TimeP
                              (Bounded.LE.ofNat' (natOf sss * 1000000) hms) }
           else none) := by
     rfl
-  rw [hbuild, dif_pos hvalid]
+  rw [hbuild, dite_eq_left hvalid]
   refine ⟨_, rfl, ?_⟩
   have hzv := zoned_value
     (⟨Int.ofNat (natOf c.date.year),
@@ -3477,7 +3477,7 @@ theorem exactlyChars_go_inv {s : String} :
   | zero =>
     intro size count acc pre suf p p' result hk hsplit hgo
     have hge : count ≥ size := by omega
-    rw [exactlyChars_go_eq, if_pos hge] at hgo
+    rw [exactlyChars_go_eq, ite_eq_left hge] at hgo
     -- go returns `pure acc`
     simp only [Std.Internal.Parsec.pure, ParseResult.success.injEq, Sigma.mk.injEq,
       heq_eq_eq, true_and] at hgo
@@ -3489,13 +3489,13 @@ theorem exactlyChars_go_inv {s : String} :
   | succ k ih =>
     intro size count acc pre suf p p' result hk hsplit hgo
     have hlt : ¬ count ≥ size := by omega
-    rw [exactlyChars_go_eq, if_neg hlt, parsec_bind_app] at hgo
+    rw [exactlyChars_go_eq, ite_eq_right hlt, parsec_bind_app] at hgo
     -- satisfy must succeed: hasNext and current char is a digit
     by_cases hn : Input.hasNext (⟨s, p⟩ : ParseIt) = true
     · rw [satisfy_eq] at hgo
-      simp only [hn, dif_pos] at hgo
+      simp only [hn, dite_eq_left] at hgo
       by_cases hd : Char.isDigit (Input.curr' (⟨s, p⟩ : ParseIt) hn) = true
-      · simp only [hd, if_pos] at hgo
+      · simp only [hd, ite_eq_left] at hgo
         have hp : p ≠ s.endPos := (hasNext_iff s p).mp hn
         rw [next'_eq, curr'_eq] at hgo
         -- Abbreviate the consumed character.
@@ -3530,11 +3530,11 @@ theorem exactlyChars_go_inv {s : String} :
         · rw [String.append_assoc] at hsp'; exact hsp'
       · exfalso
         simp only [Bool.not_eq_true] at hd
-        rw [hd, if_neg (by simp)] at hgo
+        rw [hd, ite_eq_right (by simp)] at hgo
         simp at hgo
     · exfalso
       rw [satisfy_eq] at hgo
-      simp only [hn, dif_neg, Bool.not_eq_true] at hgo
+      simp only [hn, dite_eq_right, Bool.not_eq_true] at hgo
       simp at hgo
 
 
@@ -3638,7 +3638,7 @@ theorem parseNatToBounded_two_inv_at {s : String} (p p' : s.Pos) (pre suf : Stri
     obtain ⟨sr, pr⟩ := rem
     simp only [] at hpar
     by_cases hb : n ≤ w ∧ w ≤ m
-    · rw [dif_pos hb] at hpar
+    · rw [dite_eq_left hb] at hpar
       rw [show ((Pure.pure (Bounded.LE.ofNat' w hb) : Parser (Bounded.LE n m)) (⟨sr, pr⟩ : ParseIt))
         = ParseResult.success (⟨sr, pr⟩ : ParseIt) (Bounded.LE.ofNat' w hb) from rfl] at hpar
       simp only [ParseResult.success.injEq, Sigma.mk.injEq] at hpar
@@ -3648,7 +3648,7 @@ theorem parseNatToBounded_two_inv_at {s : String} (p p' : s.Pos) (pre suf : Stri
       refine ⟨out, rest, hfd, ?_, ?_, hsuf, hsp⟩
       · rw [← hval]; exact hb
       · rw [← hv]; simp only [Bounded.LE.ofNat']; rw [← hval]; rfl
-    · rw [dif_neg hb] at hpar
+    · rw [dite_eq_right hb] at hpar
       rw [Std.Internal.Parsec.fail] at hpar
       simp at hpar
 
@@ -3786,7 +3786,7 @@ theorem parseWith_fraction_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
         else fail s!"need a natural number in the interval of {0} to {999999999}") ⟨sr, pr⟩
         = ParseResult.success ⟨s, p'⟩ v := hpar
     by_cases hb : 0 ≤ w ∧ w ≤ 999999999
-    · rw [dif_pos hb] at hpar
+    · rw [dite_eq_left hb] at hpar
       replace hpar : ParseResult.success (⟨sr, pr⟩ : ParseIt) (Bounded.LE.ofNat' w hb)
         = ParseResult.success ⟨s, p'⟩ v := hpar
       injection hpar with hit _; injection hit with hsr hpr
@@ -3804,7 +3804,7 @@ theorem parseWith_fraction_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
         simp only [heq_eq_eq] at hp2; subst p2
         obtain ⟨rest, hfd, hsuf, hsp⟩ := exactlyChars_inv_at p p' pre suf out 3 (by omega) hsplit hec
         exact ⟨out, rest, hfd, hsuf, hsp⟩
-    · rw [dif_neg hb, Std.Internal.Parsec.fail] at hpar; simp at hpar
+    · rw [dite_eq_right hb, Std.Internal.Parsec.fail] at hpar; simp at hpar
 
 open Std.Internal.Parsec Std.Internal.Parsec.String in
 /-- **`pchar` success-inversion.** A successful `pchar c` at `p` (splitting `s` as `pre ++ suf`)
@@ -3818,10 +3818,10 @@ theorem pchar_success_inv_at {s : String} (p : s.Pos) (pre suf : String) (c : Ch
       p'.Splits (pre ++ String.singleton c) rest := by
   rw [pchar_eq] at hpar
   by_cases hn : Input.hasNext (⟨s, p⟩ : ParseIt) = true
-  · simp only [hn, dif_pos] at hpar
+  · simp only [hn, dite_eq_left] at hpar
     rw [curr'_eq, next'_eq] at hpar
     by_cases hc : p.get ((hasNext_iff s p).mp hn) = c
-    · simp only [hc, if_pos] at hpar
+    · simp only [hc, ite_eq_left] at hpar
       injection hpar with hit hout
       obtain ⟨sr, pr⟩ := rem
       simp only [Sigma.mk.injEq] at hit
@@ -3834,7 +3834,7 @@ theorem pchar_success_inv_at {s : String} (p : s.Pos) (pre suf : String) (c : Ch
       have hsplit' : p.Splits pre (String.singleton c ++ rest) := hrest ▸ hsplit
       have := hsplit'.next
       simpa using this
-    · simp only [hc, if_neg, not_false_iff] at hpar; simp at hpar
+    · simp only [hc, ite_eq_right, not_false_iff] at hpar; simp at hpar
   · simp only [hn] at hpar; simp at hpar
 
 open Std.Internal.Parsec Std.Internal.Parsec.String in
@@ -3864,10 +3864,10 @@ theorem sign_inv_at {s : String} (p : s.Pos) (pre suf : String) (rem : ParseIt) 
     have hpos : remp = (⟨s, p⟩ : ParseIt) := by
       rw [pchar_eq] at hplus
       by_cases hn : Input.hasNext (⟨s, p⟩ : ParseIt) = true
-      · simp only [hn, dif_pos] at hplus
+      · simp only [hn, dite_eq_left] at hplus
         by_cases hc : Input.curr' (⟨s, p⟩ : ParseIt) hn = '+'
-        · simp only [hc, if_pos] at hplus; simp at hplus
-        · simp only [hc, if_neg, not_false_iff] at hplus; injection hplus with h1 _; exact h1.symm
+        · simp only [hc, ite_eq_left] at hplus; simp at hplus
+        · simp only [hc, ite_eq_right, not_false_iff] at hplus; injection hplus with h1 _; exact h1.symm
       · simp only [hn] at hplus; injection hplus with h1 _; exact h1.symm
     subst hpos
     rw [orElse_app, seqRight_app, hplus] at hpar
@@ -3964,12 +3964,12 @@ theorem exactlyChars_go_preserves {s : String} :
   induction k with
   | zero =>
     intro count acc p rem out hk hgo
-    rw [exactlyChars_go_eq, if_pos (by omega)] at hgo
+    rw [exactlyChars_go_eq, ite_eq_left (by omega)] at hgo
     replace hgo : ParseResult.success (⟨s, p⟩ : ParseIt) acc = ParseResult.success rem out := hgo
     injection hgo with hit _; rw [← hit]
   | succ k ih =>
     intro count acc p rem out hk hgo
-    rw [exactlyChars_go_eq, if_neg (by omega), parsec_bind_app] at hgo
+    rw [exactlyChars_go_eq, ite_eq_right (by omega), parsec_bind_app] at hgo
     cases hsat : satisfy Char.isDigit (⟨s, p⟩ : ParseIt) with
     | error pos msg => rw [hsat] at hgo; simp at hgo
     | success rem' c =>
@@ -3977,9 +3977,9 @@ theorem exactlyChars_go_preserves {s : String} :
       -- satisfy preserves string: rem'.1 = s
       rw [satisfy_eq] at hsat
       by_cases hn : Input.hasNext (⟨s, p⟩ : ParseIt) = true
-      · simp only [hn, dif_pos] at hsat
+      · simp only [hn, dite_eq_left] at hsat
         by_cases hd : Char.isDigit (Input.curr' (⟨s, p⟩ : ParseIt) hn) = true
-        · simp only [hd, if_pos, next'_eq] at hsat
+        · simp only [hd, ite_eq_left, next'_eq] at hsat
           replace hsat : ParseResult.success
               (⟨s, p.next ((hasNext_iff s p).mp hn)⟩ : ParseIt) _ = ParseResult.success rem' c := hsat
           injection hsat with hit _
@@ -3987,7 +3987,7 @@ theorem exactlyChars_go_preserves {s : String} :
           simp only [Sigma.mk.injEq] at hit
           obtain ⟨hsr, _⟩ := hit; subst hsr
           exact ih count.succ (acc.push c) pr rem out (by omega) hgo
-        · simp only [hd, Bool.false_eq_true, if_neg, not_false_iff] at hsat; simp at hsat
+        · simp only [hd, Bool.false_eq_true, ite_eq_right, not_false_iff] at hsat; simp at hsat
       · simp only [hn] at hsat; simp at hsat
 
 
@@ -4015,15 +4015,15 @@ theorem satisfy_digit_preserves {s : String} (p : s.Pos) (rem : ParseIt) (c : Ch
     rem.1 = s := by
   rw [satisfy_eq] at hpar
   by_cases hn : Input.hasNext (⟨s, p⟩ : ParseIt) = true
-  · simp only [hn, dif_pos] at hpar
+  · simp only [hn, dite_eq_left] at hpar
     by_cases hd : Char.isDigit (Input.curr' (⟨s, p⟩ : ParseIt) hn) = true
-    · simp only [hd, if_pos, next'_eq] at hpar
+    · simp only [hd, ite_eq_left, next'_eq] at hpar
       replace hpar : ParseResult.success
           (⟨s, p.next ((hasNext_iff s p).mp hn)⟩ : ParseIt) _ =
             ParseResult.success rem c := hpar
       injection hpar with hit _
       rw [← hit]
-    · simp only [hd, Bool.false_eq_true, if_neg, not_false_iff] at hpar
+    · simp only [hd, Bool.false_eq_true, ite_eq_right, not_false_iff] at hpar
       simp at hpar
   · simp only [hn] at hpar
     simp at hpar
@@ -4041,15 +4041,15 @@ theorem optional_satisfy_digit_preserves {s : String} (p : s.Pos) (rem : ParseIt
   unfold Std.Internal.Parsec.orElse Std.Internal.Parsec.tryCatch at hpar
   rw [parsec_map_app, satisfy_eq] at hpar
   by_cases hn : Input.hasNext (⟨s, p⟩ : ParseIt) = true
-  · simp only [hn, dif_pos] at hpar
+  · simp only [hn, dite_eq_left] at hpar
     by_cases hd : Char.isDigit (Input.curr' (⟨s, p⟩ : ParseIt) hn) = true
-    · simp only [hd, if_pos, next'_eq] at hpar
+    · simp only [hd, ite_eq_left, next'_eq] at hpar
       replace hpar : ParseResult.success
           (⟨s, p.next ((hasNext_iff s p).mp hn)⟩ : ParseIt) _ =
             ParseResult.success rem c := hpar
       injection hpar with hit _
       rw [← hit]
-    · simp only [hd, Bool.false_eq_true, if_neg, not_false_iff, Input.pos] at hpar
+    · simp only [hd, Bool.false_eq_true, ite_eq_right, not_false_iff, Input.pos] at hpar
       replace hpar : ParseResult.success (⟨s, p⟩ : ParseIt) none =
         ParseResult.success rem c := hpar
       injection hpar with hit _
@@ -4104,10 +4104,10 @@ theorem satisfy_digit_success_inv_at {s : String} (p : s.Pos) (pre suf : String)
       p'.Splits (pre ++ String.singleton out) rest := by
   rw [satisfy_eq] at hpar
   by_cases hn : Input.hasNext (⟨s, p⟩ : ParseIt) = true
-  · simp only [hn, dif_pos] at hpar
+  · simp only [hn, dite_eq_left] at hpar
     rw [curr'_eq, next'_eq] at hpar
     by_cases hd : (p.get ((hasNext_iff s p).mp hn)).isDigit = true
-    · simp only [hd, if_pos] at hpar
+    · simp only [hd, ite_eq_left] at hpar
       injection hpar with hit hout
       obtain ⟨sr, pr⟩ := rem
       simp only [Sigma.mk.injEq] at hit
@@ -4126,7 +4126,7 @@ theorem satisfy_digit_success_inv_at {s : String} (p : s.Pos) (pre suf : String)
             p.Splits pre (String.singleton (p.get hp) ++ rest) := hrest ▸ hsplit
         have hnext := hsplit'.next
         simpa [hout] using hnext
-    · simp only [hd, Bool.false_eq_true, if_neg, not_false_iff] at hpar
+    · simp only [hd, Bool.false_eq_true, ite_eq_right, not_false_iff] at hpar
       simp at hpar
   · simp only [hn] at hpar
     simp at hpar
@@ -4139,11 +4139,11 @@ theorem satisfy_digit_error_pos_eq {s : String} (p : s.Pos) (pos : ParseIt)
     pos = ⟨s, p⟩ := by
   rw [satisfy_eq] at hpar
   by_cases hn : Input.hasNext (⟨s, p⟩ : ParseIt) = true
-  · simp only [hn, dif_pos] at hpar
+  · simp only [hn, dite_eq_left] at hpar
     by_cases hd : Char.isDigit (Input.curr' (⟨s, p⟩ : ParseIt) hn) = true
-    · simp only [hd, if_pos] at hpar
+    · simp only [hd, ite_eq_left] at hpar
       simp at hpar
-    · simp only [hd, Bool.false_eq_true, if_neg, not_false_iff] at hpar
+    · simp only [hd, Bool.false_eq_true, ite_eq_right, not_false_iff] at hpar
       injection hpar with hit _
       exact hit.symm
   · simp only [hn] at hpar
@@ -4456,8 +4456,8 @@ theorem parseWith_offset_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
           (pre ++ String.singleton (if neg then '-' else '+')) rest1 vh hsp1 hph
       -- Hours guard: success forces ¬(vh < 0 ∨ vh > 23).
       by_cases hg : ((vh : Int) < 0 ∨ (vh : Int) > 23)
-      · rw [if_pos hg] at hpar; simp [Std.Internal.Parsec.fail, Std.Internal.Parsec.bind] at hpar
-      · rw [if_neg hg] at hpar
+      · rw [ite_eq_left hg] at hpar; simp [Std.Internal.Parsec.fail, Std.Internal.Parsec.bind] at hpar
+      · rw [ite_eq_right hg] at hpar
         have hhb : natOf hh ≤ 23 := by
           simp only [not_or, Int.not_lt] at hg
           have : (vh : Int) ≤ 23 := by omega
@@ -4468,7 +4468,7 @@ theorem parseWith_offset_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
         split at hpar
         case h_2 pos msg heqm => simp at hpar
         case h_1 rem3 vmopt heqm =>
-          simp only [Bool.false_eq_true, if_false, parsec_map_app, seqRight_app] at heqm
+          simp only [Bool.false_eq_true, ite_false, parsec_map_app, seqRight_app] at heqm
           rw [show (Pure.pure ':' : Parser Char) (⟨s, p2⟩ : ParseIt)
               = ParseResult.success (⟨s, p2⟩ : ParseIt) ':' from rfl] at heqm
           simp only [] at heqm
@@ -4492,8 +4492,8 @@ theorem parseWith_offset_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
               rest2 vm hhsp hpm
           -- Minutes guard: success forces ¬(vm > 59).
           by_cases hgm : ((vm : Int) > 59)
-          · rw [if_pos hgm] at hpar; simp [Std.Internal.Parsec.fail, Std.Internal.Parsec.bind] at hpar
-          · rw [if_neg hgm] at hpar
+          · rw [ite_eq_left hgm] at hpar; simp [Std.Internal.Parsec.fail, Std.Internal.Parsec.bind] at hpar
+          · rw [ite_eq_right hgm] at hpar
             have hmb : natOf mm ≤ 59 := by
               simp only [Int.not_lt] at hgm
               have : (vm : Int) ≤ 59 := by omega
@@ -4614,12 +4614,12 @@ theorem parseNatToBounded_two_preserves {s : String} {n m : Nat} (p : s.Pos) (re
     subst hsr
     simp only [] at hpar
     by_cases hb : n ≤ w ∧ w ≤ m
-    · rw [dif_pos hb] at hpar
+    · rw [dite_eq_left hb] at hpar
       replace hpar : ParseResult.success (⟨sr, pr⟩ : ParseIt) (Bounded.LE.ofNat' w hb)
         = ParseResult.success rem v := hpar
       injection hpar with hit _
       rw [← hit]
-    · rw [dif_neg hb, Std.Internal.Parsec.fail] at hpar; simp at hpar
+    · rw [dite_eq_right hb, Std.Internal.Parsec.fail] at hpar; simp at hpar
 
 
 
@@ -4889,7 +4889,7 @@ theorem build_datetime_inv {yr mo dy : Nat}
     rw [← hbridge] at hb
     have : (dy : Int) ≤ (daysInMonth yr mo : Int) := hb
     exact_mod_cast this
-  · rw [dif_neg hvalid] at hbuild
+  · rw [dite_eq_right hvalid] at hbuild
     simp at hbuild
 
 open Std.Time Std.Time.Internal Std.Time.GenericFormat in
@@ -5391,11 +5391,11 @@ theorem parseWithDate_fraction_preserves {s : String} (b : DateBuilder) (config 
           rw [← hs2]; exact exactlyChars_go_preserves 3 0 "" p ⟨s2, p2⟩ out hec
       subst hsr
       by_cases hb : 0 ≤ w ∧ w ≤ 999999999
-      · rw [dif_pos hb] at hS
+      · rw [dite_eq_left hb] at hS
         replace hS : ParseResult.success (⟨sr, pr⟩ : ParseIt) (Bounded.LE.ofNat' w hb)
           = ParseResult.success rem' v := hS
         injection hS with hit2 _; rw [← hit2]
-      · rw [dif_neg hb, Std.Internal.Parsec.fail] at hS; simp at hS
+      · rw [dite_eq_right hb, Std.Internal.Parsec.fail] at hS; simp at hS
 
 open Std.Time.GenericFormat in
 /-- **DateUTCWithMillis full parse inversion.** -/
@@ -5543,14 +5543,14 @@ theorem pchar_preserves {s : String} (c : Char) (p : s.Pos) (rem : ParseIt) (out
     (hpar : pchar c ⟨s, p⟩ = ParseResult.success rem out) : rem.1 = s := by
   rw [pchar_eq] at hpar
   by_cases hn : Input.hasNext (⟨s, p⟩ : ParseIt) = true
-  · simp only [hn, dif_pos] at hpar
+  · simp only [hn, dite_eq_left] at hpar
     by_cases hc : Input.curr' (⟨s, p⟩ : ParseIt) hn = c
     · rw [next'_eq] at hpar
-      simp only [hc, if_pos] at hpar
+      simp only [hc, ite_eq_left] at hpar
       injection hpar with hit _
       obtain ⟨sr, pr⟩ := rem; simp only [Sigma.mk.injEq] at hit
       exact hit.1.symm
-    · simp only [hc, if_neg, not_false_iff] at hpar; simp at hpar
+    · simp only [hc, ite_eq_right, not_false_iff] at hpar; simp at hpar
   · simp only [hn] at hpar; simp at hpar
 
 open Std.Internal.Parsec Std.Internal.Parsec.String in
@@ -5569,10 +5569,10 @@ theorem sign_preserves {s : String} (p : s.Pos) (rem : ParseIt) (a : Int)
     have hpos : remp = (⟨s, p⟩ : ParseIt) := by
       rw [pchar_eq] at hplus
       by_cases hn : Input.hasNext (⟨s, p⟩ : ParseIt) = true
-      · simp only [hn, dif_pos] at hplus
+      · simp only [hn, dite_eq_left] at hplus
         by_cases hc : Input.curr' (⟨s, p⟩ : ParseIt) hn = '+'
-        · simp only [hc, if_pos] at hplus; simp at hplus
-        · simp only [hc, if_neg, not_false_iff] at hplus; injection hplus with h1 _; exact h1.symm
+        · simp only [hc, ite_eq_left] at hplus; simp at hplus
+        · simp only [hc, ite_eq_right, not_false_iff] at hplus; injection hplus with h1 _; exact h1.symm
       · simp only [hn] at hplus; injection hplus with h1 _; exact h1.symm
     subst hpos
     rw [orElse_app, seqRight_app, hplus] at hpar
@@ -5621,14 +5621,14 @@ theorem parseWith_offset_preserves {s : String} (config : FormatConfig) (p : s.P
         injection heq with hit hvoff; subst rem2; subst vhoff
         simp only [] at hpar
         by_cases hg : ((vh : Int) < 0 ∨ (vh : Int) > 23)
-        · rw [if_pos hg] at hpar
+        · rw [ite_eq_left hg] at hpar
           simp [Std.Internal.Parsec.fail, Std.Internal.Parsec.bind] at hpar
-        · rw [if_neg hg] at hpar
+        · rw [ite_eq_right hg] at hpar
           rw [parsec_bind_app] at hpar
           split at hpar
           case h_2 pos msg heqm => simp at hpar
           case h_1 rem3 vmopt heqm =>
-            simp only [Bool.false_eq_true, if_false, parsec_map_app, seqRight_app] at heqm
+            simp only [Bool.false_eq_true, ite_false, parsec_map_app, seqRight_app] at heqm
             rw [show (Pure.pure ':' : Parser Char) (⟨s, p2⟩ : ParseIt)
                 = ParseResult.success (⟨s, p2⟩ : ParseIt) ':' from rfl] at heqm
             simp only [] at heqm
@@ -5645,9 +5645,9 @@ theorem parseWith_offset_preserves {s : String} (config : FormatConfig) (p : s.P
               injection heqm with hit hvmopt; subst rem3; subst vmopt
               simp only [] at hpar
               by_cases hgm : ((vm : Int) > 59)
-              · rw [if_pos hgm] at hpar
+              · rw [ite_eq_left hgm] at hpar
                 simp [Std.Internal.Parsec.fail, Std.Internal.Parsec.bind] at hpar
-              · rw [if_neg hgm] at hpar
+              · rw [ite_eq_right hgm] at hpar
                 replace hpar : ParseResult.success (⟨s, p3⟩ : ParseIt) _
                     = ParseResult.success rem v := hpar
                 injection hpar with hit _; rw [← hit]
@@ -6269,14 +6269,14 @@ theorem parseWith_offset_error {s : String} (p : s.Pos) (pre rest : String) (c�
   -- pchar '+' fails at ⟨s,p⟩ (position unchanged).
   have hplus : pchar '+' (⟨s, p⟩ : ParseIt)
       = ParseResult.error ⟨s, p⟩ (.other s!"expected: '{'+'}'") := by
-    rw [pchar_eq]; simp only [hhn, dif_pos]; rw [curr'_eq]
+    rw [pchar_eq]; simp only [hhn, dite_eq_left]; rw [curr'_eq]
     have : ¬ (p.get ((hasNext_iff s p).mp hhn) = '+') := by rw [hgetc]; exact hp
-    simp only [this, if_false]
+    simp only [this, ite_false]
   have hminus : pchar '-' (⟨s, p⟩ : ParseIt)
       = ParseResult.error ⟨s, p⟩ (.other s!"expected: '{'-'}'") := by
-    rw [pchar_eq]; simp only [hhn, dif_pos]; rw [curr'_eq]
+    rw [pchar_eq]; simp only [hhn, dite_eq_left]; rw [curr'_eq]
     have : ¬ (p.get ((hasNext_iff s p).mp hhn) = '-') := by rw [hgetc]; exact hm
-    simp only [this, if_false]
+    simp only [this, ite_false]
   refine ⟨⟨s, p⟩, .other s!"expected: '{'-'}'", ?_⟩
   show Std.Time.parseOffset .yes .no false ⟨s, p⟩ = _
   unfold Std.Time.parseOffset
@@ -6286,7 +6286,7 @@ theorem parseWith_offset_error {s : String} (p : s.Pos) (pre rest : String) (c�
   have hsign : ((pchar '+' *> pure 1) <|> (pchar '-' *> pure (-1)) : Parser Int) ⟨s, p⟩
       = ParseResult.error ⟨s, p⟩ (.other s!"expected: '{'-'}'") := by
     rw [orElse_app, seqRight_app, hplus]
-    simp only [Input.pos, if_true]
+    simp only [Input.pos, ite_true]
     rw [seqRight_app, hminus]
   rw [hsign]
   rfl
@@ -6854,7 +6854,7 @@ theorem splitOnPPrepend_head {α} (P : α → Bool) (pre suf acc : List α) (sep
     ∃ tl, List.splitOnPPrepend P (pre ++ sep :: suf) acc = (acc.reverse ++ pre) :: tl := by
   induction pre generalizing acc with
   | nil =>
-    rw [List.nil_append, List.splitOnPPrepend_cons_eq_if, hsep]
+    rw [List.nil_append, List.splitOnPPrepend_cons_eq_ite, hsep]
     exact ⟨List.splitOnP P suf, by simp⟩
   | cons a t ih =>
     simp only [List.cons_append]
@@ -7325,8 +7325,8 @@ theorem offset_lt_max_of_syntaxWf {c : DatetimeComponents} (hsyn : c.syntaxWf)
     -- `omega` handles the `natAbs`/cast arithmetic directly once the sign `if` is resolved.
     rw [MAX_OFFSET_SECONDS, hoff]
     cases o.negative with
-    | false => rw [if_neg (by decide), Int.mul_one]; omega
-    | true => rw [if_pos rfl, Int.mul_neg, Int.mul_one, Int.natAbs_neg]; omega
+    | false => rw [ite_eq_right (by decide), Int.mul_one]; omega
+    | true => rw [ite_eq_left rfl, Int.mul_neg, Int.mul_one, Int.natAbs_neg]; omega
 
 /-! ## Leap-seconds guard
 
@@ -7366,7 +7366,7 @@ theorem utf8GetAux?_ascii_skip (l2 : List Char) (n : Nat) :
     have hc1 : c.utf8Size = 1 := hall c List.mem_cons_self
     have hne : ¬ (i = (⟨n⟩ : String.Pos.Raw)) := by
       simp only [List.length_cons, String.Pos.Raw.ext_iff] at *; omega
-    rw [if_neg hne]
+    rw [ite_eq_right hne]
     have hstep : i + c = (⟨i.byteIdx + 1⟩ : String.Pos.Raw) := by
       rw [String.Pos.Raw.add_char_eq, hc1]
     rw [hstep]
@@ -7386,14 +7386,14 @@ theorem utf8GetAux?_pair (pre : List Char) (a b : Char) (rest : List Char)
   have h18 := utf8GetAux?_ascii_skip (a :: b :: rest) 18 pre 0 hpre (by simp [hlen])
   simp only [String.Pos.Raw.byteIdx_zero, Nat.zero_add, hlen] at h17 h18
   refine ⟨?_, ?_⟩
-  · rw [h17, String.Pos.Raw.utf8GetAux?, if_pos rfl]
+  · rw [h17, String.Pos.Raw.utf8GetAux?, ite_eq_left rfl]
   · rw [h18, String.Pos.Raw.utf8GetAux?]
     have hne : ¬ ((⟨17⟩ : String.Pos.Raw) = (⟨18⟩ : String.Pos.Raw)) := by
       simp [String.Pos.Raw.ext_iff]
-    rw [if_neg hne]
+    rw [ite_eq_right hne]
     have hstep : (⟨17⟩ : String.Pos.Raw) + a = (⟨18⟩ : String.Pos.Raw) := by
       rw [String.Pos.Raw.add_char_eq, ha]
-    rw [hstep, String.Pos.Raw.utf8GetAux?, if_pos rfl]
+    rw [hstep, String.Pos.Raw.utf8GetAux?, ite_eq_left rfl]
 
 /-- A time-bearing rendering splits as (17-char prefix `yyyy-MM-ddThh:mm:`) ++ seconds ++ tail. -/
 theorem asString_seconds_split {c : DatetimeComponents} {tp : TimePart} (htime : c.time = some tp) :
@@ -7548,17 +7548,17 @@ theorem epochDays_bounds {y m d : Nat} (hy : y ≤ 9999) (hm : 1 ≤ m ∧ m ≤
     split <;> (push_cast; omega)
   -- Case on the era sign. When `y' ≥ 0` the era divisions are covered by `epochDays_era_block`.
   by_cases hyc : ((if (m:Int) > 2 then (y:Int) else (y:Int) - 1)) ≥ 0
-  · rw [if_pos hyc]
+  · rw [ite_eq_left hyc]
     have hblk := epochDays_era_block (if (m:Int) > 2 then (y:Int) else (y:Int) - 1) hyc
       (by split <;> (push_cast; omega))
     omega
   · -- `y' < 0` forces `m ≤ 2` and `y = 0`, so `y' = -1` and the era terms are concrete.
     replace hyc : (if (m:Int) > 2 then (y:Int) else (y:Int) - 1) < 0 := Int.not_le.mp hyc
     have hm2' : ¬ (m:Int) > 2 := by
-      intro h; rw [if_pos h] at hyc; push_cast at hyc; omega
-    have hy0 : y = 0 := by rw [if_neg hm2'] at hyc; push_cast at hyc; omega
+      intro h; rw [ite_eq_left h] at hyc; push_cast at hyc; omega
+    have hy0 : y = 0 := by rw [ite_eq_right hm2'] at hyc; push_cast at hyc; omega
     subst hy0
-    rw [if_neg hm2']
+    rw [ite_eq_right hm2']
     push_cast
     omega
 
