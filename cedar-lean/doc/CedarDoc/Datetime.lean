@@ -16,7 +16,7 @@
 
 import VersoManual
 import CedarDoc.GrammarBlock
-import Cedar.Thm.Ext.Datetime
+import Cedar.Thm.Ext.Datetime.Corollaries
 
 open Verso.Genre Manual
 open Verso.Genre.Manual.InlineLean
@@ -307,14 +307,10 @@ Together they give an exact success characterization:
 
 {docstring parse_eq_some_iff_isDatetimeValue}
 
-They also characterize failure uniformly with decimal and duration — malformed syntax or a
-related value outside `Int64`:
+The grammar's range bound lies well inside `Int64`, so unlike decimal and duration there is no
+overflow failure case: parsing rejects exactly the malformed strings.
 
 {docstring parse_eq_none_iff}
-
-For datetimes the overflow branch is vacuous: the grammar's range bound (from the _Grammar_ section) lies well inside `Int64`, so the characterization sharpens to reject _exactly_ the malformed strings:
-
-{docstring parse_eq_none_iff_not_wf}
 
 # Canonical String Representation
 

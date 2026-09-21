@@ -109,43 +109,12 @@ public theorem parse_complete (str : String) (d : Datetime)
   rw [Int64.ofInt?_toInt d.val]
   simp only [bind, Option.bind, pure]
 
-/-- Exact parser characterization: parsing succeeds with `d` precisely when the declarative
-    grammar relation assigns the input the value `d.val.toInt`. -/
-public theorem parse_eq_some_iff_isDatetimeValue (str : String) (d : Datetime) :
-    Datetime.parse str = some d ↔ IsDatetimeValue str d.val.toInt :=
-  ⟨parse_sound str d, parse_complete str d⟩
-
-/-- `parse ∘ toString?` roundtrip: every successfully serialized datetime parses back to the
-    original value. -/
-public theorem parse_toString_roundtrip {d : Datetime} {str : String}
-    (h : toString? d = some str) :
-    Datetime.parse str = some d := by
-  exact parse_complete str d (toString?_some_value h)
-
-/-- Total `Option` formulation of the partial serialization roundtrip. -/
-public theorem bind_parse_toString? (d : Datetime) :
-    (toString? d).bind Datetime.parse = (toString? d).map (fun _ => d) := by
-  cases h : toString? d with
-  | none => rfl
-  | some str =>
-    simp only [Option.bind_some, Option.map_some]
-    exact parse_toString_roundtrip h
-
-/-- `toString?` is injective on the values it serializes: datetimes with the same (defined)
-    canonical string are equal. (Partial-serializer analogue of `Decimal`/`Duration`'s
-    `toString_injective`.) -/
-public theorem toString?_injective {d d' : Datetime} {str : String}
-    (h : toString? d = some str) (h' : toString? d' = some str) :
-    d = d' := by
-  have h1 := parse_toString_roundtrip h
-  have h2 := parse_toString_roundtrip h'
-  rw [h1] at h2
-  exact Option.some.inj h2
+/-! ## Failure characterization -/
 
 /-- Because the grammar bounds years to four digits and zone offsets to `±23:59`, every
     well-formed datetime value fits in `Int64`. Parsing therefore rejects exactly malformed
     strings. -/
-public theorem parse_eq_none_iff_not_wf (str : String) :
+public theorem parse_eq_none_iff (str : String) :
     Datetime.parse str = none ↔ ¬ IsWfDatetime str := by
   constructor
   · intro hnone
@@ -173,24 +142,27 @@ public theorem parse_eq_none_iff_not_wf (str : String) :
       exact hnwf (isWfDatetime_iff_exists_value.mpr
         ⟨d.val.toInt, parse_sound str d hparse⟩)
 
-/-- Failure characterization in the same uniform form as Decimal and Duration: parsing rejects
-    malformed strings or well-formed values outside `Int64`. For Datetime the overflow branch is
-    impossible by the grammar's four-digit-year and offset bounds. -/
-public theorem parse_eq_none_iff (str : String) :
-    Datetime.parse str = none ↔
-    ¬ IsWfDatetime str ∨
-      ∃ v, IsDatetimeValue str v ∧ (v < Int64.MIN ∨ v > Int64.MAX) := by
-  rw [parse_eq_none_iff_not_wf]
-  constructor
-  · exact Or.inl
-  · rintro (hnwf | ⟨v, hvalue, hoverflow⟩)
-    · exact hnwf
-    · exfalso
-      obtain ⟨components, hsyntax, hconstraints, _, hv⟩ := hvalue
-      have hrange := toMillis_int64_range hsyntax hconstraints
-      rw [hv] at hoverflow
-      simp only [Int64.MIN, Int64.MAX] at hrange hoverflow
-      omega
+/-! ## Canonical serialization -/
+
+/-- `parse ∘ toString?` roundtrip: every successfully serialized datetime parses back to the
+    original value. -/
+public theorem parse_toString_roundtrip {d : Datetime} {str : String}
+    (h : toString? d = some str) :
+    Datetime.parse str = some d := by
+  exact parse_complete str d (toString?_some_value h)
+
+/-- `toString?` is injective on the values it serializes: datetimes with the same (defined)
+    canonical string are equal. (Partial-serializer analogue of `Decimal`/`Duration`'s
+    `toString_injective`.) -/
+public theorem toString?_injective {d d' : Datetime} {str : String}
+    (h : toString? d = some str) (h' : toString? d' = some str) :
+    d = d' := by
+  have h1 := parse_toString_roundtrip h
+  have h2 := parse_toString_roundtrip h'
+  rw [h1] at h2
+  exact Option.some.inj h2
+
+/-! ## Normalization -/
 
 /-- Equal normal form iff equal parse — normalization decides datetime equality.
 
