@@ -26,6 +26,16 @@ import all Cedar.Thm.Ext.Decimal.Lemmas
 
 namespace Cedar.Thm.Decimal
 open Cedar.Spec.Ext
+open String
+
+/-- Well-formed decimal syntax is exactly syntax to which the grammar assigns some value. -/
+public theorem wf_iff_exists_value {s : String} :
+    IsWfDecimal s ↔ ∃ v, IsDecimalValue s v := by
+  constructor
+  · rintro ⟨sign, natural, fraction, hproduction⟩
+    exact ⟨value sign natural fraction, sign, natural, fraction, hproduction, rfl⟩
+  · rintro ⟨_, sign, natural, fraction, hproduction, _⟩
+    exact ⟨sign, natural, fraction, hproduction⟩
 
 /-- Completeness of `Decimal.parse`: if the grammar assigns `s` the value `d.toInt`, then parsing
     accepts the string as `d`. Well-formedness is not a separate hypothesis — `IsDecimalValue`
@@ -54,12 +64,14 @@ public theorem parse_sound (s : String) (d : Decimal) (h : Decimal.parse s = som
       obtain ⟨sign, natural, rfl, hs, hn⟩ :=
         sign_nat_of_toInt?'_isSome (s := left) (by rw [heq_l]; rfl)
       have hf : IsWfFrac right := ⟨isDigits_of_toNat?'_isSome (by rw [heq_r]; rfl), h_len.2⟩
-      refine ⟨sign, natural, right, ?_, hs, hn, hf, ?_⟩
-      · have hjoin := join_splitToList h_split
+      have hproduction : DecimalProduction s sign natural right := by
+        refine ⟨?_, hs, hn, hf⟩
+        have hjoin := join_splitToList h_split
         simp only [String.append_assoc] at hjoin ⊢
         exact hjoin
-      · rw [← parser_value_eq_value hs hn heq_l heq_r]
-        exact Int64.ofInt?_some_toInt h
+      refine ⟨sign, natural, right, hproduction, ?_⟩
+      rw [← parser_value_eq_value hs hn heq_l heq_r]
+      exact Int64.ofInt?_some_toInt h
     · exact absurd h (by simp)
   · exact absurd h (by simp)
 
@@ -85,7 +97,7 @@ public theorem parse_eq_none_iff (s : String) :
     intro h
     by_cases hwf : IsWfDecimal s
     · -- s has a value, so the failure came from the range check
-      obtain ⟨v, hv⟩ := isWfDecimal_iff_exists_value.mp hwf
+      obtain ⟨v, hv⟩ := wf_iff_exists_value.mp hwf
       rw [parse_eq_decimal?_of_isDecimalValue hv] at h
       exact Or.inr ⟨v, hv, Int64.ofInt?_none_iff.mpr h⟩
     · exact Or.inl hwf
@@ -93,7 +105,7 @@ public theorem parse_eq_none_iff (s : String) :
     rintro (h | ⟨v, hv, hovf⟩)
     · by_contra hne
       have ⟨d, hd⟩ := Option.ne_none_iff_exists'.mp hne
-      exact h (isWfDecimal_iff_exists_value.mpr ⟨d.toInt, parse_sound s d hd⟩)
+      exact h (wf_iff_exists_value.mpr ⟨d.toInt, parse_sound s d hd⟩)
     · rw [parse_eq_decimal?_of_isDecimalValue hv]
       exact Int64.ofInt?_none_iff.mp hovf
 

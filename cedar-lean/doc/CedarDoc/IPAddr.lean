@@ -23,6 +23,7 @@ open Verso.Genre.Manual.InlineLean
 open Verso.Code.External
 open Cedar.Thm.IPAddr
 open CedarDoc
+open String
 
 set_option verso.code.warnLineLength 80
 
@@ -89,10 +90,10 @@ instead uses fixed-width lowercase hextets and does not elide zero runs.
 
 # Formal Specification
 
-As with Decimal and Duration, the public specification separates syntax, component denotation,
-and a relational value statement. `IsWfIPNet` directly transcribes the V4/V6 grammar,
-`v4Value` and `v6Value` give the denotation of identified components, and
-`IsIPNetValue str net` ties the same rendering witnesses to the `IPNet` they denote.
+As with Decimal and Duration, the public specification separates productions, well-formedness,
+component denotation, and a relational value statement. `V4Production` and `V6Production` relate
+renderings to their components, `IsWfIPNet` hides those components existentially, `v4Value` and
+`v6Value` give their denotation, and `IsIPNetValue str net` ties each production to its `IPNet`.
 
 The building block for numeric groups is `IsCanonicalNat`, which captures a non-empty digit string with the grammar's "no leading zeros" rule (`str.startsWith "0" → str = "0"`), building on the shared `IsDigits` predicate:
 
@@ -138,14 +139,29 @@ public def IsWfOptionalPrefix (digits size : Nat) : Option String → Prop
   | some p      => IsCanonicalNat p ∧ p.length ≤ digits ∧ natOf p ≤ size
 ```
 
-Well-formedness of the whole string then reads off the grammar — a well-formed V4 rendering or a well-formed V6 rendering, each phrased existentially over the components' `asString` (which bakes in the separators, group count, and `::`-placement):
+The family productions combine address components with an optional CIDR prefix and the complete
+rendering:
+
+```anchor V4Production (module := Cedar.Thm.Ext.IPAddr.Grammar)
+public def V4Production (str : String) (v : V4Components) (pre : Option String) : Prop :=
+  v.syntaxWf ∧
+  v.constraintsWf ∧
+  IsWfOptionalPrefix 2 (ADDR_SIZE V4_WIDTH) pre ∧
+  str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p)
+```
+
+```anchor V6Production (module := Cedar.Thm.Ext.IPAddr.Grammar)
+public def V6Production (str : String) (v : V6Components) (pre : Option String) : Prop :=
+  v.syntaxWf ∧
+  IsWfOptionalPrefix 3 (ADDR_SIZE V6_WIDTH) pre ∧
+  str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p)
+```
+
+Well-formedness existentially hides those witnesses:
 
 ```anchor IsWfV4 (module := Cedar.Thm.Ext.IPAddr.Grammar)
 public def IsWfV4 (str : String) : Prop :=
-  ∃ (v : V4Components) (pre : Option String),
-    v.syntaxWf ∧ v.constraintsWf ∧
-    IsWfOptionalPrefix 2 (ADDR_SIZE V4_WIDTH) pre ∧
-    str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p)
+  ∃ (v : V4Components) (pre : Option String), V4Production str v pre
 ```
 
 ```anchor IsWfIPNet (module := Cedar.Thm.Ext.IPAddr.Grammar)
@@ -172,19 +188,14 @@ public def v6Value (v : V6Components) (pre : Option String) : IPNet :=
 ```anchor IsV4Value (module := Cedar.Thm.Ext.IPAddr.Grammar)
 public def IsV4Value (str : String) (net : IPNet) : Prop :=
   ∃ (v : V4Components) (pre : Option String),
-    v.syntaxWf ∧
-    v.constraintsWf ∧
-    IsWfOptionalPrefix 2 (ADDR_SIZE V4_WIDTH) pre ∧
-    str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p) ∧
+    V4Production str v pre ∧
     net = v4Value v pre
 ```
 
 ```anchor IsV6Value (module := Cedar.Thm.Ext.IPAddr.Grammar)
 public def IsV6Value (str : String) (net : IPNet) : Prop :=
   ∃ (v : V6Components) (pre : Option String),
-    v.syntaxWf ∧
-    IsWfOptionalPrefix 3 (ADDR_SIZE V6_WIDTH) pre ∧
-    str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p) ∧
+    V6Production str v pre ∧
     net = v6Value v pre
 ```
 
@@ -195,7 +206,7 @@ public def IsIPNetValue (str : String) (net : IPNet) : Prop :=
 
 The syntax and value views agree: an input is well-formed exactly when it denotes some `IPNet`.
 
-{docstring isWfIPNet_iff_exists_value}
+{docstring wf_iff_exists_value}
 
 The relation is also single-valued, including across the V4/V6 alternatives.
 
@@ -289,7 +300,7 @@ The parser is characterized by the same guarantees as the other verified extensi
 proof connects `IsIPNetValue` to the hand-written parser, including IPv4's precedence over IPv6.
 
 _Soundness_: whenever parsing succeeds, the grammar relation assigns the input exactly the
-returned `IPNet`.
+returned `IPNet`. By `wf_iff_exists_value`, this also certifies well-formedness.
 
 {docstring parse_sound}
 

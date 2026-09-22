@@ -34,6 +34,15 @@ namespace Cedar.Thm.Duration
 open Cedar.Spec.Ext
 open Datetime
 
+/-- Well-formed duration syntax is exactly syntax to which the grammar assigns some value. -/
+public theorem wf_iff_exists_value {str : String} :
+    IsWfDuration str ↔ ∃ v, IsDurationValue str v := by
+  constructor
+  · rintro ⟨sign, components, hproduction⟩
+    exact ⟨value sign components, sign, components, hproduction, rfl⟩
+  · rintro ⟨_, sign, components, hproduction, _⟩
+    exact ⟨sign, components, hproduction⟩
+
 /-- Completeness of `Duration.parse`: if the grammar assigns `str` the value `d.val.toInt`, then
     parsing accepts the string as `d`. -/
 public theorem parse_complete (str : String) (d : Duration)
@@ -55,7 +64,7 @@ public theorem parse_sound (str : String) (d : Duration)
     have hwf : IsWfDuration str := by
       apply (wf_str_iff_signed_body str).mpr
       simp [hsign, hbody]
-    obtain ⟨v, hval⟩ := isWfDuration_iff_exists_value.mp hwf
+    obtain ⟨v, hval⟩ := wf_iff_exists_value.mp hwf
     have hparse := parse_eq_duration?_of_isDurationValue hval
     unfold Duration.parse at hparse
     rw [hsign] at hparse
@@ -80,14 +89,14 @@ public theorem parse_eq_none_iff (str : String) :
   constructor
   · intro h
     by_cases hwf : IsWfDuration str
-    · obtain ⟨v, hval⟩ := isWfDuration_iff_exists_value.mp hwf
+    · obtain ⟨v, hval⟩ := wf_iff_exists_value.mp hwf
       rw [parse_eq_duration?_of_isDurationValue hval] at h
       exact Or.inr ⟨v, hval, (duration?_eq_none_iff_overflow v).mp h⟩
     · exact Or.inl hwf
   · rintro (h | ⟨v, hval, hoverflow⟩)
     · by_contra hne
       obtain ⟨d, hd⟩ := Option.ne_none_iff_exists'.mp hne
-      exact h (isWfDuration_iff_exists_value.mpr ⟨d.val.toInt, parse_sound str d hd⟩)
+      exact h (wf_iff_exists_value.mpr ⟨d.val.toInt, parse_sound str d hd⟩)
     · rw [parse_eq_duration?_of_isDurationValue hval]
       exact (duration?_eq_none_iff_overflow v).mpr hoverflow
 

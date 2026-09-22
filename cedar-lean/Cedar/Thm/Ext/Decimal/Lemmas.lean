@@ -29,6 +29,7 @@ import all Init.Data.String.Slice
 
 namespace Cedar.Thm.Decimal
 open Cedar.Spec.Ext
+open String
 
 /-! ============================================================================================
     # Grammar ↔ parser bridge lemmas
@@ -147,18 +148,6 @@ theorem splitToList_of_isWfDecimal {sign natural fraction : String}
   splitToList_eq (sign ++ natural) fraction (· = '.') '.' (by decide)
     (no_dot_of_sign_nat hs hn) (no_dot_of_isDigits hf.1)
 
-/-- The relational value specification is total on well-formed syntax: a string is a grammar
-    rendering exactly when it denotes some value. Unlike an operational `computeValue`, this
-    theorem does not choose fields by parsing; both sides carry the same grammar witnesses. -/
-public theorem isWfDecimal_iff_exists_value {s : String} :
-    IsWfDecimal s ↔ ∃ v, IsDecimalValue s v := by
-  constructor
-  · rintro ⟨sign, natural, fraction, hs, hsign, hnatural, hfraction⟩
-    exact ⟨value sign natural fraction, sign, natural, fraction, hs, hsign, hnatural,
-      hfraction, rfl⟩
-  · rintro ⟨_, sign, natural, fraction, hs, hsign, hnatural, hfraction, _⟩
-    exact ⟨sign, natural, fraction, hs, hsign, hnatural, hfraction⟩
-
 private theorem startsWith_dash_eq_false_of_isDigits {natural : String}
     (hn : IsDigits natural) : natural.startsWith "-" = false := by
   apply Bool.eq_false_iff.mpr
@@ -247,7 +236,7 @@ theorem parser_value_eq_value {sign natural fraction : String} {l : Int} {r : Na
     completeness and the overflow half of the failure characterization are corollaries. -/
 theorem parse_eq_decimal?_of_isDecimalValue {s : String} {v : Int} (h : IsDecimalValue s v) :
     Decimal.parse s = Decimal.decimal? v := by
-  obtain ⟨sign, natural, fraction, rfl, hs, hn, hf, rfl⟩ := h
+  obtain ⟨sign, natural, fraction, ⟨rfl, hs, hn, hf⟩, rfl⟩ := h
   obtain ⟨l, hl⟩ := Option.isSome_iff_exists.mp (toInt?'_isSome_of_sign_nat hs hn)
   obtain ⟨r, hr⟩ := Option.isSome_iff_exists.mp (toNat?'_isSome_of_isDigits hf.1)
   unfold Decimal.parse
@@ -288,8 +277,8 @@ private theorem sign_nat_unique {sign₁ natural₁ sign₂ natural₂ : String}
     witness supplies is forced, so `IsDecimalValue` is a function in relational clothing. -/
 public theorem isDecimalValue_unique {s : String} {v₁ v₂ : Int}
     (h₁ : IsDecimalValue s v₁) (h₂ : IsDecimalValue s v₂) : v₁ = v₂ := by
-  obtain ⟨sign₁, natural₁, fraction₁, rfl, hs₁, hn₁, hf₁, rfl⟩ := h₁
-  obtain ⟨sign₂, natural₂, fraction₂, heq, hs₂, hn₂, hf₂, rfl⟩ := h₂
+  obtain ⟨sign₁, natural₁, fraction₁, ⟨rfl, hs₁, hn₁, hf₁⟩, rfl⟩ := h₁
+  obtain ⟨sign₂, natural₂, fraction₂, ⟨heq, hs₂, hn₂, hf₂⟩, rfl⟩ := h₂
   have hsp := splitToList_of_isWfDecimal hs₁ hn₁ hf₁
   rw [heq, splitToList_of_isWfDecimal hs₂ hn₂ hf₂] at hsp
   have hL : sign₁ ++ natural₁ = sign₂ ++ natural₂ := (List.cons.inj hsp).1.symm
@@ -524,17 +513,36 @@ private theorem toString_split (d : Decimal) :
     satisfiable spec. -/
 public theorem isDecimalValue_toString (d : Decimal) : IsDecimalValue (toString d) d.toInt := by
   obtain ⟨h_split, h_rlen, _, h_rnat, _, h_lnat⟩ := toString_split d
+  let sign := if d < 0 then "-" else ""
+  let natural := toString (d.natAbs / Nat.pow 10 4)
+  let rightNat := d.natAbs % Nat.pow 10 4
+  let fraction :=
+    if rightNat < 10 then "000" ++ toString rightNat
+    else if rightNat < 100 then "00" ++ toString rightNat
+    else if rightNat < 1000 then "0" ++ toString rightNat
+    else toString rightNat
   -- the left part is already `Sign ++ Natural`, so rejoining the split gives the rendering
-  refine ⟨_, _, _, join_splitToList h_split, ?_, ?_, ?_, ?_⟩
-  · -- IsWfSign
-    by_cases hd : d < 0 <;> simp [IsWfSign, hd]
-  · -- IsNatural
-    exact isDigits_of_toNat?'_isSome (by rw [h_lnat]; rfl)
-  · -- IsWfFrac
-    exact ⟨isDigits_of_toNat?'_isSome (by rw [h_rnat]; rfl), Nat.le_of_eq h_rlen⟩
+  refine ⟨sign, natural, fraction, ?_, ?_⟩
+  · refine ⟨?_, ?_, ?_, ?_⟩
+    · simpa [sign, natural, rightNat, fraction] using join_splitToList h_split
+    · -- IsWfSign
+      by_cases hd : d < 0 <;> simp [sign, IsWfSign, hd]
+    · -- IsNatural
+      exact isDigits_of_toNat?'_isSome (by
+        change (toNat?' (toString (d.natAbs / Nat.pow 10 4))).isSome = true
+        rw [h_lnat]
+        rfl)
+    · -- IsWfFrac
+      exact
+        ⟨isDigits_of_toNat?'_isSome (by
+          change (toNat?' fraction).isSome = true
+          simp only [fraction, rightNat]
+          rw [h_rnat]
+          rfl),
+          Nat.le_of_eq (by simpa [rightNat, fraction] using h_rlen)⟩
   · -- d.toInt = value Sign Natural Fraction
-    simp only [value, natOf, lenOf, h_lnat, h_rnat, h_rlen, Option.getD_some, signOf,
-      DECIMAL_DIGITS]
+    simp only [sign, natural, rightNat, fraction, value, natOf, lenOf, h_lnat, h_rnat, h_rlen,
+      Option.getD_some, signOf, DECIMAL_DIGITS]
     simp only [show Nat.pow 10 4 = 10000 from rfl,
       show Int.pow 10 4 = (10000 : Int) from rfl]
     simp (config := { decide := true }) only [Int64.natAbs]
@@ -564,7 +572,8 @@ public theorem isDecimalValue_toString (d : Decimal) : IsDecimalValue (toString 
       exact (Int.natAbs_of_nonneg hge).symm
 
 /-- The string produced by `toString d` is well-formed for parsing. -/
-public theorem toString_isWfDecimal (d : Decimal) : IsWfDecimal (toString d) :=
-  isWfDecimal_iff_exists_value.mpr ⟨d.toInt, isDecimalValue_toString d⟩
+public theorem toString_isWfDecimal (d : Decimal) : IsWfDecimal (toString d) := by
+  obtain ⟨sign, natural, fraction, hproduction, _⟩ := isDecimalValue_toString d
+  exact ⟨sign, natural, fraction, hproduction⟩
 
 end Cedar.Thm.Decimal

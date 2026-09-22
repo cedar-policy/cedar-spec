@@ -23,6 +23,7 @@ open Verso.Genre.Manual.InlineLean
 open Verso.Code.External
 open Cedar.Thm.Duration
 open CedarDoc
+open String
 
 set_option verso.code.warnLineLength 80
 
@@ -68,11 +69,11 @@ A string is _valid_ if and only if it satisfies both the grammar and the constra
 
 # Formal Specification
 
-Following the same declarative structure as the decimal specification, we separate three ideas:
-`IsWfDuration` directly transcribes the grammar, `value` gives the denotation of an already
-identified sign and component record, and `IsDurationValue str v` combines those witnesses to
-say that `str` denotes `v`. Cedar already has the executable `Duration.parse`, so the public
-grammar does not define a second operational string decoder.
+Following the same declarative structure as the decimal specification, we separate four ideas:
+`DurationProduction` relates a rendering to its grammar components, `IsWfDuration` hides those
+components existentially, `value` gives their denotation, and `IsDurationValue str v` combines
+the production with that denotation. Cedar already has the executable `Duration.parse`, so the
+public grammar does not define a second operational string decoder.
 
 The building block is again `IsDigits`, the shared `Digit⁺` predicate introduced in the _Decimal Parsing_ chapter.
 
@@ -139,14 +140,24 @@ public def IsWfBody (body : String) : Prop :=
     body = components.asString
 ```
 
-Well-formedness of the whole string then adds the optional leading `'-'`. That sign is its own production, `Sign ::= ['-']`, and reuses the shared `IsWfSign` predicate from the _Decimal Parsing_ chapter. A duration string is well-formed exactly when it is the rendering of such a sign followed by a well-formed body — the same rendering-existential shape used for the body itself, and for the decimal and datetime grammars:
+The whole-string production combines that record with the optional leading `'-'`. The sign is
+its own production, `Sign ::= ['-']`, and reuses the shared `IsWfSign` predicate from the
+_Decimal Parsing_ chapter:
+
+```anchor DurationProduction (module := Cedar.Thm.Ext.Duration.Grammar)
+public def DurationProduction (str sign : String) (components : Components) : Prop :=
+  str = sign ++ components.asString ∧
+  IsWfSign sign ∧
+  components.nonempty ∧
+  components.quantitiesWf
+```
+
+A duration string is well-formed exactly when some sign and component record witness that
+production:
 
 ```anchor IsWfDuration (module := Cedar.Thm.Ext.Duration.Grammar)
 public def IsWfDuration (str : String) : Prop :=
-  ∃ sign body,
-    str = sign ++ body ∧
-    IsWfSign sign ∧
-    IsWfBody body
+  ∃ sign components, DurationProduction str sign components
 ```
 
 The component record also gives a direct value formula. `optionalNatOf` interprets an absent
@@ -181,10 +192,7 @@ Finally, the relational specification extends the same grammar witnesses with th
 ```anchor IsDurationValue (module := Cedar.Thm.Ext.Duration.Grammar)
 public def IsDurationValue (str : String) (v : Int) : Prop :=
   ∃ sign components,
-    str = sign ++ components.asString ∧
-    IsWfSign sign ∧
-    components.nonempty ∧
-    components.quantitiesWf ∧
+    DurationProduction str sign components ∧
     v = value sign components
 ```
 
@@ -195,7 +203,7 @@ relates the parser's right-to-left extraction to this weighted sum once.
 As with decimal, the syntax and value views agree: every well-formed rendering has a value, and
 every value witness contains a well-formed rendering.
 
-{docstring isWfDuration_iff_exists_value}
+{docstring wf_iff_exists_value}
 
 Although the value specification is relational, it is still single-valued: every witness for the
 same string yields the same integer, including values outside the parser's `Int64` range.
@@ -269,9 +277,9 @@ none
 The parser is characterized by two complementary guarantees stated in terms of the previous formal definitions.
 
 _Soundness_ says that whenever parsing succeeds, the grammar assigns the input exactly the
-returned duration's value. There is no separate well-formedness conjunct because
-`IsDurationValue` already includes the rendering and component constraints. (The range
-constraint is implicit — `d.val.toInt` is always in `Int64` range.)
+returned duration's value. The preceding `wf_iff_exists_value` theorem makes explicit that any such
+value witness contains a well-formed rendering. (The range constraint is implicit — `d.val.toInt`
+is always in `Int64` range.)
 
 {docstring parse_sound}
 

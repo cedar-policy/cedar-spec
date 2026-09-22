@@ -24,6 +24,7 @@ open Verso.Code.External
 open Cedar.Spec.Ext
 open Cedar.Thm.Datetime
 open CedarDoc
+open String
 
 set_option verso.code.warnLineLength 80
 
@@ -105,11 +106,12 @@ the Cedar documentation uses the one word for both.
 
 # Formal Specification
 
-As in the decimal and duration specifications, we separate syntax, component denotation, and the
-relation between a string and its value. `IsWfDatetime` directly transcribes the grammar,
-`DatetimeComponents.toMillis` evaluates already identified components, and
-`IsDatetimeValue str v` combines the same witnesses to say that `str` denotes `v`. The range
-constraint needs no separate clause because it follows from the grammar.
+As in the decimal and duration specifications, we separate productions, well-formedness,
+component denotation, and the relation between a string and its value. `DatetimeProduction`
+relates a rendering to its components, `IsWfDatetime` hides those components existentially,
+`DatetimeComponents.toMillis` evaluates them, and `IsDatetimeValue str v` combines the
+production with its denotation. The range constraint needs no separate clause because it follows
+from the grammar.
 
 Every numeric field of this grammar is a digit run of an exact width, so the building block is `IsFixedDigits` — the `Digit{n}` refinement of the shared `IsDigits` predicate (introduced in the _Decimal Parsing_ chapter). It too lives in `Cedar.Thm.Data.String`:
 
@@ -164,7 +166,10 @@ public structure TimePart where
   zone : Zone
 ```
 
-A datetime is then a `Date` optionally followed by such a tail, and well-formedness reads straight off the grammar — the string is the rendering of some record that is both syntactically well-formed and satisfies the numeric constraints. Phrasing this existentially over `asString` bakes in the separators, the field order, and the choice among the five top-level forms:
+A datetime is then a `Date` optionally followed by such a tail. The top-level production relates
+the complete rendering to a record that is both syntactically well-formed and satisfies the
+numeric constraints. Using `asString` here bakes in the separators, field order, and choice among
+the five top-level forms:
 
 ```anchor DatetimeComponents (module := Cedar.Thm.Ext.Datetime.Grammar)
 public structure DatetimeComponents where
@@ -172,12 +177,18 @@ public structure DatetimeComponents where
   time : Option TimePart
 ```
 
+```anchor DatetimeProduction (module := Cedar.Thm.Ext.Datetime.Grammar)
+public def DatetimeProduction (str : String) (components : DatetimeComponents) : Prop :=
+  components.syntaxWf ∧
+  components.constraintsWf ∧
+  str = components.asString
+```
+
+Well-formedness existentially hides that production's component witness:
+
 ```anchor IsWfDatetime (module := Cedar.Thm.Ext.Datetime.Grammar)
 public def IsWfDatetime (str : String) : Prop :=
-  ∃ components : DatetimeComponents,
-    components.syntaxWf ∧
-    components.constraintsWf ∧
-    str = components.asString
+  ∃ components : DatetimeComponents, DatetimeProduction str components
 ```
 
 The component denotation evaluates the grammar's value formula directly: days since the epoch
@@ -195,15 +206,13 @@ denotation. It does not re-parse the string or introduce an `Option`-valued seco
 ```anchor IsDatetimeValue (module := Cedar.Thm.Ext.Datetime.Grammar)
 public def IsDatetimeValue (str : String) (v : Int) : Prop :=
   ∃ components : DatetimeComponents,
-    components.syntaxWf ∧
-    components.constraintsWf ∧
-    str = components.asString ∧
+    DatetimeProduction str components ∧
     v = components.toMillis
 ```
 
 The value relation is total on well-formed syntax and single-valued:
 
-{docstring isWfDatetime_iff_exists_value}
+{docstring wf_iff_exists_value}
 
 {docstring isDatetimeValue_unique}
 
@@ -294,7 +303,7 @@ a parser-inversion library that evaluates those combinators once and shows that 
 is exactly the rendering of well-formed witnessing components.
 
 _Soundness_: whenever parsing succeeds, the grammar relation assigns the input exactly the
-returned datetime's value.
+returned datetime's value. By `wf_iff_exists_value`, this also certifies well-formedness.
 
 {docstring parse_sound}
 

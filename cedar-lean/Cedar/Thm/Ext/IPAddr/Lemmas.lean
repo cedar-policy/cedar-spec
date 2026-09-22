@@ -30,6 +30,7 @@ import Init.Data.List.SplitOn.Lemmas
 namespace Cedar.Thm.IPAddr
 open Cedar.Spec.Ext
 open IPAddr
+open String
 
 /-! # IPAddr grammar bridge lemmas
 
@@ -444,7 +445,7 @@ theorem parseIPv4Net_isSome_wf {str : String} {net : IPNet} (h : parseIPv4Net st
       have hstr := eq_intercalate_of_splitToList_eq '/' hsplits
       rw [String.intercalate_singleton] at hstr
       rw [haddrStr] at hstr
-      refine ⟨v, none, hsyn, hcon, trivial, by simpa using hstr, ?_⟩
+      refine ⟨v, none, ⟨hsyn, hcon, trivial, by simpa using hstr⟩, ?_⟩
       subst addr
       simpa [v4Value, prefixValue, IPNetPrefix.ofNat] using h.symm
   rcases rest with _ | ⟨extra, rest⟩
@@ -461,7 +462,7 @@ theorem parseIPv4Net_isSome_wf {str : String} {net : IPNet} (h : parseIPv4Net st
         have hstr := eq_intercalate_of_splitToList_eq '/' hsplits
         rw [String.intercalate_cons_cons, String.intercalate_singleton] at hstr
         rw [haddrStr] at hstr
-        refine ⟨v, some preStr, hsyn, hcon, hpre, ?_, ?_⟩
+        refine ⟨v, some preStr, ⟨hsyn, hcon, hpre, ?_⟩, ?_⟩
         · simpa [String.append_assoc] using hstr
         · subst addr
           simpa [v4Value, prefixValue, hpreValue] using h.symm
@@ -1338,7 +1339,7 @@ theorem parseIPv6Net_isSome_wf {str : String} {net : IPNet} (h : parseIPv6Net st
       obtain ⟨v, haddrStr, hsyn, haddr⟩ := parseSegsV6_some_wf ha
       have hstr := eq_intercalate_of_splitToList_eq '/' hsplits
       rw [String.intercalate_singleton, haddrStr] at hstr
-      refine ⟨v, none, hsyn, trivial, by simpa using hstr, ?_⟩
+      refine ⟨v, none, ⟨hsyn, trivial, by simpa using hstr⟩, ?_⟩
       subst addr
       simpa [v6Value, prefixValue, IPNetPrefix.ofNat] using h.symm
   rcases rest with _ | ⟨extra, rest⟩
@@ -1355,7 +1356,7 @@ theorem parseIPv6Net_isSome_wf {str : String} {net : IPNet} (h : parseIPv6Net st
         have hstr := eq_intercalate_of_splitToList_eq '/' hsplits
         rw [String.intercalate_cons_cons, String.intercalate_singleton,
           haddrStr] at hstr
-        refine ⟨v, some preStr, hsyn, hpre, ?_, ?_⟩
+        refine ⟨v, some preStr, ⟨hsyn, hpre, ?_⟩, ?_⟩
         · simpa [String.append_assoc] using hstr
         · subst addr
           simpa [v6Value, prefixValue, hpreValue] using h.symm
@@ -1367,7 +1368,7 @@ theorem parseIPv6Net_isSome_wf {str : String} {net : IPNet} (h : parseIPv6Net st
 theorem parseIPv4Net_none_of_isWfV6 {str : String} (h : IsWfV6 str) :
     parseIPv4Net str = none :=
   by
-  obtain ⟨v, pre, hsyn, hpre, rfl⟩ := h
+  obtain ⟨v, pre, ⟨hsyn, hpre, rfl⟩⟩ := h
   have haddrNone : parseSegsV4 v.asString = none := by
     have hsplit : v.asString.splitToList (· = '.') = [v.asString] :=
       splitToList_no_sep v.asString (fun x : Char => decide (x = '.')) (noDotV6 v hsyn)
@@ -1401,48 +1402,21 @@ theorem parseIPv4Net_none_of_isWfV6 {str : String} (h : IsWfV6 str) :
 public theorem isWfV4_iff_exists_value {str : String} :
     IsWfV4 str ↔ ∃ net, IsV4Value str net := by
   constructor
-  · rintro ⟨v, pre, hsyn, hcon, hpre, hstr⟩
-    exact ⟨v4Value v pre, v, pre, hsyn, hcon, hpre, hstr, rfl⟩
-  · rintro ⟨_, v, pre, hsyn, hcon, hpre, hstr, _⟩
-    exact ⟨v, pre, hsyn, hcon, hpre, hstr⟩
+  · rintro ⟨v, pre, hproduction⟩
+    exact ⟨v4Value v pre, v, pre, hproduction, rfl⟩
+  · rintro ⟨_, v, pre, hproduction, _⟩
+    exact ⟨v, pre, hproduction⟩
 
 /-- Well-formed IPv6 syntax is exactly syntax to which the grammar assigns some V6 value. -/
 public theorem isWfV6_iff_exists_value {str : String} :
     IsWfV6 str ↔ ∃ net, IsV6Value str net := by
   constructor
-  · rintro ⟨v, pre, hsyn, hpre, hstr⟩
-    exact ⟨v6Value v pre, v, pre, hsyn, hpre, hstr, rfl⟩
-  · rintro ⟨_, v, pre, hsyn, hpre, hstr, _⟩
-    exact ⟨v, pre, hsyn, hpre, hstr⟩
-
-/-- Well-formed IP-net syntax is exactly syntax to which the grammar assigns some `IPNet`. -/
-public theorem isWfIPNet_iff_exists_value {str : String} :
-    IsWfIPNet str ↔ ∃ net, IsIPNetValue str net := by
-  constructor
-  · rintro (hv4 | hv6)
-    · obtain ⟨net, hvalue⟩ := isWfV4_iff_exists_value.mp hv4
-      exact ⟨net, Or.inl hvalue⟩
-    · obtain ⟨net, hvalue⟩ := isWfV6_iff_exists_value.mp hv6
-      exact ⟨net, Or.inr hvalue⟩
-  · rintro ⟨net, hvalue⟩
-    rcases hvalue with hv4 | hv6
-    · exact Or.inl (isWfV4_iff_exists_value.mpr ⟨net, hv4⟩)
-    · exact Or.inr (isWfV6_iff_exists_value.mpr ⟨net, hv6⟩)
+  · rintro ⟨v, pre, hproduction⟩
+    exact ⟨v6Value v pre, v, pre, hproduction, rfl⟩
+  · rintro ⟨_, v, pre, hproduction, _⟩
+    exact ⟨v, pre, hproduction⟩
 
 /-! ## Canonical-rendering lemmas -/
-
-private theorem toNat?'_toString (n : Nat) : toNat?' (toString n) = some n := by
-  unfold toNat?'
-  have hno_us : (toString n).contains '_' = false := by
-    have h : ¬ ('_' ∈ (toString n).toList) := by
-      rw [Nat.toString_eq_repr, Nat.toList_repr]
-      exact Nat.underscore_not_in_toDigits
-    simp [String.contains]
-  rw [hno_us]
-  simp [Nat.toString_eq_repr]
-
-private theorem isDigits_toString (n : Nat) : IsDigits (toString n) :=
-  isDigits_of_toNat?'_isSome (by rw [toNat?'_toString]; simp)
 
 private theorem canonical_toString (n : Nat) :
     (toString n).startsWith "0" → toString n = "0" := by
@@ -1634,12 +1608,6 @@ theorem parse_toString_v4 (addr : IPv4Addr) (pre : IPv4Prefix) :
       simp
     _ = some (IPNet.V4 ⟨addr, pre⟩) := congrArg some hvalue
 
-private def hex16 (n : Nat) : String :=
-  String.singleton ((n % 0x10000) / 0x1000).digitChar ++
-    String.singleton ((n % 0x1000) / 0x100).digitChar ++
-    String.singleton ((n % 0x100) / 0x10).digitChar ++
-    String.singleton ((n % 0x10) / 0x1).digitChar
-
 private theorem digitChar_isHexDigit {n : Nat} (h : n < 16) :
     isHexDigit n.digitChar = true := by
   by_cases hten : n < 10
@@ -1661,12 +1629,27 @@ private theorem digitChar_isHexDigit {n : Nat} (h : n < 16) :
     · rw [show Nat.digitChar 15 = 'f' by simp]
       simp [isHexDigit]
 
-private theorem hex16_isHexGroup (n : Nat) : IsHexGroup (hex16 n) := by
+private theorem toHex_eq_digits (n : Nat) :
+    toHex n =
+      String.singleton ((n % 0x10000) / 0x1000).digitChar ++
+        String.singleton ((n % 0x1000) / 0x100).digitChar ++
+        String.singleton ((n % 0x100) / 0x10).digitChar ++
+        String.singleton ((n % 0x10) / 0x1).digitChar := by
+  simp only [toHex, hexDigitRepr]
+  change
+    String.singleton ((n % 0x10000) / 0x1000).digitChar ++
+        String.singleton ((n % 0x1000) / 0x100).digitChar ++
+        String.singleton ((n % 0x100) / 0x10).digitChar ++
+        String.singleton ((n % 0x10) / 0x1).digitChar = _
+  rfl
+
+private theorem toHex_isHexGroup (n : Nat) : IsHexGroup (toHex n) := by
   have h₀ : (n % 0x10000) / 0x1000 < 16 := by omega
   have h₁ : (n % 0x1000) / 0x100 < 16 := by omega
   have h₂ : (n % 0x100) / 0x10 < 16 := by omega
   have h₃ : (n % 0x10) / 0x1 < 16 := by omega
-  unfold IsHexGroup hex16
+  rw [toHex_eq_digits]
+  unfold IsHexGroup
   constructor
   · simp
   constructor
@@ -1704,13 +1687,14 @@ private theorem toHexNat_digitChar {n : Nat} (h : n < 16) :
     · rw [show Nat.digitChar 15 = 'f' by simp]
       simp [toHexNat]
 
-private theorem hexValue_hex16 (n : Nat) :
-    hexValue (hex16 n) = n % 0x10000 := by
+private theorem hexValue_toHex (n : Nat) :
+    hexValue (toHex n) = n % 0x10000 := by
   have h₀ : (n % 0x10000) / 0x1000 < 16 := by omega
   have h₁ : (n % 0x1000) / 0x100 < 16 := by omega
   have h₂ : (n % 0x100) / 0x10 < 16 := by omega
   have h₃ : (n % 0x10) / 0x1 < 16 := by omega
-  unfold hexValue hex16
+  rw [toHex_eq_digits]
+  unfold hexValue
   simp only [String.foldl_eq_foldl_toList, String.toList_append,
     String.toList_singleton, List.foldl_append, List.foldl_cons, List.foldl_nil]
   rw [toHexNat_digitChar h₀, toHexNat_digitChar h₁, toHexNat_digitChar h₂,
@@ -1721,34 +1705,34 @@ private theorem v6Components_toAddr_of_addr (addr : IPv6Addr) :
     let v := addr.toNat
     V6Components.toAddr
       (.full
-        [hex16 ((v >>> 112) &&& 0xffff), hex16 ((v >>> 96) &&& 0xffff),
-          hex16 ((v >>> 80) &&& 0xffff), hex16 ((v >>> 64) &&& 0xffff),
-          hex16 ((v >>> 48) &&& 0xffff), hex16 ((v >>> 32) &&& 0xffff),
-          hex16 ((v >>> 16) &&& 0xffff), hex16 (v &&& 0xffff)]) =
+        [toHex ((v >>> 112) &&& 0xffff), toHex ((v >>> 96) &&& 0xffff),
+          toHex ((v >>> 80) &&& 0xffff), toHex ((v >>> 64) &&& 0xffff),
+          toHex ((v >>> 48) &&& 0xffff), toHex ((v >>> 32) &&& 0xffff),
+          toHex ((v >>> 16) &&& 0xffff), toHex (v &&& 0xffff)]) =
       addr := by
   dsimp only
   unfold V6Components.toAddr V6Components.expand
   simp only [List.getD_cons_zero, List.getD_cons_succ]
   change IPv6Addr.mk
-    (BitVec.ofNat 16 (hexValue (hex16 ((addr.toNat >>> 112) &&& 0xffff))))
-    (BitVec.ofNat 16 (hexValue (hex16 ((addr.toNat >>> 96) &&& 0xffff))))
-    (BitVec.ofNat 16 (hexValue (hex16 ((addr.toNat >>> 80) &&& 0xffff))))
-    (BitVec.ofNat 16 (hexValue (hex16 ((addr.toNat >>> 64) &&& 0xffff))))
-    (BitVec.ofNat 16 (hexValue (hex16 ((addr.toNat >>> 48) &&& 0xffff))))
-    (BitVec.ofNat 16 (hexValue (hex16 ((addr.toNat >>> 32) &&& 0xffff))))
-    (BitVec.ofNat 16 (hexValue (hex16 ((addr.toNat >>> 16) &&& 0xffff))))
-    (BitVec.ofNat 16 (hexValue (hex16 (addr.toNat &&& 0xffff)))) = addr
+    (BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> 112) &&& 0xffff))))
+    (BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> 96) &&& 0xffff))))
+    (BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> 80) &&& 0xffff))))
+    (BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> 64) &&& 0xffff))))
+    (BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> 48) &&& 0xffff))))
+    (BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> 32) &&& 0xffff))))
+    (BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> 16) &&& 0xffff))))
+    (BitVec.ofNat 16 (hexValue (toHex (addr.toNat &&& 0xffff)))) = addr
   have hchunk (start : Nat) :
-      BitVec.ofNat 16 (hexValue (hex16 ((addr.toNat >>> start) &&& 0xffff))) =
+      BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> start) &&& 0xffff))) =
         addr.extractLsb' start 16 := by
-    rw [hexValue_hex16]
+    rw [hexValue_toHex]
     apply BitVec.eq_of_toNat_eq
     simp only [BitVec.toNat_ofNat, BitVec.extractLsb'_toNat]
     have hmask : (0xffff : Nat) = 2 ^ 16 - 1 := by decide
     rw [hmask, Nat.and_two_pow_sub_one_eq_mod]
     simp
   rw [hchunk 112, hchunk 96, hchunk 80, hchunk 64, hchunk 48, hchunk 32, hchunk 16]
-  rw [show BitVec.ofNat 16 (hexValue (hex16 (addr.toNat &&& 0xffff))) =
+  rw [show BitVec.ofNat 16 (hexValue (toHex (addr.toNat &&& 0xffff))) =
       addr.extractLsb' 0 16 by simpa using hchunk 0]
   unfold IPv6Addr.mk
   repeat rw [BitVec.extractLsb'_append_extractLsb'_eq_extractLsb' (by omega)]
@@ -1781,14 +1765,14 @@ private theorem v6Prefix_toNat_le (pre : IPv6Prefix) : pre.toNat ≤ 128 := by
 theorem parse_toString_v6 (addr : IPv6Addr) (pre : IPv6Prefix) :
     IPAddr.ip (toString (IPNet.V6 ⟨addr, pre⟩)) = some (IPNet.V6 ⟨addr, pre⟩) := by
   let v := addr.toNat
-  let h₀ := hex16 ((v >>> 112) &&& 0xffff)
-  let h₁ := hex16 ((v >>> 96) &&& 0xffff)
-  let h₂ := hex16 ((v >>> 80) &&& 0xffff)
-  let h₃ := hex16 ((v >>> 64) &&& 0xffff)
-  let h₄ := hex16 ((v >>> 48) &&& 0xffff)
-  let h₅ := hex16 ((v >>> 32) &&& 0xffff)
-  let h₆ := hex16 ((v >>> 16) &&& 0xffff)
-  let h₇ := hex16 (v &&& 0xffff)
+  let h₀ := toHex ((v >>> 112) &&& 0xffff)
+  let h₁ := toHex ((v >>> 96) &&& 0xffff)
+  let h₂ := toHex ((v >>> 80) &&& 0xffff)
+  let h₃ := toHex ((v >>> 64) &&& 0xffff)
+  let h₄ := toHex ((v >>> 48) &&& 0xffff)
+  let h₅ := toHex ((v >>> 32) &&& 0xffff)
+  let h₆ := toHex ((v >>> 16) &&& 0xffff)
+  let h₇ := toHex (v &&& 0xffff)
   let p := toString pre.toNat
   let c : V6Components := .full [h₀, h₁, h₂, h₃, h₄, h₅, h₆, h₇]
   have hsyn : c.syntaxWf := by
@@ -1797,7 +1781,7 @@ theorem parse_toString_v6 (addr : IPv6Addr) (pre : IPv6Prefix) :
     · intro part hpart
       simp only [List.mem_cons, List.not_mem_nil, or_false] at hpart
       rcases hpart with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
-        exact hex16_isHexGroup _
+        exact toHex_isHexGroup _
   have hpre : IsWfOptionalPrefix 3 (ADDR_SIZE V6_WIDTH) (some p) := by
     simp only [IsWfOptionalPrefix]
     refine
@@ -1825,21 +1809,21 @@ theorem parse_toString_v6 (addr : IPv6Addr) (pre : IPv6Prefix) :
       toString (IPNet.V6 ⟨addr, pre⟩) = c.asString ++ ("/" ++ p) := by
     have hcanonical :
         toString (IPNet.V6 ⟨addr, pre⟩) =
-          s!"{hex16 ((addr.toNat >>> 112) &&& 0xffff)}:\
-            {hex16 ((addr.toNat >>> 96) &&& 0xffff)}:\
-            {hex16 ((addr.toNat >>> 80) &&& 0xffff)}:\
-            {hex16 ((addr.toNat >>> 64) &&& 0xffff)}:\
-            {hex16 ((addr.toNat >>> 48) &&& 0xffff)}:\
-            {hex16 ((addr.toNat >>> 32) &&& 0xffff)}:\
-            {hex16 ((addr.toNat >>> 16) &&& 0xffff)}:\
-            {hex16 (addr.toNat &&& 0xffff)}/{pre.toNat}" := by
+          s!"{toHex ((addr.toNat >>> 112) &&& 0xffff)}:\
+            {toHex ((addr.toNat >>> 96) &&& 0xffff)}:\
+            {toHex ((addr.toNat >>> 80) &&& 0xffff)}:\
+            {toHex ((addr.toNat >>> 64) &&& 0xffff)}:\
+            {toHex ((addr.toNat >>> 48) &&& 0xffff)}:\
+            {toHex ((addr.toNat >>> 32) &&& 0xffff)}:\
+            {toHex ((addr.toNat >>> 16) &&& 0xffff)}:\
+            {toHex (addr.toNat &&& 0xffff)}/{pre.toNat}" := by
       rfl
     rw [hcanonical]
     have hstring (s : String) : toString s = s := rfl
     simp [c, h₀, h₁, h₂, h₃, h₄, h₅, h₆, h₇, p, v, V6Components.asString,
       hstring, String.append_assoc]
   have hwf : IsWfV6 (c.asString ++ ("/" ++ p)) :=
-    ⟨c, some p, hsyn, hpre, rfl⟩
+    ⟨c, some p, ⟨hsyn, hpre, rfl⟩⟩
   have hv4 : parseIPv4Net (c.asString ++ ("/" ++ p)) = none :=
     parseIPv4Net_none_of_isWfV6 hwf
   have hv6 :

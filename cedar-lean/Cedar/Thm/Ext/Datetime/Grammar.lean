@@ -25,6 +25,7 @@ import all Cedar.Thm.Data.String
 
 namespace Cedar.Thm.Datetime
 open Cedar.Spec.Ext
+open String
 
 /-! # Datetime grammar: definitions
 
@@ -255,14 +256,19 @@ public def DatetimeComponents.asString (c : DatetimeComponents) : String :=
   c.date.asString ++ (match c.time with | none => "" | some tp => tp.asString)
 -- ANCHOR_END: DatetimeComponents.asString
 
-/-- A datetime string is well-formed exactly when it is the rendering of some `DatetimeComponents`
-    that is both syntactically well-formed and satisfies the grammar's numeric constraints. -/
+/-- The datetime grammar production witnessed by a syntactically and numerically valid component
+    record and its rendering. -/
+-- ANCHOR: DatetimeProduction
+public def DatetimeProduction (str : String) (components : DatetimeComponents) : Prop :=
+  components.syntaxWf ∧
+  components.constraintsWf ∧
+  str = components.asString
+-- ANCHOR_END: DatetimeProduction
+
+/-- A datetime string is well-formed exactly when it has a valid grammar production. -/
 -- ANCHOR: IsWfDatetime
 public def IsWfDatetime (str : String) : Prop :=
-  ∃ components : DatetimeComponents,
-    components.syntaxWf ∧
-    components.constraintsWf ∧
-    str = components.asString
+  ∃ components : DatetimeComponents, DatetimeProduction str components
 -- ANCHOR_END: IsWfDatetime
 
 /-! ## Value relation
@@ -331,14 +337,12 @@ public def DatetimeComponents.toMillis (c : DatetimeComponents) : Int :=
     numerically well-formed datetime components, and `v` is their epoch-millisecond denotation.
 
     The existential supplies the grammar decomposition directly, so this relation does not
-    re-parse the string. It is total on well-formed syntax (`isWfDatetime_iff_exists_value`) and
+    re-parse the string. It is total on well-formed syntax (`wf_iff_exists_value`) and
     single-valued (`isDatetimeValue_unique`). -/
 -- ANCHOR: IsDatetimeValue
 public def IsDatetimeValue (str : String) (v : Int) : Prop :=
   ∃ components : DatetimeComponents,
-    components.syntaxWf ∧
-    components.constraintsWf ∧
-    str = components.asString ∧
+    DatetimeProduction str components ∧
     v = components.toMillis
 -- ANCHOR_END: IsDatetimeValue
 

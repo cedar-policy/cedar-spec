@@ -35,6 +35,22 @@ predicate and declarative `IsIPNetValue` relation. Its two branches use `v4Value
 give the denotation of the same components that witness the input rendering. The parser-independent
 bridge lemmas they build on live in `Cedar.Thm.Ext.IPAddr.Lemmas`. -/
 
+/-! ## Well-formedness and valuation -/
+
+/-- Well-formed IP-net syntax is exactly syntax to which the grammar assigns some `IPNet`. -/
+public theorem wf_iff_exists_value {str : String} :
+    IsWfIPNet str ↔ ∃ net, IsIPNetValue str net := by
+  constructor
+  · rintro (hv4 | hv6)
+    · obtain ⟨net, hvalue⟩ := isWfV4_iff_exists_value.mp hv4
+      exact ⟨net, Or.inl hvalue⟩
+    · obtain ⟨net, hvalue⟩ := isWfV6_iff_exists_value.mp hv6
+      exact ⟨net, Or.inr hvalue⟩
+  · rintro ⟨net, hvalue⟩
+    rcases hvalue with hv4 | hv6
+    · exact Or.inl (isWfV4_iff_exists_value.mpr ⟨net, hv4⟩)
+    · exact Or.inr (isWfV6_iff_exists_value.mpr ⟨net, hv6⟩)
+
 /-! ## Soundness -/
 
 /-- Soundness of `IPAddr.ip`: if parsing succeeds, the declarative grammar relation assigns the
@@ -72,7 +88,7 @@ public theorem parse_complete_v6 {v : V6Components} {pre : Option String}
       = some (v6Value v pre) := by
   cases pre with
   | none =>
-      have hwf : IsWfV6 v.asString := ⟨v, none, hsyn, hpre, by simp⟩
+      have hwf : IsWfV6 v.asString := ⟨v, none, ⟨hsyn, hpre, by simp⟩⟩
       have hv4 : parseIPv4Net v.asString = none := parseIPv4Net_none_of_isWfV6 hwf
       have hv6 : parseIPv6Net v.asString = some (v6Value v none) := by
         simpa using parseIPv6Net_eq_some (v := v) (pre := none) hsyn hpre
@@ -83,7 +99,7 @@ public theorem parse_complete_v6 {v : V6Components} {pre : Option String}
       rfl
   | some p =>
       have hwf : IsWfV6 (v.asString ++ ("/" ++ p)) :=
-        ⟨v, some p, hsyn, hpre, rfl⟩
+        ⟨v, some p, ⟨hsyn, hpre, rfl⟩⟩
       have hv4 : parseIPv4Net (v.asString ++ ("/" ++ p)) = none :=
         parseIPv4Net_none_of_isWfV6 hwf
       have hv6 : parseIPv6Net (v.asString ++ ("/" ++ p)) =
@@ -100,13 +116,13 @@ public theorem parse_complete (str : String) (net : IPNet)
     (h : IsIPNetValue str net) :
     IPAddr.ip str = some net := by
   rcases h with hv4 | hv6
-  · obtain ⟨v, pre, hsyn, hcon, hpre, hstr, hnet⟩ := hv4
+  · obtain ⟨v, pre, ⟨hsyn, hcon, hpre, hstr⟩, hnet⟩ := hv4
     subst str
     subst net
     cases pre with
     | none => simpa using parse_complete_v4 hsyn hcon hpre
     | some p => simpa using parse_complete_v4 hsyn hcon hpre
-  · obtain ⟨v, pre, hsyn, hpre, hstr, hnet⟩ := hv6
+  · obtain ⟨v, pre, ⟨hsyn, hpre, hstr⟩, hnet⟩ := hv6
     subst str
     subst net
     cases pre with
@@ -137,7 +153,7 @@ public theorem parse_eq_none_iff (str : String) :
     IPAddr.ip str = none ↔ ¬ IsWfIPNet str := by
   constructor
   · intro hnone hwf
-    obtain ⟨net, hvalue⟩ := isWfIPNet_iff_exists_value.mp hwf
+    obtain ⟨net, hvalue⟩ := wf_iff_exists_value.mp hwf
     have hsome := parse_complete str net hvalue
     rw [hnone] at hsome
     contradiction
@@ -145,7 +161,7 @@ public theorem parse_eq_none_iff (str : String) :
     cases hparse : IPAddr.ip str with
     | none => rfl
     | some net =>
-        exact (hnwf (isWfIPNet_iff_exists_value.mpr ⟨net, parse_sound str net hparse⟩)).elim
+        exact (hnwf (wf_iff_exists_value.mpr ⟨net, parse_sound str net hparse⟩)).elim
 
 /-! ## Roundtrip -/
 

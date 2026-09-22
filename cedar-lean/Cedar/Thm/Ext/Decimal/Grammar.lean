@@ -25,19 +25,21 @@ import all Cedar.Spec.Ext.Util
 
 namespace Cedar.Thm.Decimal
 open Cedar.Spec.Ext
+open String
 
 /-! # Decimal grammar: definitions
 
 This file contains only the grammar-level definitions — the well-formedness predicates and the
 value relation — as a direct, parser-independent transcription of the decimal grammar.
-`IsWfDecimal` states the syntax, `value` gives the denotation of named grammar fields, and
-`IsDecimalValue s v` combines the same field witnesses to say that `s` denotes `v`. The lemmas
-connecting these definitions to `Decimal.parse` (in particular the digit-string ↔
-`toInt?'`/`toNat?'` bridges) live in `Cedar.Thm.Ext.Decimal.Lemmas`.
+`DecimalProduction` relates a rendering to its grammar fields, `IsWfDecimal` existentially hides
+those fields, `value` gives their denotation, and `IsDecimalValue s v` adds that denotation to the
+same production witness. The lemmas connecting these definitions to `Decimal.parse` (in
+particular the digit-string ↔ `toInt?'`/`toNat?'` bridges) live in
+`Cedar.Thm.Ext.Decimal.Lemmas`.
 
 `Sign ::= ['-']` uses the shared `IsWfSign` predicate. The decimal-specific `Natural` and
 `Fraction` productions are named locally using the shared digit predicates `IsDigits` and
-`IsDigitsUpTo`. Their value readers (`natOf`, `signOf`, and `lenOf`) and string-to-number bridges
+`IsAtMostNDigits`. Their value readers (`natOf`, `signOf`, and `lenOf`) and string-to-number bridges
 live in `Cedar.Thm.Data.String`. -/
 
 /-- The grammar's `Natural ::= Digit⁺`: the unsigned natural-number production. An `abbrev` for
@@ -50,19 +52,25 @@ public abbrev IsNatural (s : String) : Prop := IsDigits s
     shared bounded-digits predicate. -/
 -- ANCHOR: IsWfFrac
 public def IsWfFrac (s : String) : Prop :=
-  IsDigitsUpTo DECIMAL_DIGITS s
+  IsAtMostNDigits DECIMAL_DIGITS s
 -- ANCHOR_END: IsWfFrac
+
+/-- A decimal grammar production: `s` is the rendering of well-formed `Sign`, `Natural`, and
+    `Fraction` fields, concatenated around the literal decimal point. -/
+-- ANCHOR: DecimalProduction
+public def DecimalProduction (s sign natural fraction : String) : Prop :=
+  s = sign ++ natural ++ "." ++ fraction ∧
+  IsWfSign sign ∧
+  IsNatural natural ∧
+  IsWfFrac fraction
+-- ANCHOR_END: DecimalProduction
 
 /-- Well-formed decimal syntax: `s` is the rendering of a well-formed `Sign ::= ['-']`,
     `Natural ::= Digit⁺`, `'.'`, and `Fraction ::= Digit{1,4}`, concatenated in that order.
     This is the direct grammar transcription; it does not compute a value or invoke a parser. -/
 -- ANCHOR: IsWfDecimal
 public def IsWfDecimal (s : String) : Prop :=
-  ∃ sign natural fraction,
-    s = sign ++ natural ++ "." ++ fraction ∧
-    IsWfSign sign ∧
-    IsNatural natural ∧
-    IsWfFrac fraction
+  ∃ sign natural fraction, DecimalProduction s sign natural fraction
 -- ANCHOR_END: IsWfDecimal
 
 /-- The grammar's value function, applied to an already-decomposed literal:
@@ -84,14 +92,11 @@ public def value (sign natural fraction : String) : Int :=
 
     The existential supplies the split, so no string surgery (`front`/`drop`/`splitToList`) and no
     `Option` appear here. The relation is single-valued (`isDecimalValue_unique`), and a string is
-    well-formed exactly when it has some value (`isWfDecimal_iff_exists_value`). -/
+    well-formed exactly when it has some value (`wf_iff_exists_value`). -/
 -- ANCHOR: IsDecimalValue
 public def IsDecimalValue (s : String) (v : Int) : Prop :=
   ∃ sign natural fraction,
-    s = sign ++ natural ++ "." ++ fraction ∧
-    IsWfSign sign ∧
-    IsNatural natural ∧
-    IsWfFrac fraction ∧
+    DecimalProduction s sign natural fraction ∧
     v = value sign natural fraction
 -- ANCHOR_END: IsDecimalValue
 

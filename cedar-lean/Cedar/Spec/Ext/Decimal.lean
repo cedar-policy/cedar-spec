@@ -48,7 +48,7 @@ public def decimal? (i : Int) : Option Decimal :=
 -- ANCHOR: parse
 public def parse (str : String) : Option Decimal :=
   match str.splitToList (· = '.') with
-  | ["-", _] => .none -- guard against bare "-"; redundant on current stdlib (`String.toInt? "-" = none`) but robust to stdlib changes
+  | ["-", _] => .none -- String.toInt? "-" == some 0
   | [left, right] =>
     let rlen := right.length
     if 0 < rlen ∧ rlen ≤ DECIMAL_DIGITS

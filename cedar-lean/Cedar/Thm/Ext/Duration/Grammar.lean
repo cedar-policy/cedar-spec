@@ -27,6 +27,7 @@ import all Cedar.Thm.Data.String
 namespace Cedar.Thm.Duration
 open Cedar.Spec.Ext
 open Datetime
+open String
 
 /-! # Duration grammar: definitions
 
@@ -42,10 +43,6 @@ public def durationChunk (digits? : Option String) (suffix : String) : String :=
   match digits? with
   | none => ""
   | some digits => digits ++ suffix
-
-/-- Render a required duration component as `toString n ++ suffix`. -/
-public def durationComponent (n : Nat) (suffix : String) : String :=
-  toString n ++ suffix
 
 /-- Lift the `Digit⁺` quantity-token predicate (`IsDigits`) to optional components:
     `none` is trivially valid. -/
@@ -149,28 +146,26 @@ public def IsWfBody (body : String) : Prop :=
     body = components.asString
 -- ANCHOR_END: IsWfBody
 
-/-- A duration string is well-formed iff it is the rendering of an optional `Sign` (`['-']`,
-    the shared `IsWfSign`) followed by a well-formed body. Phrasing it as a rendering
-    existential over the sign — rather than a disjunction that spells the `"-"` case
-    separately — matches the decimal and datetime grammars. -/
+/-- The grammar production witnessed by an optional sign and a nonempty component record. -/
+-- ANCHOR: DurationProduction
+public def DurationProduction (str sign : String) (components : Components) : Prop :=
+  str = sign ++ components.asString ∧
+  IsWfSign sign ∧
+  components.nonempty ∧
+  components.quantitiesWf
+-- ANCHOR_END: DurationProduction
+
+/-- A duration string is well-formed iff it has a valid grammar production. -/
 -- ANCHOR: IsWfDuration
 public def IsWfDuration (str : String) : Prop :=
-  ∃ sign body,
-    str = sign ++ body ∧
-    IsWfSign sign ∧
-    IsWfBody body
+  ∃ sign components, DurationProduction str sign components
 -- ANCHOR_END: IsWfDuration
 
-/-- `v` is the value of the duration literal `str`: `str` is the rendering of a well-formed
-    optional sign and nonempty component record, and `v` is the weighted millisecond sum assigned
-    to those fields by the grammar's value function. -/
+/-- `v` is the value assigned to a valid duration production. -/
 -- ANCHOR: IsDurationValue
 public def IsDurationValue (str : String) (v : Int) : Prop :=
   ∃ sign components,
-    str = sign ++ components.asString ∧
-    IsWfSign sign ∧
-    components.nonempty ∧
-    components.quantitiesWf ∧
+    DurationProduction str sign components ∧
     v = value sign components
 -- ANCHOR_END: IsDurationValue
 

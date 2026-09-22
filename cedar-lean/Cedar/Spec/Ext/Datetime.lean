@@ -299,7 +299,7 @@ public def Duration.toDays (duration: Duration) : Int64 :=
   duration.toHours / 24
 
 /-- Render a duration component as `toString n ++ suffix`. -/
-private def durationComponent (n : Nat) (suffix : String) : String :=
+public def durationComponent (n : Nat) (suffix : String) : String :=
   toString n ++ suffix
 
 /-- Render a nonnegative millisecond total as a canonical duration body. -/

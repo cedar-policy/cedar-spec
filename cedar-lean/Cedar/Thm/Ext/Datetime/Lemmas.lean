@@ -67,6 +67,7 @@ end Std.Time
 namespace Cedar.Thm.Datetime
 open Cedar.Spec.Ext
 open Datetime
+open String
 
 /-! # Datetime grammar roundtrip lemmas
 
@@ -442,22 +443,12 @@ theorem parseComponents_asString {c : DatetimeComponents} (h : c.syntaxWf) :
     rw [show c = DatetimeComponents.mk c.date (some tp) from by rw [← htp]]
     rfl
 
-/-- Well-formed datetime syntax is exactly syntax to which the grammar assigns some value. Both
-    sides use the same component witnesses; no parser or string decoder is involved. -/
-public theorem isWfDatetime_iff_exists_value {str : String} :
-    IsWfDatetime str ↔ ∃ v, IsDatetimeValue str v := by
-  constructor
-  · rintro ⟨components, hsyntax, hconstraints, hstr⟩
-    exact ⟨components.toMillis, components, hsyntax, hconstraints, hstr, rfl⟩
-  · rintro ⟨_, components, hsyntax, hconstraints, hstr, _⟩
-    exact ⟨components, hsyntax, hconstraints, hstr⟩
-
 /-- The declarative value relation is single-valued: a datetime string denotes at most one
     epoch-millisecond value. -/
 public theorem isDatetimeValue_unique {str : String} {v₁ v₂ : Int}
     (h₁ : IsDatetimeValue str v₁) (h₂ : IsDatetimeValue str v₂) : v₁ = v₂ := by
-  obtain ⟨c₁, hsyntax₁, _, hstr₁, hv₁⟩ := h₁
-  obtain ⟨c₂, hsyntax₂, _, hstr₂, hv₂⟩ := h₂
+  obtain ⟨c₁, ⟨hsyntax₁, _, hstr₁⟩, hv₁⟩ := h₁
+  obtain ⟨c₂, ⟨hsyntax₂, _, hstr₂⟩, hv₂⟩ := h₂
   have hp₁ := parseComponents_asString hsyntax₁
   have hp₂ := parseComponents_asString hsyntax₂
   have hrender : c₁.asString = c₂.asString := hstr₁.symm.trans hstr₂
@@ -549,7 +540,7 @@ theorem toString?_some_value {d : Cedar.Spec.Ext.Datetime} {str : String}
     simp only [hc, Option.map_some, Option.some.injEq] at h
     subst str
     obtain ⟨hsyntax, hconstraints, hvalue⟩ := canonicalComponents?_some hc
-    exact ⟨components, hsyntax, hconstraints, rfl, hvalue.symm⟩
+    exact ⟨components, ⟨hsyntax, hconstraints, rfl⟩, hvalue.symm⟩
 
 /-- Values outside the exact grammar-representable millisecond interval do not serialize: the
     canonical local-time selection returns `none`, so `toString?` short-circuits. -/
@@ -4220,7 +4211,7 @@ theorem parseOneOrTwoNum_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
     (v : Nat) (hsplit : p.Splits pre suf)
     (hpar : parseOneOrTwoNum ⟨s, p⟩ = ParseResult.success ⟨s, p'⟩ v) :
     ∃ out rest : String,
-      IsDigitsUpTo 2 out ∧ v = natOf out ∧ suf = out ++ rest ∧
+      IsAtMostNDigits 2 out ∧ v = natOf out ∧ suf = out ++ rest ∧
       p'.Splits (pre ++ out) rest := by
   unfold parseOneOrTwoNum at hpar
   simp only [bind, Bind.bind] at hpar
@@ -4348,7 +4339,7 @@ theorem checkOffsetLen_offset_fields {date time hh mm : String} (neg : Bool)
     (hdateT : ∀ ch ∈ date.toList, (ch == 'T') = false)
     (htimeT : ∀ ch ∈ time.toList, (ch == 'T') = false)
     (htimeSign : ∀ ch ∈ time.toList, (ch == '+' || ch == '-') = false)
-    (hhh : IsDigitsUpTo 2 hh) (hmm : IsDigitsUpTo 2 mm)
+    (hhh : IsAtMostNDigits 2 hh) (hmm : IsAtMostNDigits 2 mm)
     (hcheck : checkOffsetLen
       (date ++ String.singleton 'T' ++ time ++
         String.singleton (if neg then '-' else '+') ++ hh ++ mm) = true) :
@@ -4416,7 +4407,7 @@ theorem parseWith_offset_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
     (hsplit : p.Splits pre suf)
     (hpar : parseWith config (.x .hourMinute) ⟨s, p⟩ = ParseResult.success ⟨s, p'⟩ v) :
     ∃ (neg : Bool) (hh mm rest : String),
-      IsDigitsUpTo 2 hh ∧ IsDigitsUpTo 2 mm ∧
+      IsAtMostNDigits 2 hh ∧ IsAtMostNDigits 2 mm ∧
       natOf hh ≤ 23 ∧ natOf mm ≤ 59 ∧
       suf = String.singleton (if neg then '-' else '+') ++ (hh ++ (mm ++ rest)) ∧
       p'.Splits (pre ++ String.singleton (if neg then '-' else '+') ++ hh ++ mm) rest := by

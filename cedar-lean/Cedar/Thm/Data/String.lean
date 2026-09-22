@@ -25,6 +25,8 @@ import all Init.Data.String.Slice
 
 open Cedar.Spec.Ext
 
+namespace String
+
 /-! ==============================================================================================
     # Digit strings (`Digit⁺`) and their correspondence with `toNat?'`
 
@@ -50,10 +52,10 @@ public def IsFixedDigits (n : Nat) (s : String) : Prop :=
 
 /-- `Digit{1,n}`: between one and `n` decimal digits. `IsDigits` supplies the lower bound and the
     length constraint the upper (the decimal grammar's `Fraction ::= Digit{1,4}`). -/
--- ANCHOR: IsDigitsUpTo
-public def IsDigitsUpTo (n : Nat) (s : String) : Prop :=
+-- ANCHOR: IsAtMostNDigits
+public def IsAtMostNDigits (n : Nat) (s : String) : Prop :=
   IsDigits s ∧ s.length ≤ n
--- ANCHOR_END: IsDigitsUpTo
+-- ANCHOR_END: IsAtMostNDigits
 
 /-- `['-']`: an optional leading minus sign, either present or absent. Shared by the numeric
     grammars that admit a signed literal (decimal's `Sign`, duration's leading `'-'`). -/
@@ -149,6 +151,30 @@ theorem isDigits_of_toNat?'_isSome {s : String} (h : (toNat?' s).isSome = true) 
     rw [show s.toNat?.isSome = s.isNat from String.isSome_toNat?] at h
     exact isDigits_of_isNat h hnc
 
+/-- Rendering a natural number and parsing it with Cedar's underscore-rejecting parser
+    recovers the original number. -/
+public theorem toNat?'_toString (n : Nat) : toNat?' (toString n) = some n := by
+  unfold toNat?'
+  have hno_us : (toString n).contains '_' = false := by
+    have h : ¬ ('_' ∈ (toString n).toList) := by
+      rw [Nat.toString_eq_repr, Nat.toList_repr]
+      exact Nat.underscore_not_in_toDigits
+    simp [String.contains]
+  rw [hno_us]
+  simp [Nat.toString_eq_repr]
+
+/-- `Nat.repr` is accepted by Cedar's natural-number parser. -/
+public theorem toNat?'_repr (n : Nat) : toNat?' (Nat.repr n) = some n := by
+  simpa [Nat.toString_eq_repr] using toNat?'_toString n
+
+/-- The canonical decimal rendering of a natural number is a nonempty digit string. -/
+public theorem isDigits_toString (n : Nat) : IsDigits (toString n) :=
+  isDigits_of_toNat?'_isSome (by rw [toNat?'_toString]; simp)
+
+/-- `Nat.repr` is a nonempty digit string. -/
+public theorem isDigits_repr (n : Nat) : IsDigits (Nat.repr n) := by
+  simpa [Nat.toString_eq_repr] using isDigits_toString n
+
 /-- A digit string is nonempty. -/
 theorem IsDigits.ne_empty {s : String} (h : IsDigits s) : s ≠ "" := by
   intro he; rw [he] at h; exact absurd h.1 (by simp)
@@ -172,9 +198,13 @@ theorem toNat?'_isSome_length_pos (s : String) (h : (toNat?' s).isSome) : s.leng
   rw [String.isSome_toNat?, String.isNat_iff] at h
   exact h.1 rfl
 
+end String
+
 /-! ==============================================================================================
     # Splitting a string on a separator
     ============================================================================================== -/
+
+namespace List
 
 /-- If no element of `l` satisfies `P`, then `splitOnPPrepend P l acc` returns
     the single segment `[acc.reverse ++ l]` (the accumulator is prepended in reverse). -/
@@ -206,6 +236,10 @@ theorem splitOnPPrepend_one_sep (P : α → Bool) (as bs acc : List α) (sep : �
     rw [ih (a :: acc) (fun x hx => has x (List.mem_cons.mpr (.inr hx)))]
     simp [List.reverse_cons, List.append_assoc]
 
+end List
+
+namespace String
+
 /-- Splitting `s₁ ++ sep ++ s₂` on `sep` yields `[s₁, s₂]` when neither part contains `sep`. -/
 theorem splitToList_eq (s₁ s₂ : String) (p : Char → Bool) (sep : Char)
     (hsep : p sep = true) (h₁ : ∀ c ∈ s₁.toList, p c = false)
@@ -214,7 +248,7 @@ theorem splitToList_eq (s₁ s₂ : String) (p : Char → Bool) (sep : Char)
   rw [String.splitToList_of_valid]
   simp [String.toList_append, List.append_assoc]
   rw [List.splitOnP_eq_splitOnPPrepend]
-  rw [splitOnPPrepend_one_sep p s₁.toList s₂.toList [] sep hsep h₁ h₂]
+  rw [List.splitOnPPrepend_one_sep p s₁.toList s₂.toList [] sep hsep h₁ h₂]
   simp
 
 /-- Converse of `splitToList_eq`: if splitting `s` on `'.'` yields exactly two parts, then `s` is
@@ -237,6 +271,10 @@ theorem join_splitToList {s left right : String}
   rw [← String.toList_inj]
   simpa [List.intercalate] using hi
 
+end String
+
+namespace List
+
 /-- If `as ++ [sep] ++ bs ++ [sep] ++ cs` has exactly two elements satisfying `P` (namely the two
     `sep`s), then `splitOnPPrepend P (as ++ sep :: bs ++ sep :: cs) acc` returns the three
     segments `[acc.reverse ++ as, bs, cs]`. -/
@@ -256,6 +294,10 @@ theorem splitOnPPrepend_two_sep (P : α → Bool) (as bs cs acc : List α) (sep 
     rw [ih (a :: acc) (fun x hx => has x (List.mem_cons.mpr (.inr hx)))]
     simp [List.reverse_cons, List.append_assoc]
 
+end List
+
+namespace String
+
 
 /-- Splitting `s₁ ++ sep ++ s₂ ++ sep ++ s₃` on `sep` yields `[s₁, s₂, s₃]` when no part
     contains `sep`. -/
@@ -267,7 +309,7 @@ theorem splitToList_eq3 (s₁ s₂ s₃ : String) (p : Char → Bool) (sep : Cha
   simp only [String.toList_append, String.toList_singleton, List.append_assoc,
     List.nil_append, List.cons_append]
   rw [List.splitOnP_eq_splitOnPPrepend]
-  rw [splitOnPPrepend_two_sep p s₁.toList s₂.toList s₃.toList [] sep hsep h₁ h₂ h₃]
+  rw [List.splitOnPPrepend_two_sep p s₁.toList s₂.toList s₃.toList [] sep hsep h₁ h₂ h₃]
   simp
 
 
@@ -276,7 +318,7 @@ theorem splitToList_no_sep (s : String) (p : Char → Bool)
     (h : ∀ c ∈ s.toList, p c = false) :
     s.splitToList p = [s] := by
   rw [String.splitToList_of_valid, List.splitOnP_eq_splitOnPPrepend,
-    splitOnPPrepend_no_sep p s.toList [] h]
+    List.splitOnPPrepend_no_sep p s.toList [] h]
   simp
 
 /-! ==============================================================================================
@@ -342,3 +384,5 @@ theorem toDigits_foldl_roundtrip (n : Nat) :
   rw [foldl_no_underscore_eq _ 0 (fun c hc heq => Nat.underscore_not_in_toDigits (heq ▸ hc)),
     foldl_eq_ofDigitChars]
   exact Nat.ofDigitChars_toDigits (by omega) (by omega)
+
+end String

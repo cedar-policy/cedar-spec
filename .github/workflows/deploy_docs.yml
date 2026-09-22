@@ -48,10 +48,23 @@ jobs:
         run: source ~/.profile && .lake/build/bin/generate-doc
       - name: Copy static assets
         run: cp -r cedar-lean/doc/static cedar-lean/doc/_out/html-multi/
+      - name: Download API documentation dependencies
+        working-directory: ./cedar-lean
+        shell: bash
+        run: source ~/.profile && lake -R -Kenv=dev update
+      - name: Build API docs
+        working-directory: ./cedar-lean
+        shell: bash
+        run: source ~/.profile && lake -R -Kenv=dev build Cedar:docs
+      - name: Assemble Pages site
+        run: |
+              mkdir -p pages/docs
+              cp -r cedar-lean/doc/_out/html-multi/. pages/
+              cp -r cedar-lean/.lake/build/doc/. pages/docs/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
-            path: cedar-lean/doc/_out/html-multi/
+            path: pages/
 
   # Deployment job
   deploy:

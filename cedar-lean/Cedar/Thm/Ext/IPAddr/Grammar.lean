@@ -26,6 +26,7 @@ import all Cedar.Thm.Data.String
 namespace Cedar.Thm.IPAddr
 open Cedar.Spec.Ext
 open IPAddr
+open String
 
 /-! # IPAddr grammar: definitions
 
@@ -200,25 +201,33 @@ rendering (with V4 taking precedence, mirroring the parser's `if ipv4.isSome the
 are phrased existentially over the components' `asString` rendering (as in the duration/datetime
 grammars), baking the separators, group count, and `::`-compression rules into the witness. -/
 
-/-- Well-formed IPv4-net string: `addr ['/' pre]` where `addr` renders well-formed V4 groups whose
-    values are in range, and the optional prefix is a canonical `≤ 32` number. -/
+/-- The IPv4 grammar production witnessed by address components and an optional CIDR prefix. -/
+-- ANCHOR: V4Production
+public def V4Production (str : String) (v : V4Components) (pre : Option String) : Prop :=
+  v.syntaxWf ∧
+  v.constraintsWf ∧
+  IsWfOptionalPrefix 2 (ADDR_SIZE V4_WIDTH) pre ∧
+  str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p)
+-- ANCHOR_END: V4Production
+
+/-- A well-formed IPv4-net string has a valid IPv4 grammar production. -/
 -- ANCHOR: IsWfV4
 public def IsWfV4 (str : String) : Prop :=
-  ∃ (v : V4Components) (pre : Option String),
-    v.syntaxWf ∧ v.constraintsWf ∧
-    IsWfOptionalPrefix 2 (ADDR_SIZE V4_WIDTH) pre ∧
-    str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p)
+  ∃ (v : V4Components) (pre : Option String), V4Production str v pre
 -- ANCHOR_END: IsWfV4
 
-/-- Well-formed IPv6-net string: `addr ['/' pre]` where `addr` is the `asString` rendering of a
-    syntactically well-formed `V6Components` (either 8 `':'`-separated hextets, or a `::`-compressed
-    form whose two sides total `< 8`), and the optional prefix is a canonical `≤ 128` number. -/
+/-- The IPv6 grammar production witnessed by address components and an optional CIDR prefix. -/
+-- ANCHOR: V6Production
+public def V6Production (str : String) (v : V6Components) (pre : Option String) : Prop :=
+  v.syntaxWf ∧
+  IsWfOptionalPrefix 3 (ADDR_SIZE V6_WIDTH) pre ∧
+  str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p)
+-- ANCHOR_END: V6Production
+
+/-- A well-formed IPv6-net string has a valid IPv6 grammar production. -/
 -- ANCHOR: IsWfV6
 public def IsWfV6 (str : String) : Prop :=
-  ∃ (v : V6Components) (pre : Option String),
-    v.syntaxWf ∧
-    IsWfOptionalPrefix 3 (ADDR_SIZE V6_WIDTH) pre ∧
-    str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p)
+  ∃ (v : V6Components) (pre : Option String), V6Production str v pre
 -- ANCHOR_END: IsWfV6
 
 /-- A string is a well-formed IP-net iff it is a well-formed V4 or V6 net. Because the parser tries
@@ -251,10 +260,7 @@ public def v6Value (v : V6Components) (pre : Option String) : IPNet :=
 -- ANCHOR: IsV4Value
 public def IsV4Value (str : String) (net : IPNet) : Prop :=
   ∃ (v : V4Components) (pre : Option String),
-    v.syntaxWf ∧
-    v.constraintsWf ∧
-    IsWfOptionalPrefix 2 (ADDR_SIZE V4_WIDTH) pre ∧
-    str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p) ∧
+    V4Production str v pre ∧
     net = v4Value v pre
 -- ANCHOR_END: IsV4Value
 
@@ -262,9 +268,7 @@ public def IsV4Value (str : String) (net : IPNet) : Prop :=
 -- ANCHOR: IsV6Value
 public def IsV6Value (str : String) (net : IPNet) : Prop :=
   ∃ (v : V6Components) (pre : Option String),
-    v.syntaxWf ∧
-    IsWfOptionalPrefix 3 (ADDR_SIZE V6_WIDTH) pre ∧
-    str = v.asString ++ (match pre with | none => "" | some p => "/" ++ p) ∧
+    V6Production str v pre ∧
     net = v6Value v pre
 -- ANCHOR_END: IsV6Value
 
