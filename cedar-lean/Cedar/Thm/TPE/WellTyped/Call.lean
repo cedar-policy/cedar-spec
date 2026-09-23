@@ -89,8 +89,8 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
     rw [h₃ x₁ (List.mem_singleton.mpr rfl), h₆]
 
 theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  (∀ r ∈ args, Residual.WellTyped env (TPE.evaluate r preq pes)) →
-  PEWellTyped env (Residual.call xfn args ty) (TPE.evaluate (Residual.call xfn args ty) preq pes) req preq es pes
+  (∀ r ∈ args, Residual.WellTyped env (TPE.evaluate env r preq pes)) →
+  PEWellTyped env (Residual.call xfn args ty) (TPE.evaluate env (Residual.call xfn args ty) preq pes) req preq es pes
 := by
   intros h_args_wt h_wf h_ref h_wt
   simp only [TPE.evaluate, TPE.call, List.any_eq_true]
@@ -100,7 +100,7 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
   unfold List.unattach
   rw [List.map_pmap_subtype (fun x => x)]
   simp only [List.map_id_fun', id_eq, List.map_subtype, List.mem_map, List.mem_unattach, List.mem_pmap, Subtype.mk.injEq, exists_prop, exists_eq_right, and_self]
-  simp only [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes)]
+  simp only [List.map_pmap_subtype (fun x => TPE.evaluate env x preq pes)]
   split
   case h_1 x xs h₁ =>
     cases h_wt

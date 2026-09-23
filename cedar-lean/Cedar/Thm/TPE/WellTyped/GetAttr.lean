@@ -157,8 +157,8 @@ theorem entity_attr_well_typed
     simp [Map.empty, Map.find?] at h_find
 
 theorem partial_eval_well_typed_getAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  Residual.WellTyped env (TPE.evaluate expr preq pes) →
-  PEWellTyped env (Residual.getAttr expr attr ty) (TPE.evaluate (Residual.getAttr expr attr ty) preq pes) req preq es pes
+  Residual.WellTyped env (TPE.evaluate env expr preq pes) →
+  PEWellTyped env (Residual.getAttr expr attr ty) (TPE.evaluate env (Residual.getAttr expr attr ty) preq pes) req preq es pes
 := by
   intros h_expr_wt h_wf h_ref h_wt
   simp only [TPE.evaluate, TPE.getAttr, TPE.attrsOf]

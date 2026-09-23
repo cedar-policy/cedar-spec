@@ -32,10 +32,10 @@ open Cedar.Validation
 open Cedar.TPE
 
 theorem partial_eval_well_typed_ite {env : TypeEnv} {c t e : Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  Residual.WellTyped env (TPE.evaluate c preq pes) →
-  Residual.WellTyped env (TPE.evaluate t preq pes) →
-  Residual.WellTyped env (TPE.evaluate e preq pes) →
-  PEWellTyped env (Residual.ite c t e ty) (TPE.evaluate (Residual.ite c t e ty) preq pes) req preq es pes
+  Residual.WellTyped env (TPE.evaluate env c preq pes) →
+  Residual.WellTyped env (TPE.evaluate env t preq pes) →
+  Residual.WellTyped env (TPE.evaluate env e preq pes) →
+  PEWellTyped env (Residual.ite c t e ty) (TPE.evaluate env (Residual.ite c t e ty) preq pes) req preq es pes
 := by
   intros h_c_wt h_t_wt h_e_wt h_wf h_ref h_wt
   simp only [TPE.evaluate]

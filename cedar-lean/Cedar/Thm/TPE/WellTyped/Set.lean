@@ -35,8 +35,8 @@ open Cedar.TPE
 Helper theorem: Partial evaluation preserves well-typedness for set residuals.
 -/
 theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  (∀ r ∈ ls, Residual.WellTyped env (TPE.evaluate r preq pes)) →
-  PEWellTyped env (Residual.set ls ty) (TPE.evaluate (Residual.set ls ty) preq pes) req preq es pes
+  (∀ r ∈ ls, Residual.WellTyped env (TPE.evaluate env r preq pes)) →
+  PEWellTyped env (Residual.set ls ty) (TPE.evaluate env (Residual.set ls ty) preq pes) req preq es pes
 := by
   intros h_ls_wt h_wf h_ref h_wt
   cases h_wt
@@ -48,7 +48,7 @@ theorem partial_eval_well_typed_set {env : TypeEnv} {ls : List Residual} {ty : C
     apply InstanceOfType.instance_of_set
     intro v h₄
     unfold List.map₁ List.attach List.attachWith at h₃
-    rw [List.map_pmap_subtype (fun x => TPE.evaluate x preq pes), List.mapM_map] at h₃
+    rw [List.map_pmap_subtype (fun x => TPE.evaluate env x preq pes), List.mapM_map] at h₃
     rw [Set.mem_make] at h₄
     have h₅ := List.mem_mapM_some_implies_exists_unmapped h₃ h₄
     rcases h₅ with ⟨y, h₆, h₇⟩

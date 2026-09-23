@@ -44,9 +44,9 @@ theorem partial_evaluate_is_sound_call
 {ty : CedarType}
 (hᵢ₁ : ∀ (x : Residual),
   x ∈ args →
-    Except.toOption (x.evaluate req es) = Except.toOption ((TPE.evaluate x preq pes).evaluate req es)) :
+    Except.toOption (x.evaluate req es) = Except.toOption ((TPE.evaluate env x preq pes).evaluate req es)) :
   Except.toOption ((Residual.call xfn args ty).evaluate req es) =
-  Except.toOption ((TPE.evaluate (Residual.call xfn args ty) preq pes).evaluate req es)
+  Except.toOption ((TPE.evaluate env (Residual.call xfn args ty) preq pes).evaluate req es)
 := by
   simp only [TPE.evaluate, TPE.call, List.map₁, List.map_subtype, List.unattach_attach,
     List.mapM_map, Function.comp_def, List.any_map, List.any_eq_true]
@@ -54,7 +54,7 @@ theorem partial_evaluate_is_sound_call
   case _ vs heq =>
     simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es), someOrError]
     simp only [List.mapM_some_iff_forall₂] at heq
-    have h_tpe_ok : List.mapM (λ x => (TPE.evaluate x preq pes).evaluate req es) args = .ok vs := by
+    have h_tpe_ok : List.mapM (λ x => (TPE.evaluate env x preq pes).evaluate req es) args = .ok vs := by
       rw [List.mapM_ok_iff_forall₂]
       exact List.Forall₂.imp (fun _ _ h => asValue_evaluate_val h req es) heq
     have h₅ : List.mapM (λ x => x.evaluate req es) args = .ok vs := by
