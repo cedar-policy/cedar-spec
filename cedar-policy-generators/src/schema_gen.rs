@@ -46,9 +46,9 @@ impl From<types::Type> for abac::Type {
                 lub.into_single_entity()
                     .expect("should contain just one element"),
             ),
-            types::Type::Record { attrs, .. } => Self::record(attrs.into_iter().map(|(a, ty)| {
+            types::Type::Record { attrs, .. } => Self::record(attrs.iter().map(|(a, ty)| {
                 (
-                    a,
+                    a.clone(),
                     QualifiedType {
                         ty: ty.attr_type.as_ref().clone().into(),
                         required: ty.is_required,
