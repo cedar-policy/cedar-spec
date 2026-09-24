@@ -19,7 +19,6 @@ module
 public import Cedar.Data.Map
 public import Cedar.Data.LT
 import all Cedar.Data.Map -- inside this module, we're allowed to unfold defs in Cedar.Data.Map that are not normally exposed
-import all Cedar.Data.List -- TODO should fix this, but currently, some proofs in this module rely on unfolding definitions like `canonicalize` from Cedar.Data.List. Ideally we should not be unfolding `canonicalize` but only using lemmas about it from Thm/Data/List/Canonical.lean.
 import Cedar.Data.SizeOf
 import Cedar.Thm.Data.Control
 public import Cedar.Thm.Data.List
@@ -1455,86 +1454,34 @@ private theorem map_make_find?_in_tail
   [SizeOf α] [SizeOf β]
   {hd : (α × β)} {tl : List (α × β)} {k : α} :
   ¬(hd.1 = k) →
-  (Map.make (hd :: tl)).find? k = (Map.make tl).find? k
-:= by
+  (Map.make (hd :: tl)).find? k = (Map.make tl).find? k := by
   simp [Map.make]
-  intro h₁
-  simp [List.canonicalize]
-  unfold List.insertCanonical
-  split
-  . simp only [find?, toList_mk_id, List.find?_singleton, beq_iff_eq]
-    split
-    . rename_i h₂
-      split at h₂ <;> rename_i h₃
-      . simp at h₃
-        contradiction
-      . contradiction
-    . rename_i h₃ _ _
-      simp [h₃]
-  . simp
-    split
-    case h_2.isTrue hd₂ tl₂ h₃ h₄ =>
-      simp only [Map.find?, toList_mk_id, List.find?]
-      split <;> rename_i h₅
-      . split at h₅ <;> rename_i h₆
-        . simp at h₆
-          contradiction
-        . rw [h₅]
-      . simp at h₅
-        have h₆ : (hd.fst == k) = false := by
-          simp
-          assumption
-        rw [h₆] at h₅
-        simp at h₅
-        split
-        case h_1 h₇ =>
-          rename α => k
-          rename β => v
-          rw [h₇] at h₅
-          specialize h₅ k v
-          contradiction
-        case h_2 => simp
-    case h_2.isFalse xs hd₂ tl₂ h₃ h₄ =>
-      rw [h₃]
-      rename LT α => i₁
-      rename StrictLT α => i₂
-      split
-      case isTrue h₅ =>
-        simp only [find?, toList_mk_id, List.find?]
-        cases h₆: hd₂.fst == k
-        case false =>
-          rw [List.insertCanonical_preserves_find_other_element k hd tl₂ (by simp [*])]
-        case true =>
-          simp
-      case isFalse h₅ =>
-        have h₆ := @StrictLT.if_not_lt_gt_then_eq α i₁ i₂ hd.fst hd₂.fst h₄ h₅
-        simp only [find?, toList_mk_id, List.find?]
-        rw [← h₆]
-        have h₈ : (hd.fst == k) = false := by simp [h₁]
-        rw [h₈]
+  intro h
+  simp only [Map.find?, Map.toList_mk_id]
+  have hp : (Prod.fst hd == k) = false := by simp [h]
+  rw [List.list_find?_in_tail (f := Prod.fst) (k := k) hp]
+
 
 public theorem make_find?_eq_list_find?
   [DecidableEq α] [LT α] [DecidableLT α]
   [Cedar.Data.StrictLT α]
   {l : List (α × β)}
   {k : α} :
-  (make l).find? k = (List.find? (λ x => x.fst == k) l).map Prod.snd
-   := by
-  cases l
+  (make l).find? k = (List.find? (λ x => x.fst == k) l).map Prod.snd := by
+  simp [Map.make]
+  simp only [Map.find?, Map.toList_mk_id]
+  induction l
   case nil =>
-    simp [make, List.canonicalize, Map.find?, List.find?]
-  case cons hd tl =>
-    simp only [List.find?]
-    split
-    case h_1 x h₁ =>
-      simp only [find?, make, List.canonicalize, toList_mk_id, Option.map_some]
-      simp at h₁
-      rw [← h₁]
-      rw [List.insertCanonical_find? (f := Prod.fst) hd]
-    case h_2 x h₃ =>
-      simp at h₃
-      rw [map_make_find?_in_tail h₃]
-      rw [make_find?_eq_list_find?]
+    simp only [List.canonicalize_nil, List.find?_nil, Option.map_none]
+  case cons hd tl ih =>
+    cases h : hd.fst == k
+    case true =>
+      rw [List.list_find?_at_head (f := Prod.fst) (k := k) h]
+      simp only [List.find?, h, Option.map_some]
+    case false =>
+      rw [List.list_find?_in_tail (f := Prod.fst) (k := k) h]
+      simp only [List.find?, h]
+      exact ih
 
 
 public theorem list_find?_iff_make_find?

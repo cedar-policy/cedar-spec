@@ -329,6 +329,44 @@ public theorem insertCanonical_map_fst_canonicalize {α β γ} [LT α] [StrictLT
     simp only [map_cons, canonicalize, ih hd]
     apply insertCanonical_map_fst (insertCanonical Prod.fst hd (canonicalize Prod.fst tl))
 
+private theorem insertCanonical_find?_key
+  [LT β] [DecidableLT β] [BEq β] [LawfulBEq β] [StrictLT β]
+  {f : α → β} (k : β) (x : α) (ys : List α) :
+  (List.insertCanonical f x ys).find? (λ e => f e == k) =
+  if (f x == k) then some x else ys.find? (λ e => f e == k)
+:= by
+  induction ys
+  case nil =>
+    simp only [insertCanonical, List.find?]
+    cases f x == k <;> simp
+  case cons hd₂ tl₂ ih =>
+    unfold insertCanonical
+    simp only [gt_iff_lt]
+    split
+    case isTrue =>
+      simp only [List.find?]
+      cases f x == k <;> simp
+    case isFalse hlt =>
+      split
+      case isTrue hgt =>
+        simp only [List.find?]
+        rw [ih]
+        cases hhd : (f hd₂ == k)
+        case false => simp
+        case true =>
+          simp only [beq_iff_eq] at hhd
+          have hx : (f x == k) = false := by
+            simp only [beq_eq_false_iff_ne, ne_eq]
+            intro heq
+            rw [heq, hhd] at hgt
+            exact StrictLT.irreflexive k hgt
+          simp [hx]
+      case isFalse hng =>
+        have heq := StrictLT.if_not_lt_gt_then_eq (f x) (f hd₂) hlt hng
+        simp only [List.find?]
+        rw [heq]
+        cases hk : (f hd₂ == k) <;> simp
+
 /-! ## canonicalize -/
 
 public theorem canonicalize_nil [LT β] [DecidableLT β] (f : α → β) :
@@ -527,4 +565,34 @@ public theorem canonicalize_of_map_fst {α β γ} [LT α] [StrictLT α] [Decidab
     simp only [canonicalize]
     exact insertCanonical_map_fst_canonicalize tl f hd
 
+/--
+  If the head of the list is not k, then finding in the tail
+  returns the same result as finding the entire list.
+-/
+public theorem list_find?_in_tail
+  [LT β] [DecidableLT β] [BEq β] [LawfulBEq β] [StrictLT β]
+  {f : α → β} {hd : α} {tl : List α} {k : β} :
+  (f hd == k) = false →
+  (List.canonicalize f (hd :: tl)).find? (λ x => f x == k) =
+  (List.canonicalize f tl).find? (λ x => f x == k)
+:= by
+  intro h₁
+  simp only [canonicalize]
+  rw [insertCanonical_find?_key k hd (canonicalize f tl)]
+  simp [h₁]
+
+/--
+  If the head of the list matches k, then finding in the canonicalized list
+  returns that head element.
+-/
+public theorem list_find?_at_head
+  [LT β] [DecidableLT β] [BEq β] [LawfulBEq β] [StrictLT β]
+  {f : α → β} {hd : α} {tl : List α} {k : β} :
+  (f hd == k) = true →
+  (List.canonicalize f (hd :: tl)).find? (λ x => f x == k) = some hd
+:= by
+  intro h₁
+  simp only [canonicalize]
+  rw [insertCanonical_find?_key k hd (canonicalize f tl)]
+  simp [h₁]
 end List
