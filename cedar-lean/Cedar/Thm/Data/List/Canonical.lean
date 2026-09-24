@@ -329,9 +329,6 @@ public theorem insertCanonical_map_fst_canonicalize {α β γ} [LT α] [StrictLT
     simp only [map_cons, canonicalize, ih hd]
     apply insertCanonical_map_fst (insertCanonical Prod.fst hd (canonicalize Prod.fst tl))
 
-/--
-  Helper for the next 2 theorems
--/
 private theorem insertCanonical_find?_key
   [LT β] [DecidableLT β] [BEq β] [LawfulBEq β] [StrictLT β]
   {f : α → β} (k : β) (x : α) (ys : List α) :
