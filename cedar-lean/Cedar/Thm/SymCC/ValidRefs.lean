@@ -450,6 +450,31 @@ theorem typeOf_preserves_valid_refs_call
   rename_i txs htxs
   split at hty
   any_goals contradiction
+  -- isInRange case (h_13): typeOfIsInRange builds `.call .isInRange txs ty`,
+  -- same shape as the generic arm, so reuse it after unfolding + splitting.
+  case h_13 =>
+    simp only [typeOfIsInRange] at hty
+    split at hty
+    · split at hty
+      · simp only [ok, Except.ok.injEq, Prod.mk.injEq] at hty
+        simp only [←hty.1, TypedExpr.toExpr]
+        constructor
+        intros x' hmem_x'
+        simp only [List.map₁_eq_map] at hmem_x'
+        have ⟨tx', hmem_tx', htx'⟩ := List.mem_map.mp hmem_x'
+        simp only [List.mapM₁_eq_mapM (λ x => justType (typeOf x c₁ Γ)) _] at htxs
+        have ⟨x, hmem_x, hx⟩ := List.mapM_ok_implies_all_from_ok htxs tx' hmem_tx'
+        simp only [justType] at hx
+        cases htyₓ : typeOf x c₁ Γ with
+        | error => simp [htyₓ, Except.map] at hx
+        | ok r =>
+          have ⟨tx, c₄⟩ := r
+          simp only [htyₓ, Except.map, Except.ok.injEq] at hx
+          simp only [←htx', ←hx]
+          specialize hrefs x hmem_x
+          exact ih_args x hmem_x htyₓ hrefs
+      · simp only [err, reduceCtorEq] at hty
+    · simp only [err, reduceCtorEq] at hty
   any_goals
     try split at hty
     try contradiction

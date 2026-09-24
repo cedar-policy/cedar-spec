@@ -103,6 +103,12 @@ private def testInRange (str₁ str₂ : String) (expected : Bool) : TestCase So
     (SymEnv.ofTypeEnv ipTypeEnv)
     (.ok (.some expected))
 
+private def testInRangeV (str₁ : String) (ranges : List String) (expected : Bool) : TestCase SolverM :=
+  testCompile s!"Expected {expected}: inRange {str₁} {ranges}]"
+    (.call .isInRange ((ipLit str₁) :: ranges.map ipLit))
+    (SymEnv.ofTypeEnv ipTypeEnv)
+    (.ok (.some expected))
+
 def testsForIsLoopback :=
   suite "IPAddr.isLoopback" $ List.flatten
   [
@@ -205,11 +211,43 @@ def testsForIsInRange :=
       ipTypeEnv .unsat,
   ]
 
+def testsForIsInRangeVariadic :=
+  suite "IPAddr.isInRange (variadic)"
+  [
+    -- a single range should reduce to the binary encoding
+    testInRangeV "192.168.0.1" ["192.168.0.1/24"] true,
+    -- the matching range appears first, last, nowhere, or in the middle
+    testInRangeV "192.168.0.1" ["192.168.0.0/24", "10.0.0.0/8"] true,
+    testInRangeV "10.0.0.50" ["192.168.0.0/24", "172.16.0.0/12", "10.0.0.0/8"] true,
+    testInRangeV "8.8.8.8" ["192.168.0.0/24", "10.0.0.0/8"] false,
+    testInRangeV "172.16.5.10" ["192.168.0.0/24", "172.16.0.0/12", "10.0.0.0/8"] true,
+    -- ranges of the wrong IP version are skipped instead of erroring
+    testInRangeV "1:2:3:4::" ["192.168.0.0/24", "1:2:3:4::/48"] true,
+    testInRangeV "192.168.0.1" ["192.168.0.0/24", "1:2:3:4::/48"] true,
+    testInRangeV "192.168.1.100" ["10.0.0.0/8", "172.16.0.0/12", "192.168.1.0/24"] true,
+    -- ranges given as exact IPs
+    testInRangeV "192.168.0.1" ["10.0.0.1", "192.168.0.1"] true,
+    testInRangeV "192.168.0.1" ["10.0.0.1", "172.16.0.1"] false,
+    -- all-v6 ranges
+    testInRangeV "fe80::1" ["1:2:3:4::/48", "fe80::/10"] true,
+    testInRangeV "2001:db8::1" ["1:2:3:4::/48", "fe80::/10"] false,
+    -- fewer than two arguments does not compile
+    testCompile "Error: isInRange with no ranges"
+      (.call .isInRange [ipLit "192.168.0.1"])
+      (SymEnv.ofTypeEnv ipTypeEnv)
+      (.error .typeError),
+    testCompile "Error: isInRange with no arguments"
+      (.call .isInRange [])
+      (SymEnv.ofTypeEnv ipTypeEnv)
+      (.error .typeError)
+  ]
+
 def tests := [
   testsForIpConstructor,
   testsForIsLoopback,
   testsForIsMulticast,
-  testsForIsInRange
+  testsForIsInRange,
+  testsForIsInRangeVariadic
 ]
 
 -- Uncomment for interactive debugging

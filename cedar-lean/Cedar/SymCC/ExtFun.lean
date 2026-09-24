@@ -104,6 +104,24 @@ public def isInRange (t₁ t₂ : Term) : Term :=
     (inRangeV isIpv4 rangeV4 t₁ t₂)
     (inRangeV isIpv6 rangeV6 t₁ t₂))
 
+/--
+Variadic `inRangeV`: `t` is `isIp` and in range of any of `ts` (each of which
+must also be `isIp`). Left-folds the per-range checks with `or`.
+-/
+def inRangeVs (isIp : Term → Term) (range : Term → Term × Term) (t : Term) (ts : List Term) : Term :=
+  let range_checks := ts.foldl (fun acc t₂ => or acc (and (isIp t₂) (inRange range t t₂))) (false : Term)
+  and (isIp t) range_checks
+
+/--
+Variadic `isInRange`: `t₁` is in range of any of `ts`. A single top-level `or` of the ipv4 and ipv6
+`inRangeVs` checks, each folding over all ranges. With a single range this reduces to the binary
+`isInRange`.
+-/
+public def isInRangeV (t₁ : Term) (ts : List Term) : Term :=
+  (or
+    (inRangeVs isIpv4 rangeV4 t₁ ts)
+    (inRangeVs isIpv6 rangeV6 t₁ ts))
+
 def ipTerm (ip : IPAddr) : Term := (.prim (.ext (.ipaddr ip)))
 
 def inRangeLit (t : Term) (cidr₄ : Ext.IPAddr.CIDR Ext.IPAddr.V4_WIDTH) (cidr₆ : Ext.IPAddr.CIDR Ext.IPAddr.V6_WIDTH) : Term :=

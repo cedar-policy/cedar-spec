@@ -106,6 +106,28 @@ public theorem same_error_implied_by {e : Spec.Error} {ty : TermType} :
 := by
   intro h₁ ; simp [Same.same, SameResults, h₁]
 
+/--
+If some guard in the list corresponds to an errored evaluation (so it is a `none`),
+the whole `ifSome` fold reduces to that error.
+-/
+public theorem same_error_foldr_ifSome {e : Spec.Error} {ts : List Term} {P : Term} {ty : TermType} {tⱼ : Term}
+  (hP : P.typeOf = .option ty)
+  (hj : tⱼ ∈ ts)
+  (hsame : (Except.error e : Spec.Result Value) ∼ tⱼ) :
+  (Except.error e : Spec.Result Value) ∼ ts.foldr (fun tᵢ acc => ifSome tᵢ acc) P
+:= by
+  induction ts with
+  | nil => cases hj
+  | cons t rest ih =>
+    rw [List.foldr_cons]
+    rcases List.mem_cons.mp hj with heq | hmem
+    · subst heq
+      exact same_error_implies_ifSome_error hsame (typeOf_foldr_ifSome hP)
+    · have ihr := ih hmem
+      have ⟨hne, ty', hnone⟩ := same_error_implies ihr
+      rw [hnone, pe_ifSome_none_body]
+      exact same_error_implied_by hne
+
 public theorem same_ok_implies {v : Value} {t : Term} :
   (Except.ok v : Spec.Result Value) ∼ t →
   ∃ t', t = .some t' ∧ v ∼ t'
