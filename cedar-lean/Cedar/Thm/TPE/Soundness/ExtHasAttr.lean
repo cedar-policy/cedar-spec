@@ -71,7 +71,7 @@ private theorem attrsOrEmpty_find?_none_of_schema
     = .some v) :
   (es.attrsOrEmpty uid).find? a = .none := by
   unfold TPE.tryDecideHasResidual at hdec
-  simp only [Residual.errorFree, Residual.typeOf, if_true] at hdec
+  simp only [Residual.errorFree, Residual.typeOf, ite_true] at hdec
   split at hdec
   case h_2 => simp at hdec
   case h_1 rty hsch =>
@@ -214,10 +214,10 @@ theorem partial_evaluate_is_sound_ext_has_attr
       have hwt' := partial_eval_preserves_well_typed hwf h₄ hwt
       obtain ⟨v', hev, hha⟩ := try_decide_has_residual_sound hwf hwt' hdec
       have hx₁ : x₁.evaluate req es = .ok v' := to_option_some.mp (by rw [hᵢ₁, hev]; rfl)
-      simp only [hdec, Residual.evaluate, hx₁, Except.bind_ok, Spec.hasAttrs,
+      simp only [Residual.evaluate, hx₁, Except.bind_ok, Spec.hasAttrs,
         hasAttrs_loop_false_of_hasAttr hha, Except.toOption]
     | none =>
-      simp only [hdec, Residual.evaluate]
+      simp only [Residual.evaluate]
       exact to_option_eq_do₁ (λ x => Spec.hasAttrs x attr attrs es) hᵢ₁
 
 end Cedar.Thm
