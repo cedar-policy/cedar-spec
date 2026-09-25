@@ -16,10 +16,13 @@
 
 #![no_main]
 
-use cedar_drt_inner::{fuzz_target, props::policy_json_to_cedar_roundtrips};
+use cedar_drt_inner::{arbitrary_json::ArbitraryJson, fuzz_target, roundtrip_entities};
 
-fuzz_target!(|input: String| {
-    if let Ok(input) = serde_json::from_str(&input) {
-        policy_json_to_cedar_roundtrips(input);
-    }
+use cedar_policy::Entities;
+
+fuzz_target!(|input: ArbitraryJson| {
+    let Ok(entities) = Entities::from_json_value(input.into(), None) else {
+        return;
+    };
+    roundtrip_entities::fuzz_target(entities, None);
 });

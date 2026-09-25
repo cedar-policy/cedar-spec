@@ -278,3 +278,89 @@ pub fn template_protobuf_decodes(buf: &[u8], original: &Template) {
         Err(e) => panic!("failed to decode a template that was just encoded: {e}"),
     }
 }
+
+/// A policy set parsed from JSON should roundtrip through Cedar text.
+pub fn policy_json_to_cedar_roundtrips(est_json: serde_json::Value) {
+    #[derive(miette::Diagnostic, thiserror::Error, Debug)]
+    enum ESTParseError {
+        #[error(transparent)]
+        JSONToEST(#[from] serde_json::error::Error),
+        #[error(transparent)]
+        #[diagnostic(transparent)]
+        ESTToAST(#[from] Box<cedar_policy_core::est::PolicySetFromJsonError>),
+    }
+
+    // JSON -> EST -> AST
+    // Attempt to deserialize an est policy set from the specified JSON value
+    // Then, convert the est policy set to an ast policy set
+    let ast_from_est_result = serde_json::from_value::<cedar_policy_core::est::PolicySet>(est_json)
+        .map_err(ESTParseError::from)
+        .and_then(|est| {
+            cedar_policy_core::ast::PolicySet::try_from(est)
+                .map_err(|e| ESTParseError::from(Box::new(e)))
+        });
+    if let Ok(ast_from_est) = ast_from_est_result {
+        // AST -> text
+        let text = cedar_drt::policy_set_to_text(&ast_from_est);
+        // text -> CST -> AST
+        // Parse an ast policy set from the Cedar text
+        let ast_from_cedar = cedar_policy_core::parser::parse_policyset(&text);
+        match ast_from_cedar {
+            Ok(ast_from_cedar) => {
+                cedar_drt::check_policy_set_equivalence(&ast_from_est, &ast_from_cedar);
+            }
+
+            Err(e) => {
+                println!("{:?}", miette::Report::new(e));
+                panic!("Policy set parsed from est to ast but did not roundtrip ast->text->ast");
+            }
+        }
+    }
+}
+
+/// A schema parsed from JSON should roundtrip through Cedar schema syntax.
+pub fn schema_json_to_cedar_roundtrips(src: serde_json::Value) {
+    use cedar_policy_core::validator::{RawName, ValidatorSchema, json_schema};
+
+    // JSON value -> json_schema::Fragment -> Natural String -> json_schema::Fragment
+    // Assert that schema fragments are equivalent. By starting with a JSON value
+    // we test for the existence of schema that are valid in JSON but with an
+    // invalid cedar schema conversion.
+    if let Ok(parsed) = json_schema::Fragment::<RawName>::from_json_value(src.clone()) {
+        if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
+            return;
+        }
+
+        match parsed.to_cedarschema() {
+            Ok(cedar_src) => {
+                let (cedar_parsed, _) = json_schema::Fragment::<RawName>::from_cedarschema_str(
+                    &cedar_src,
+                    cedar_policy_core::extensions::Extensions::all_available(),
+                )
+                .expect("Failed to parse converted Cedar schema");
+                if let Err(msg) = crate::schemas::equivalence_check(&parsed, &cedar_parsed) {
+                    println!("Original JSON schema: {src}");
+                    println!("Converted to Cedar format:\n{cedar_src}");
+                    println!(
+                        "{}",
+                        similar_asserts::SimpleDiff::from_str(
+                            &format!("{:#?}", parsed),
+                            &format!("{:#?}", cedar_parsed),
+                            "Parsed JSON",
+                            "Cedar Round tripped"
+                        )
+                    );
+                    panic!("{msg}");
+                }
+            }
+            Err(
+                cedar_policy_core::validator::cedar_schema::fmt::ToCedarSchemaSyntaxError::NameCollisions(
+                    _,
+                ) | cedar_policy_core::validator::cedar_schema::fmt::ToCedarSchemaSyntaxError::UnconvertibleEntityTypeShape(_),
+            ) => {
+                // Currently, we ignore name-collisions errors, as JSON schemas encountering name-collisions errors are not supported for conversion to Cedar format; see cedar#1272
+                // We also ignore entity type shapes that are not supported in the Cedar schema syntax format; see cedar#1702
+            }
+        }
+    }
+}
