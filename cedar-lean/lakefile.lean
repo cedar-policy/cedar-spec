@@ -22,6 +22,9 @@ require "leanprover" / "doc-gen4" @ git "v4.34.0"
 
 require "leanprover-community" / "batteries" @ git "v4.34.0"
 
+require subverso from git
+  "https://github.com/leanprover/subverso" @ "3a75ede05278806fd3249bb0c97a6fb5777a4f7d"
+
 package Cedar
 
 @[default_target]
@@ -75,11 +78,13 @@ partial def checkThmFile (module : String) (paths : List System.FilePath) : IO N
       let file_name := file.fileName
       if file_name.endsWith ".lean" then
         let subModule := s!"{module}.{file_name.dropEnd 5}"
-        let expectedImport := s!"import {subModule}\n"
-        if contents.all λ content => (content.replace expectedImport "" == content) then
-          IO.println s!"{path} missing import: {expectedImport}"
+        let expectedImports := [s!"import {subModule}\n", s!"import all {subModule}\n"]
+        if contents.all λ content =>
+            expectedImports.all λ expected => content.replace expected "" == content
+        then
+          IO.println s!"{path} missing import: import {subModule}"
           exitCode := 1
-        let subExitCode ← checkThmFile subModule [dir / file_name]
+        let subExitCode ← checkThmFile subModule (dir / file_name :: paths)
         if subExitCode != 0 then
           exitCode := subExitCode
 

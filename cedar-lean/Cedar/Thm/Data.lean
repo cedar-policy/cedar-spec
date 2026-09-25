@@ -23,4 +23,5 @@ public import Cedar.Thm.Data.List
 public import Cedar.Thm.Data.LT
 public import Cedar.Thm.Data.Map
 public import Cedar.Thm.Data.Set
+public import Cedar.Thm.Data.String
 public import Cedar.Thm.Data.MapUnion
