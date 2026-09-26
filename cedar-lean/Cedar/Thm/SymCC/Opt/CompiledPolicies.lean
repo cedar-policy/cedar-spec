@@ -45,19 +45,20 @@ Toplevel theorem about the correctness of `CompiledPolicy.intoCompiledPolicySet`
 Compiling to a `CompiledPolicy` and then using `intoCompiledPolicySet` should give
 exactly the same result as compiling with `CompiledPolicySet.compile` directly
 -/
-theorem intoCompiledPolicySet_correctness {p : Policy} {Γ : Validation.TypeEnv} :
+theorem intoCompiledPolicySet_correctness {p : Policy} {s : CompiledSchema} {reqty : Validation.RequestType} :
   (do
-    let cp ← CompiledPolicy.compile p Γ
+    let cp ← CompiledPolicy.compile p s reqty
     pure cp.intoCompiledPolicySet
-  ) = CompiledPolicySet.compile [p] Γ
+  ) = CompiledPolicySet.compile [p] s reqty
 := by
   simp [CompiledPolicy.compile, CompiledPolicySet.compile, CompiledPolicy.intoCompiledPolicySet, wellTypedPolicy_wellTypedPolicies, Except.mapError, Except.map]
+  generalize (s.typeEnv reqty) = Γ
   cases wellTypedPolicy p Γ <;> simp
   case ok p' =>
   simp [Opt.isAuthorized, Opt.satisfiedPolicies, Opt.compileWithEffect]
   cases p'.effect <;> simp [Factory.anyTrue, Factory.or, Factory.not, Factory.and]
   all_goals {
-    simp_do_let Opt.compile p'.toExpr (SymEnv.ofEnv Γ) as h
+    simp_do_let Opt.compile p'.toExpr (s.symEnv reqty) as h
     simp only [Except.ok.injEq, CompiledPolicySet.mk.injEq, true_and]
     have hwf := Opt.compile_footprint_wf h
     simp [EmptyCollection.emptyCollection, Data.Set.union_empty_right List.mapUnion_wf, Data.Set.union_empty_left List.mapUnion_wf]
@@ -68,9 +69,9 @@ theorem intoCompiledPolicySet_correctness {p : Policy} {Γ : Validation.TypeEnv}
 /--
 The `.policy` of a `CompiledPolicy` is exactly the policy produced by `wellTypedPolicy`
 -/
-theorem cp_compile_produces_the_right_policy {p wp : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
-  CompiledPolicy.compile p Γ = .ok cp →
-  wellTypedPolicy p Γ = .ok wp →
+theorem cp_compile_produces_the_right_policy {p wp : Policy} {cp : CompiledPolicy} {s : CompiledSchema} {reqty : Validation.RequestType} :
+  CompiledPolicy.compile p s reqty = .ok cp →
+  wellTypedPolicy p (s.typeEnv reqty) = .ok wp →
   cp.policy = wp
 := by
   simp [CompiledPolicy.compile, do_eq_ok, Except.mapError]
@@ -80,35 +81,35 @@ theorem cp_compile_produces_the_right_policy {p wp : Policy} {cp : CompiledPolic
 /--
 The `.policies` of a `CompiledPolicySet` is exactly the policies produced by `wellTypedPolicies`
 -/
-theorem cpset_compile_produces_the_right_policies {ps wps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
-  CompiledPolicySet.compile ps Γ = .ok cpset →
-  wellTypedPolicies ps Γ = .ok wps →
+theorem cpset_compile_produces_the_right_policies {ps wps : Policies} {cpset : CompiledPolicySet} {s : CompiledSchema} {reqty : Validation.RequestType} :
+  CompiledPolicySet.compile ps s reqty = .ok cpset →
+  wellTypedPolicies ps (s.typeEnv reqty) = .ok wps →
   cpset.policies = wps
 := by
   simp [CompiledPolicySet.compile, do_eq_ok, Except.mapError]
   intro ps' h₀ t h₁ h₂ ; subst cpset ; simp
   split at h₀ <;> simp_all
 
-theorem cp_compile_produces_the_right_env {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
-  CompiledPolicy.compile p Γ = .ok cp →
-  cp.εnv = SymEnv.ofTypeEnv Γ
+theorem cp_compile_produces_the_right_env {p : Policy} {cp : CompiledPolicy} {s : CompiledSchema} {reqty : Validation.RequestType}  :
+  CompiledPolicy.compile p s reqty = .ok cp →
+  cp.εnv = s.symEnv reqty
 := by
   simp only [CompiledPolicy.compile, Except.mapError, do_eq_ok, Except.ok.injEq, forall_exists_index, and_imp]
   intro p' h₀ t h₁ h₂ ; subst h₂
   simp
 
-theorem cpset_compile_produces_the_right_env {ps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
-  CompiledPolicySet.compile ps Γ = .ok cpset →
-  cpset.εnv = SymEnv.ofTypeEnv Γ
+theorem cpset_compile_produces_the_right_env {ps : Policies} {cpset : CompiledPolicySet} {s : CompiledSchema} {reqty : Validation.RequestType} :
+  CompiledPolicySet.compile ps s reqty = .ok cpset →
+  cpset.εnv = s.symEnv reqty
 := by
   simp only [CompiledPolicySet.compile, Except.mapError, do_eq_ok, Except.ok.injEq, forall_exists_index, and_imp]
   intro ps' h₀ t h₁ h₂ ; subst h₂
   simp
 
-theorem cp_compile_produces_the_right_term {p wp : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
-  CompiledPolicy.compile p Γ = .ok cp →
-  wellTypedPolicy p Γ = .ok wp →
-  cp.term = SymCC.compile wp.toExpr (SymEnv.ofTypeEnv Γ)
+theorem cp_compile_produces_the_right_term {p wp : Policy} {cp : CompiledPolicy} {s : CompiledSchema} {reqty : Validation.RequestType} :
+  CompiledPolicy.compile p s reqty = .ok cp →
+  wellTypedPolicy p (s.typeEnv reqty) = .ok wp →
+  cp.term = SymCC.compile wp.toExpr (s.symEnv reqty)
 := by
   simp [CompiledPolicy.compile, do_eq_ok, Except.mapError]
   intro p' h₀ res h₁ h₂ h₃ ; subst cp ; simp only
@@ -116,13 +117,13 @@ theorem cp_compile_produces_the_right_term {p wp : Policy} {cp : CompiledPolicy}
   split at h₀ <;> simp at h₀
   subst p' ; rename_i wp' h₂
   simp [h₂] at h₃ ; subst wp'
-  cases hcomp : SymCC.compile wp.toExpr (SymEnv.ofTypeEnv Γ) <;> simp [hcomp] at h₁ ⊢
+  cases hcomp : SymCC.compile wp.toExpr (s.symEnv reqty) <;> simp [hcomp] at h₁ ⊢
   case ok t => subst res ; simp
 
-theorem cpset_compile_produces_the_right_term {ps wps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
-  CompiledPolicySet.compile ps Γ = .ok cpset →
-  wellTypedPolicies ps Γ = .ok wps →
-  cpset.term = SymCC.isAuthorized wps (SymEnv.ofTypeEnv Γ)
+theorem cpset_compile_produces_the_right_term {ps wps : Policies} {cpset : CompiledPolicySet} {s : CompiledSchema} {reqty : Validation.RequestType} :
+  CompiledPolicySet.compile ps s reqty = .ok cpset →
+  wellTypedPolicies ps (s.typeEnv reqty) = .ok wps →
+  cpset.term = SymCC.isAuthorized wps (s.symEnv reqty)
 := by
   simp [CompiledPolicySet.compile, do_eq_ok, Except.mapError]
   intro ps' h₀ res h₁ h₂ h₃ ; subst cpset ; simp only
@@ -134,8 +135,8 @@ theorem cpset_compile_produces_the_right_term {ps wps : Policies} {cpset : Compi
   simp only [Except.ok.injEq] at h₁ ; subst res
   simp
 
-theorem cp_compile_produces_the_right_footprint {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
-  CompiledPolicy.compile p Γ = .ok cp →
+theorem cp_compile_produces_the_right_footprint {p : Policy} {cp : CompiledPolicy} {s : CompiledSchema} {reqty : Validation.RequestType} :
+  CompiledPolicy.compile p s reqty = .ok cp →
   cp.footprint = footprint cp.policy.toExpr cp.εnv
 := by
   simp [CompiledPolicy.compile, do_eq_ok]
@@ -144,12 +145,12 @@ theorem cp_compile_produces_the_right_footprint {p : Policy} {cp : CompiledPolic
   rw [Opt.compile.correctness] at h₁
   split at h₁ <;> simp at h₁
   subst t ; rename_i res h₁
-  simp_do_let SymCC.compile p.toExpr (SymEnv.ofEnv Γ) at h₁
+  simp_do_let SymCC.compile p.toExpr (s.symEnv reqty) at h₁
   simp only [Except.ok.injEq] at h₁ ; subst res
   simp
 
-theorem cpset_compile_produces_the_right_footprint {ps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
-  CompiledPolicySet.compile ps Γ = .ok cpset →
+theorem cpset_compile_produces_the_right_footprint {ps : Policies} {cpset : CompiledPolicySet} {s : CompiledSchema} {reqty : Validation.RequestType} :
+  CompiledPolicySet.compile ps s reqty = .ok cpset →
   cpset.footprint = footprints (cpset.policies.map Policy.toExpr) cpset.εnv
 := by
   simp [CompiledPolicySet.compile, do_eq_ok]
@@ -158,12 +159,12 @@ theorem cpset_compile_produces_the_right_footprint {ps : Policies} {cpset : Comp
   rw [Opt.isAuthorized.correctness] at h₁
   split at h₁ <;> simp at h₁
   subst t ; rename_i res h₁
-  simp_do_let SymCC.isAuthorized ps (SymEnv.ofEnv Γ) at h₁
+  simp_do_let SymCC.isAuthorized ps (s.symEnv reqty) at h₁
   simp only [Except.ok.injEq] at h₁ ; subst res
   simp
 
-theorem cp_compile_produces_the_right_acyclicity {p : Policy} {cp : CompiledPolicy} {Γ : Validation.TypeEnv} :
-  CompiledPolicy.compile p Γ = .ok cp →
+theorem cp_compile_produces_the_right_acyclicity {p : Policy} {cp : CompiledPolicy} {s : CompiledSchema} {reqty : Validation.RequestType} :
+  CompiledPolicy.compile p s reqty = .ok cp →
   cp.acyclicity = cp.footprint.map (SymCC.acyclicity · cp.εnv.entities)
 := by
   intro temp ; have hf := cp_compile_produces_the_right_footprint temp ; revert temp
@@ -173,8 +174,8 @@ theorem cp_compile_produces_the_right_acyclicity {p : Policy} {cp : CompiledPoli
   simp only at *
   congr
 
-theorem cpset_compile_produces_the_right_acyclicity {ps : Policies} {cpset : CompiledPolicySet} {Γ : Validation.TypeEnv} :
-  CompiledPolicySet.compile ps Γ = .ok cpset →
+theorem cpset_compile_produces_the_right_acyclicity {ps : Policies} {cpset : CompiledPolicySet} {s : CompiledSchema} {reqty : Validation.RequestType} :
+  CompiledPolicySet.compile ps s reqty = .ok cpset →
   cpset.acyclicity = cpset.footprint.map (SymCC.acyclicity · cpset.εnv.entities)
 := by
   intro temp ; have hf := cpset_compile_produces_the_right_footprint temp ; revert temp
