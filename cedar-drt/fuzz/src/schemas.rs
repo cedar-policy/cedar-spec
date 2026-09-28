@@ -24,6 +24,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
+use std::str::FromStr;
 
 use cedar_policy::{Entities, Schema};
 use cedar_policy_generators::err::Error;
@@ -551,9 +552,8 @@ impl<N: PartialEq + Debug + Display + Clone + TypeName + Ord> Equiv for json_sch
                 && rhs.attributes.as_ref().is_none_or(HashMap::is_empty))
         {
             Err("Attributes don't match".to_string())
-        } else if lhs.member_of != rhs.member_of
-            && !(lhs.member_of.as_ref().is_none_or(Vec::is_empty)
-                && rhs.member_of.as_ref().is_none_or(Vec::is_empty))
+        } else if normalized_member_of(lhs.member_of.as_deref())
+            != normalized_member_of(rhs.member_of.as_deref())
         {
             Err("Member-of doesn't match".to_string())
         } else {
@@ -600,6 +600,27 @@ impl<N: TypeName + Clone + PartialEq + Ord + Debug + Display> Equiv for json_sch
         )?;
         Ok(())
     }
+}
+
+/// Normalize an action's `memberOf` list of comparison
+///
+/// - Replaces an omitted `ty` with `Action`
+/// - Builds `memberOf` as a set, so order and duplicates are ignored
+/// - Instantiates an absent `memberOf` as an empty set
+fn normalized_member_of<N: Clone + TypeName>(
+    member_of: Option<&[json_schema::ActionEntityUID<N>]>,
+) -> BTreeSet<(smol_str::SmolStr, InternalName)> {
+    member_of
+        .into_iter()
+        .flatten()
+        .map(|parent| {
+            let ty = match parent.ty.clone() {
+                Some(ty) => ty.qualify(),
+                None => InternalName::from_str("Action").expect("`Action` is a valid name"),
+            };
+            (parent.id.clone(), ty)
+        })
+        .collect()
 }
 
 fn either_empty<N>(spec: &json_schema::ApplySpec<N>) -> bool {
