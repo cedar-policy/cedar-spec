@@ -297,7 +297,7 @@ impl ModelGenerator {
                 let num_items: usize = u.int_in_range(0..=self.max_attrs)?;
                 let items = (0..num_items)
                     .map(|_| Ok((self.pick_ident(u)?, self.arbitrary_model_expr(u, d)?)))
-                    .collect::<arbitrary::Result<std::collections::HashMap<_, _>>>()?;
+                    .collect::<arbitrary::Result<std::collections::BTreeMap<_, _>>>()?;
                 expr::ExprKind::Record(expr::Record { items })
             }
         };
