@@ -62,6 +62,9 @@ public inductive UnaryOp.WellTyped : UnaryOp → TypedExpr → CedarType → Pro
   | like {x₁ : TypedExpr} {p : Pattern}
     (h₁ : x₁.typeOf = .string) :
     WellTyped (.like p) x₁ (.bool .anyBool)
+  | likeDelimited {x₁ : TypedExpr} {p : DelimPattern} {d : Char}
+    (h₁ : x₁.typeOf = .string) :
+    WellTyped (.likeDelimited p d) x₁ (.bool .anyBool)
   | is {ety₁ ety₂ : EntityType}
     (h₁ : x₁.typeOf = .entity ety₂) :
     WellTyped (.is ety₁) x₁ (.bool .anyBool)

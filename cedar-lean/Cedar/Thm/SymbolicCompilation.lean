@@ -464,6 +464,7 @@ theorem compile_ok_implies_option {x : Expr} {εnv : SymEnv} {t : Term} :
       · apply typeOf_someOf
       · apply typeOf_someOf
       · apply typeOf_someOf
+      · apply typeOf_someOf
   case binaryApp op x₁ x₂ =>
     cases hx₁ : compile x₁ εnv <;> simp [compileApp₂]
     case ok t₁ =>

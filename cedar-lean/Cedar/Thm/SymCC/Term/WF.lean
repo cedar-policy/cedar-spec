@@ -232,6 +232,11 @@ public theorem wf_term_app_string_like {εs : SymEntities} {ts : List Term} {ty 
   ty = .bool ∧ WFUnary εs ts .string
 := by invert_wf_term_app_unary h₁
 
+public theorem wf_term_app_string_likeExtended {εs : SymEntities} {ts : List Term} {ty : TermType} {p : DelimPattern} {d : Char}
+  (h₁ : (Term.app (Op.string.likeExtended p d) ts ty).WellFormed εs) :
+  ty = .bool ∧ WFUnary εs ts .string
+:= by invert_wf_term_app_unary h₁
+
 public theorem wf_term_app_option_get {εs : SymEntities} {ts : List Term} {ty : TermType}
   (h₁ : (Term.app Op.option.get ts ty).WellFormed εs) :
   WFUnary εs ts (.option ty)
@@ -1286,6 +1291,18 @@ public theorem wf_string_like {εs : SymEntities} {t : Term} {p : Pattern}
   case h_2 =>
     simp only [typeOf_term_app, and_true]
     exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.string.like_wt h₂)
+
+public theorem wf_string_likeExtended {εs : SymEntities} {t : Term} {p : DelimPattern} {d : Char}
+  (h₁ : t.WellFormed εs)
+  (h₂ : t.typeOf = .string) :
+  (string.likeExtended t p d).WellFormed εs ∧ (string.likeExtended t p d).typeOf = .bool
+:= by
+  simp [Factory.string.likeExtended]
+  split
+  case h_1 => simp [wf_bool, typeOf_bool]
+  case h_2 =>
+    simp only [typeOf_term_app, and_true]
+    exact Term.WellFormed.app_wf (wf_arg h₁) (Op.WellTyped.string.likeExtended_wt h₂)
 
 -- TODO: Turn this proof into a tactic.
 -- Currently, it's just copy / paste / replace for these lemmas.

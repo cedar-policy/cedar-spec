@@ -61,6 +61,7 @@ def compileApp₁ (op₁ : UnaryOp) (t : Term) : Result Term := do
   | .not, .bool            => ⊙not t
   | .neg, .bitvec 64       => ifFalse (bvnego t) (bvneg t)
   | .like p, .string       => ⊙string.like t p
+  | .likeDelimited p d, .string => ⊙string.likeExtended t p d
   | .is ety₁, .entity ety₂ => ⊙(ety₁ = ety₂ : Bool)
   | .isEmpty, .set _       => ⊙set.isEmpty t
   | _, _                   => .error .typeError

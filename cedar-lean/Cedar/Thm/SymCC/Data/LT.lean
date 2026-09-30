@@ -26,6 +26,7 @@ import Cedar.Thm.Data.Control
 
 -- needs to unfold various `.lt` definitions, that are normally opaque
 import all Cedar.Spec.Wildcard
+import all Cedar.Spec.WildcardDelimited
 import all Cedar.SymCC.Op
 import all Cedar.SymCC.Term
 import all Cedar.SymCC.TermType
@@ -456,6 +457,41 @@ public instance PatElem.strictLT : StrictLT PatElem where
   transitive a b c := by exact PatElem.lt_trans a b c
   connected  a b   := by exact PatElem.lt_conn
 
+----- `<` is strict on `DelimPatElem` -----
+
+theorem DelimPatElem.lt_irrefl (a : DelimPatElem) :
+  ¬ DelimPatElem.lt a a
+:= by
+  simp only [DelimPatElem.lt, Bool.not_eq_true]
+  cases a <;>
+  simp only [decide_eq_false_iff_not]
+  rename_i c
+  exact StrictLT.irreflexive c
+
+theorem DelimPatElem.lt_trans (a b c : DelimPatElem) :
+  a < b → b < c → a < c
+:= by
+  simp only [LT.lt, DelimPatElem.lt]
+  cases a <;> cases b <;> cases c <;>
+  simp only [Bool.false_eq_true, decide_eq_true_eq, implies_true, imp_self, false_implies,
+    forall_const]
+  apply Char.strictLT.transitive
+
+theorem DelimPatElem.lt_conn {a b : DelimPatElem} :
+  a ≠ b → (a < b ∨ b < a)
+:= by
+  simp only [ne_eq, LT.lt, DelimPatElem.lt]
+  intro h
+  cases a <;> cases b <;>
+  simp_all only [not_true_eq_false, Bool.false_eq_true, or_false, or_true,
+    DelimPatElem.justChar.injEq, decide_eq_true_eq]
+  exact Char.strictLT.connected _ _ h
+
+public instance DelimPatElem.strictLT : StrictLT DelimPatElem where
+  asymmetric a b   := by exact lt_trans_irrefl_implies_asymm DelimPatElem.lt_trans DelimPatElem.lt_irrefl
+  transitive a b c := by exact DelimPatElem.lt_trans a b c
+  connected  a b   := by exact DelimPatElem.lt_conn
+
 ----- `<` is strict on `Op` -----
 
 theorem Op.lt_irrefl (a : Op) :
@@ -465,8 +501,13 @@ theorem Op.lt_irrefl (a : Op) :
   split <;> simp only [decide_eq_false_iff_not]
   case h_1 f => exact UUF.lt_irrefl f
   case h_2 => simp only [Nat.lt_irrefl, not_false_eq_true]
-  case h_3 | h_4 | h_6 => apply List.slt_irrefl
-  case h_5 xty => exact StrictLT.irreflexive xty
+  case h_3 | h_4 => apply List.slt_irrefl
+  case h_5 p₁ d₁ =>
+    have hp : ¬ p₁ < p₁ := List.slt_irrefl p₁
+    have hd : ¬ d₁ < d₁ := StrictLT.irreflexive d₁
+    simp [hp, hd]
+  case h_6 xty => exact StrictLT.irreflexive xty
+  case h_7 => exact StrictLT.irreflexive a.mkName
 
 local macro "simp_lt_trans" lt:ident mkName:ident c:ident trans:term : tactic => do
  `(tactic| (
@@ -493,6 +534,23 @@ private theorem Op.lt_trans_record_get {a₁ a₂ : Attr} {c : Op} :
 private theorem Op.lt_trans_string_like {p₁ p₂ : Pattern} {c : Op} :
    p₁ < p₂ → Op.lt (Op.string.like p₂) c = true → Op.lt (Op.string.like p₁) c = true
 := by simp_lt_trans Op.lt Op.mkName c (List.strictLT PatElem).transitive
+
+private theorem Op.lt_trans_string_likeExtended {p₁ p₂ : DelimPattern} {d₁ d₂ : Char} {c : Op} :
+   (decide (p₁ < p₂) || decide (p₁ = p₂) && decide (d₁ < d₂)) = true →
+   Op.lt (Op.string.likeExtended p₂ d₂) c = true →
+   Op.lt (Op.string.likeExtended p₁ d₁) c = true
+:= by
+  intro h₁ h₂
+  simp only [Bool.or_eq_true, Bool.and_eq_true, decide_eq_true_eq] at h₁
+  cases c
+  case string.likeExtended p₃ d₃ =>
+    simp only [Op.lt, decide_eq_true_eq, Bool.or_eq_true, Bool.and_eq_true] at h₂ ⊢
+    rcases h₁ with h₁ | ⟨h₁, h₁'⟩ <;> rcases h₂ with h₂ | ⟨h₂, h₂'⟩
+    · exact Or.inl (List.slt_trans h₁ h₂)
+    · exact Or.inl (h₂ ▸ h₁)
+    · exact Or.inl (h₁ ▸ h₂)
+    · exact Or.inr ⟨h₁.trans h₂, Char.strictLT.transitive _ _ _ h₁' h₂'⟩
+  all_goals (simp only [Op.lt, Op.mkName] at h₂ ⊢; exact h₂)
 
 private theorem Op.lt_trans_ext {xop₁ xop₂ : ExtOp} {c : Op} :
    xop₁ < xop₂ → Op.lt (Op.ext xop₂) c = true → Op.lt (Op.ext xop₁) c = true
@@ -534,6 +592,18 @@ private theorem Op.lt_trans_string_like' {pb pc: Pattern} {a : Op} :
   Op.lt a (Op.string.like pc) = true
 := by simp_op_lt_trans_parametric' a Op.string.like.injEq
 
+private theorem Op.lt_trans_string_likeExtended' {pb pc : DelimPattern} {db dc : Char} {a : Op} :
+  (Op.mkName a < Op.mkName (Op.string.likeExtended pb db)) →
+  (∀ (pa : DelimPattern) (da : Char), a = Op.string.likeExtended pa da → False) →
+  Op.lt a (Op.string.likeExtended pc dc) = true
+:= by
+  intro h₁ h₂
+  cases a
+  case string.likeExtended pa da => exact absurd rfl (h₂ pa da)
+  all_goals (
+    simp only [Op.mkName, Op.lt] at h₁ ⊢
+    exact decide_eq_true_eq.mpr h₁)
+
 private theorem Op.lt_trans_ext' {xb xc: ExtOp} {a : Op} :
   (Op.mkName a < Op.mkName (Op.ext xb)) →
   (∀ (xa : ExtOp), a = Op.ext xa → False) →
@@ -546,7 +616,7 @@ private theorem Op.lt_mkName_implies_lt {a b : Op} :
   intro h
   simp only [Op.lt]
   split
-  case h_6 => simp only [decide_eq_true_eq] ; exact h
+  case h_7 => simp only [decide_eq_true_eq] ; exact h
   all_goals { simp only [Op.mkName] at h ; contradiction }
 
 private theorem Op.lt_trans_mkName_lt {a b c : Op}
@@ -556,11 +626,13 @@ private theorem Op.lt_trans_mkName_lt {a b c : Op}
   (h₄ : ∀ (n₁ n₂ : Nat), a = Op.zero_extend n₁ → b = Op.zero_extend n₂ → False)
   (h₅ : ∀ (a₁ a₂ : Attr), a = Op.record.get a₁ → b = Op.record.get a₂ → False)
   (h₆ : ∀ (p₁ p₂ : Pattern), a = Op.string.like p₁ → b = Op.string.like p₂ → False)
-  (h₇ : ∀ (xty₁ xty₂ : ExtOp), a = Op.ext xty₁ → b = Op.ext xty₂ → False) :
+  (h₇ : ∀ (p₁ : DelimPattern) (d₁ : Char) (p₂ : DelimPattern) (d₂ : Char),
+          a = Op.string.likeExtended p₁ d₁ → b = Op.string.likeExtended p₂ d₂ → False)
+  (h₈ : ∀ (xty₁ xty₂ : ExtOp), a = Op.ext xty₁ → b = Op.ext xty₂ → False) :
   Op.lt a c = true
 := by
   simp only [Op.lt] at h₂
-  split at h₂ <;> simp only [decide_eq_true_eq] at h₂
+  split at h₂ <;> (try simp only [decide_eq_true_eq] at h₂)
   case h_1 =>
     simp only [Op.uuf.injEq, forall_apply_eq_imp_iff] at h₃
     exact Op.lt_trans_uuf' h₁ h₃
@@ -574,11 +646,15 @@ private theorem Op.lt_trans_mkName_lt {a b c : Op}
     simp only [Op.string.like.injEq, forall_apply_eq_imp_iff] at h₆
     exact Op.lt_trans_string_like' h₁ h₆
   case h_5 =>
-    simp only [Op.ext.injEq, forall_apply_eq_imp_iff] at h₇
-    exact Op.lt_trans_ext' h₁ h₇
+    have h₇' : ∀ (pa : DelimPattern) (da : Char), a = Op.string.likeExtended pa da → False :=
+      fun pa da hp => h₇ pa da _ _ hp rfl
+    exact Op.lt_trans_string_likeExtended' h₁ h₇'
   case h_6 =>
-    have h₈ := String.strictLT.transitive a.mkName b.mkName c.mkName h₁ h₂
-    exact Op.lt_mkName_implies_lt h₈
+    simp only [Op.ext.injEq, forall_apply_eq_imp_iff] at h₈
+    exact Op.lt_trans_ext' h₁ h₈
+  case h_7 =>
+    have h₉ := String.strictLT.transitive a.mkName b.mkName c.mkName h₁ h₂
+    exact Op.lt_mkName_implies_lt h₉
 
 theorem Op.lt_trans (a b c : Op) :
   a < b → b < c → a < c
@@ -586,13 +662,14 @@ theorem Op.lt_trans (a b c : Op) :
   simp only [LT.lt]
   intro h₁ h₂
   simp only [Op.lt] at h₁
-  split at h₁ <;> simp only [decide_eq_true_eq] at h₁
+  split at h₁ <;> (try simp only [decide_eq_true_eq] at h₁)
   case h_1 => exact Op.lt_trans_uuf h₁ h₂
   case h_2 => exact Op.lt_trans_zero_extend h₁ h₂
   case h_3 => exact Op.lt_trans_record_get h₁ h₂
   case h_4 => exact Op.lt_trans_string_like h₁ h₂
-  case h_5 => exact Op.lt_trans_ext h₁ h₂
-  case h_6 h₃ h₄ h₅ h₆ h₇ => exact Op.lt_trans_mkName_lt h₁ h₂ h₃ h₄ h₅ h₆ h₇
+  case h_5 => exact Op.lt_trans_string_likeExtended h₁ h₂
+  case h_6 => exact Op.lt_trans_ext h₁ h₂
+  case h_7 h₃ h₄ h₅ h₆ h₇ h₈ => exact Op.lt_trans_mkName_lt h₁ h₂ h₃ h₄ h₅ h₆ h₇ h₈
 
 local macro "simp_op_mkName_neq_parametric" b:ident h:ident inj:ident : tactic => do
  `(tactic| (
@@ -607,7 +684,9 @@ private theorem Op.mkName.neq {a b: Op}
   (h₂ : ∀ (n₁ n₂ : Nat), a = Op.zero_extend n₁ → b = Op.zero_extend n₂ → False)
   (h₃ : ∀ (a₁ a₂ : Attr), a = Op.record.get a₁ → b = Op.record.get a₂ → False)
   (h₄ : ∀ (p₁ p₂ : Pattern), a = Op.string.like p₁ → b = Op.string.like p₂ → False)
-  (h₅ : ∀ (xty₁ xty₂ : ExtOp), a = Op.ext xty₁ → b = Op.ext xty₂ → False) :
+  (h₅ : ∀ (p₁ : DelimPattern) (d₁ : Char) (p₂ : DelimPattern) (d₂ : Char),
+          a = Op.string.likeExtended p₁ d₁ → b = Op.string.likeExtended p₂ d₂ → False)
+  (h₆ : ∀ (xty₁ xty₂ : ExtOp), a = Op.ext xty₁ → b = Op.ext xty₂ → False) :
   ¬ a.mkName = b.mkName
 := by
   cases a
@@ -615,7 +694,11 @@ private theorem Op.mkName.neq {a b: Op}
   case zero_extend => simp_op_mkName_neq_parametric b h₂ Op.zero_extend.injEq
   case record.get  => simp_op_mkName_neq_parametric b h₃ Op.record.get.injEq
   case string.like => simp_op_mkName_neq_parametric b h₄ Op.string.like.injEq
-  case ext         => simp_op_mkName_neq_parametric b h₅ Op.ext.injEq
+  case string.likeExtended p d =>
+    cases b
+    any_goals (simp only [Op.mkName, not_true_eq_false] ; decide)
+    case string.likeExtended p' d' => exact (h₅ p d p' d' rfl rfl).elim
+  case ext         => simp_op_mkName_neq_parametric b h₆ Op.ext.injEq
   all_goals {
     cases b
     any_goals (simp only [Op.mkName] ; decide)
@@ -637,17 +720,35 @@ theorem Op.lt_conn {a b : Op} :
     exact String.strictLT.connected _ _ h
   · simp only [Op.string.like.injEq, decide_eq_true_eq] at *
     exact List.lt_conn h
+  · rename_i p₁ d₁ p₂ d₂
+    simp only [Op.string.likeExtended.injEq, not_and] at h
+    simp only [decide_eq_true_eq, Bool.or_eq_true, Bool.and_eq_true]
+    by_cases hp : p₁ = p₂
+    · subst hp
+      rcases Char.strictLT.connected d₁ d₂ (h rfl) with hd | hd
+      · exact Or.inl (Or.inr ⟨rfl, hd⟩)
+      · exact Or.inr (Or.inr ⟨rfl, hd⟩)
+    · rcases List.lt_conn hp with hp' | hp'
+      · exact Or.inl (Or.inl hp')
+      · exact Or.inr (Or.inl hp')
   · simp only [Op.ext.injEq, decide_eq_true_eq] at *
     exact ExtOp.lt_conn h
-  · rename_i h₁ h₂ h₃ h₄ h₅
-    split <;> rename_i o₂ o₁
-    · specialize h₁ o₁ o₂ rfl rfl ; contradiction
-    · specialize h₂ o₁ o₂ rfl rfl ; contradiction
-    · specialize h₃ o₁ o₂ rfl rfl ; contradiction
-    · specialize h₄ o₁ o₂ rfl rfl ; contradiction
-    · specialize h₅ o₁ o₂ rfl rfl ; contradiction
+  · rename_i h₁ h₂ h₃ h₄ h₅ h₆
+    split
+    · rename_i o₂ o₁
+      specialize h₁ o₁ o₂ rfl rfl ; contradiction
+    · rename_i o₂ o₁
+      specialize h₂ o₁ o₂ rfl rfl ; contradiction
+    · rename_i o₂ o₁
+      specialize h₃ o₁ o₂ rfl rfl ; contradiction
+    · rename_i o₂ o₁
+      specialize h₄ o₁ o₂ rfl rfl ; contradiction
+    · rename_i p₁ d₁ p₂ d₂
+      specialize h₅ p₂ d₂ p₁ d₁ rfl rfl ; contradiction
+    · rename_i o₂ o₁
+      specialize h₆ o₁ o₂ rfl rfl ; contradiction
     · simp only [decide_eq_true_eq]
-      replace h := Op.mkName.neq h h₁ h₂ h₃ h₄ h₅
+      replace h := Op.mkName.neq h h₁ h₂ h₃ h₄ h₅ h₆
       exact String.strictLT.connected _ _ h
 
 public instance Op.strictLT : StrictLT Op where

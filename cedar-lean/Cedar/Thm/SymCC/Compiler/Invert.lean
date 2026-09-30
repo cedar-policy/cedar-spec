@@ -256,15 +256,17 @@ theorem compileApp₁_ok_implies {op₁ : UnaryOp} {t t₁ : Term}
   | .not     => t₁.typeOf = .bool ∧ t = Term.some (not t₁)
   | .neg     => t₁.typeOf = .bitvec 64 ∧ t = ifFalse (bvnego t₁) (bvneg t₁)
   | .like p  => t₁.typeOf = .string ∧ t = Term.some (string.like t₁ p)
+  | .likeDelimited p d => t₁.typeOf = .string ∧ t = Term.some (string.likeExtended t₁ p d)
   | .is ety₁ => ∃ ety₂, t₁.typeOf = .entity ety₂ ∧ t = Term.some (ety₁ = ety₂ : Bool)
   | .isEmpty => (∃ ty, t₁.typeOf = .set ty) ∧ t = Term.some (set.isEmpty t₁)
 := by
   cases op₁ <;> simp only
-  case not | neg | like | isEmpty =>
+  case not | neg | like | likeDelimited | isEmpty =>
     simp only [compileApp₁] at h₁
     split at h₁ <;>
     rename_i hop hty <;>
-    simp only [false_implies, forall_const, UnaryOp.like.injEq, reduceCtorEq] at hop h₁
+    simp only [false_implies, forall_const, UnaryOp.like.injEq, UnaryOp.likeDelimited.injEq,
+      reduceCtorEq] at hop h₁
     simp only [someOf, Except.ok.injEq] at h₁
     simp only [hop, hty, h₁, TermType.set.injEq, exists_eq', and_self]
   case is =>

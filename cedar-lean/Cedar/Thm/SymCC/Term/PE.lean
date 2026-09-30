@@ -1073,6 +1073,11 @@ public theorem pe_string_like_wfl {εs : SymEntities} {t : Term} {p : Pattern} :
   (Factory.string.like t p).isLiteral
 := by show_pe_unary_wfl string.like wfl_of_type_string_is_string
 
+public theorem pe_string_likeExtended_wfl {εs : SymEntities} {t : Term} {p : DelimPattern} {d : Char} :
+  t.WellFormedLiteral εs → t.typeOf = .string →
+  (Factory.string.likeExtended t p d).isLiteral
+:= by show_pe_unary_wfl string.likeExtended wfl_of_type_string_is_string
+
 @[simp]
 public theorem pe_set_isEmpty {s : Set Term} {ty : TermType} :
   Factory.set.isEmpty (Term.set s ty) = s.isEmpty

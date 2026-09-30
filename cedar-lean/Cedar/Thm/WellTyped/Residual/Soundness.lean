@@ -245,9 +245,14 @@ InstanceOfType env v (Residual.unaryApp op₁ x₁ ty).typeOf
     · -- like case
       simp only [Except.ok.injEq] at h₂
       simp only [←h₂, bool_is_instance_of_anyBool]
+    · -- likeDelimited case
+      simp only [Except.ok.injEq] at h₂
+      simp only [←h₂, bool_is_instance_of_anyBool]
     · -- is case
       simp only [Except.ok.injEq] at h₂
       simp only [←h₂, bool_is_instance_of_anyBool]
+    · -- error case (when apply₁ fails)
+      cases h₂
     · -- error case (when apply₁ fails)
       cases h₂
     · -- error case (when apply₁ fails)

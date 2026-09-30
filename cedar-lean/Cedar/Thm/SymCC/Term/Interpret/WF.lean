@@ -187,6 +187,12 @@ private theorem interpret_term_app_wf_string_like {εs : SymEntities} {I : Inter
   InterpretTermWF εs I (Term.app (Op.string.like p) ts ty)
 := by show_interpret_term_app_wf_unary h₁ ih interpret_term_app_string_like wf_term_app_string_like wf_string_like
 
+private theorem interpret_term_app_wf_string_likeExtended {εs : SymEntities} {I : Interpretation} {ts : List Term} {p : DelimPattern} {d : Char} {ty : TermType}
+  (h₁ : Term.WellFormed εs (Term.app (Op.string.likeExtended p d) ts ty))
+  (ih : ∀ (t : Term), t ∈ ts → InterpretTermWF εs I t) :
+  InterpretTermWF εs I (Term.app (Op.string.likeExtended p d) ts ty)
+:= by show_interpret_term_app_wf_unary h₁ ih interpret_term_app_string_likeExtended wf_term_app_string_likeExtended wf_string_likeExtended
+
 private theorem interpret_term_app_wf_option_get {εs : SymEntities} {I : Interpretation} {ts : List Term} {ty : TermType}
   (h₀ : I.WellFormed εs)
   (h₁ : Term.WellFormed εs (Term.app Op.option.get ts ty))
@@ -515,6 +521,7 @@ public theorem interpret_term_app_wf {εs : SymEntities} {I : Interpretation} {o
   | Op.option.get        => exact interpret_term_app_wf_option_get h₀ h₁ ih
   | Op.record.get _      => exact interpret_term_app_wf_record_get h₁ ih
   | Op.string.like _     => exact interpret_term_app_wf_string_like h₁ ih
+  | Op.string.likeExtended _ _ => exact interpret_term_app_wf_string_likeExtended h₁ ih
   | .ext xop           =>
     match xop with
     | ExtOp.decimal.val       => exact interpret_term_app_wf_ext_decimal_val h₁ ih

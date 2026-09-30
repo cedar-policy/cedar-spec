@@ -36,6 +36,8 @@ open _root_.Proto
 inductive ResidualKind where
   | val | var | ite | and | or | unaryApp | binaryApp
   | getAttr | hasAttr | extHasAttr | set | record | call | error | like | is
+  /-- RFC #115: delimiter-aware `like(pattern, delim)`. -/
+  | likeDelimited
 deriving Inhabited, Repr
 
 namespace ResidualKind
@@ -57,6 +59,7 @@ def fromInt : Int → Except String ResidualKind
   | 13 => .ok .error
   | 14 => .ok .like
   | 15 => .ok .is
+  | 16 => .ok .likeDelimited
   | n  => .error s!"Field {n} does not exist in Residual.Kind"
 
 instance : ProtoEnum ResidualKind := { fromInt := fromInt }
@@ -77,6 +80,8 @@ structure ProtoResidual where
   fnName     : Option Spec.Proto.Name := none
   pattern    : Array PatElem := #[]
   entityType : Option EntityType := none
+  -- RFC #115: `delim` for `.likeDelimited` residuals.
+  delim      : Option Char := none
 
 instance : Inhabited ProtoResidual where
   default := {}
@@ -99,7 +104,8 @@ def merge (r₁ r₂ : ProtoResidual) : ProtoResidual :=
     binaryOp   := r₂.binaryOp
     fnName     := r₂.fnName.orElse (λ _ => r₁.fnName)
     pattern    := r₁.pattern ++ r₂.pattern
-    entityType := r₂.entityType.orElse (λ _ => r₁.entityType) }
+    entityType := r₂.entityType.orElse (λ _ => r₁.entityType)
+    delim      := r₂.delim.orElse (λ _ => r₁.delim) }
 
 partial def parseField (t : _root_.Proto.Tag) : BParsec (MergeFn ProtoResidual) := do
   have : Message ProtoResidual := ⟨parseField, merge⟩
@@ -137,6 +143,12 @@ partial def parseField (t : _root_.Proto.Tag) : BParsec (MergeFn ProtoResidual) 
   | 13 =>
     let x : EntityType ← Field.guardedParse t
     pureMergeFn (λ r => { r with entityType := some x })
+  | 14 =>
+    -- RFC #115: `delim` field for `.likeDelimited` residuals.
+    let x : String ← Field.guardedParse t
+    pureMergeFn (λ r => match x.toList with
+      | [c] => { r with delim := .some c }
+      | _   => panic!("Residual: `delim` must be a single character"))
   | _ =>
     t.wireType.skip
     pure ignore
@@ -239,7 +251,8 @@ partial def toResidual (r : ProtoResidual) : Except String Residual := do
   -- Wrong number of children for the kind; `arity` produces the message.
   | .ite, _ => do arity 3; .error "unreachable"
   | .and, _ | .or, _ | .binaryApp, _ => do arity 2; .error "unreachable"
-  | .unaryApp, _ | .getAttr, _ | .hasAttr, _ | .extHasAttr, _ | .like, _ | .is, _ => do
+  | .unaryApp, _ | .getAttr, _ | .hasAttr, _ | .extHasAttr, _ | .like, _
+  | .likeDelimited, _ | .is, _ => do
     arity 1; .error "unreachable"
 
 end ProtoResidual

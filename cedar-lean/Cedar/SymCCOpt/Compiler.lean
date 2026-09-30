@@ -134,6 +134,7 @@ def compileApp₁ (op₁ : UnaryOp) (arg : CompileResult) : Result CompileResult
   | .not, .bool            => arg.mapTerm λ term => ⊙not term
   | .neg, .bitvec 64       => arg.mapTerm λ term => ifFalse (bvnego term) (bvneg term)
   | .like p, .string       => arg.mapTerm λ term => ⊙string.like term p
+  | .likeDelimited p d, .string => arg.mapTerm λ term => ⊙string.likeExtended term p d
   | .is ety₁, .entity ety₂ => arg.mapTerm λ _ => ⊙(ety₁ = ety₂ : Bool)
   | .isEmpty, .set _       => arg.mapTerm λ term => ⊙set.isEmpty term
   | _, _                   => .error .typeError

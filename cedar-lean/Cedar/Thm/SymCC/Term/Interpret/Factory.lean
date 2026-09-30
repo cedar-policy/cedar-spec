@@ -671,6 +671,11 @@ public theorem interpret_string_like {εs : SymEntities} {I : Interpretation} {t
   (Factory.string.like t p).interpret I = Factory.string.like (t.interpret I) p
 := by show_interpret_unary_op Factory.string.like wfl_of_type_string_is_string interpret_term_app_string_like
 
+public theorem interpret_string_likeExtended {εs : SymEntities} {I : Interpretation} {t : Term} {p : DelimPattern} {d : Char} :
+  I.WellFormed εs → t.WellFormed εs → t.typeOf = .string →
+  (Factory.string.likeExtended t p d).interpret I = Factory.string.likeExtended (t.interpret I) p d
+:= by show_interpret_unary_op Factory.string.likeExtended wfl_of_type_string_is_string interpret_term_app_string_likeExtended
+
 public theorem interpret_bvnego {εs : SymEntities} {I : Interpretation} {t : Term} {n : Nat} :
   I.WellFormed εs → t.WellFormed εs → t.typeOf = .bitvec n →
   (Factory.bvnego t).interpret I = Factory.bvnego (t.interpret I)

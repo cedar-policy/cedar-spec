@@ -506,6 +506,9 @@ public inductive Op.WellTyped (εs : SymEntities) : Op → List Term → TermTyp
   | string.like_wt {t : Term} {p : Pattern}
     (h₁ : t.typeOf = .string) :
     WellTyped εs (Op.string.like p) [t] .bool
+  | string.likeExtended_wt {t : Term} {p : DelimPattern} {d : Char}
+    (h₁ : t.typeOf = .string) :
+    WellTyped εs (Op.string.likeExtended p d) [t] .bool
   | ext_wt {xop : ExtOp} {ts : List Term} {ty : TermType}
     (h₁ : xop.WellTyped ts ty) :
     WellTyped εs (.ext xop) ts ty

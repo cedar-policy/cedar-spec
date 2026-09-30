@@ -63,6 +63,12 @@ private theorem compileApp₁_implies_apply₁ {op₁ : UnaryOp} {v₁ : Value} 
     replace ih := same_string_term_implies ih
     simp only [Same.same, SameResults, ih, hr.right, string.like]
     exact same_implies_same_value same_bool
+  case likeDelimited =>
+    have ⟨_, h⟩ := wfl_of_type_string_is_string hwfl hr.left
+    subst h
+    replace ih := same_string_term_implies ih
+    simp only [Same.same, SameResults, ih, hr.right, string.likeExtended]
+    exact same_implies_same_value same_bool
   case is =>
     replace ⟨_, hr⟩ := hr
     have ⟨_, huid, hty⟩ := wfl_of_type_entity_is_entity hwfl hr.left
@@ -145,6 +151,8 @@ theorem interpret_compileApp₁ {op₁ : UnaryOp} {t t₁: Term} {εs : SymEntit
       interpret_bvneg hI hwt hok.left]
   case like =>
     simp only [hok, someOf, interpret_term_some, interpret_string_like hI hwt hok.left]
+  case likeDelimited =>
+    simp only [hok, someOf, interpret_term_some, interpret_string_likeExtended hI hwt hok.left]
   case is =>
     replace ⟨ety₂, hok⟩ := hok
     simp only [hok, someOf, interpret_term_some, interpret_term_prim]

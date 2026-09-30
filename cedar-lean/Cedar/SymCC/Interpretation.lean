@@ -138,6 +138,7 @@ def Op.interpret (I : Interpretation) (op : Op) (ts : List Term) (ty : TermType)
   | Op.option.get, [t₁]     => Factory.option.get' I t₁
   | Op.record.get a, [t₁]   => Factory.record.get t₁ a
   | Op.string.like p, [t₁]  => Factory.string.like t₁ p
+  | Op.string.likeExtended p d, [t₁] => Factory.string.likeExtended t₁ p d
   | .ext xop, [t₁]        => xop.interpret I t₁
   | _, _                  => .app op ts ty
 

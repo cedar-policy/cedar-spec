@@ -465,6 +465,7 @@ public theorem wt_op_same_domain {εs₁ εs₂ : SymEntities} {op : Op} {ts : L
   case option.get_wt h    => exact Op.WellTyped.option.get_wt h
   case record.get_wt h h' => exact Op.WellTyped.record.get_wt h h'
   case string.like_wt h   => exact Op.WellTyped.string.like_wt h
+  case string.likeExtended_wt h => exact Op.WellTyped.string.likeExtended_wt h
   case ext_wt h           => exact Op.WellTyped.ext_wt h
 
 public theorem wf_term_same_domain {εs₁ εs₂ : SymEntities} {t : Term} :

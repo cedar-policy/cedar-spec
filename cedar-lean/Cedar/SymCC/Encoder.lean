@@ -266,6 +266,51 @@ def encodePattern : Pattern → EncoderM String
   | [e] => encodePatElem e
   | p   => return s!"(re.++ {String.intercalate " " (← p.mapM encodePatElem)})"
 
+/-- Encode a single character as an SMT-LIB code-point escape, e.g. `"\u{2e}"`. -/
+def encodeCharCodepoint (c : Char) : String :=
+  "\"\\u{" ++ String.ofList (Nat.toDigits 16 c.toNat) ++ "}\""
+
+/-- Format `k : Nat` as its lowercase hex representation. -/
+def hexStr (k : Nat) : String := String.ofList (Nat.toDigits 16 k)
+
+/-- Encode a code point `k` as an SMT-LIB unicode literal, e.g. `"\u{2e}"`. -/
+def encodeCodePoint (k : Nat) : String :=
+  "\"\\u{" ++ hexStr k ++ "}\""
+
+/-- Encode the regular expression `nonDelim(d)` — the set of single Unicode
+    scalar values other than `d` — as a union of two `re.range` intervals.
+
+    RFC #115: this is the union-of-ranges form.  We deliberately avoid
+    `re.comp`/`re.inter`, which trigger the cvc5#12815 NFA-determinization
+    blowup.  When `d = U+0000` the low range is empty and omitted; when
+    `d = smtLibMaxCodePoint` the high range is empty. -/
+def encodeNonDelim (d : Char) : EncoderM String := do
+  let n := d.toNat
+  if n > smtLibMaxCodePoint then
+    throw (IO.userError s!"Delimiter code point {n} exceeds SMT-LIB max {smtLibMaxCodePoint}")
+  let low : Option String :=
+    if n = 0 then none
+    else some ("(re.range " ++ encodeCodePoint 0 ++ " " ++ encodeCodePoint (n - 1) ++ ")")
+  let high : Option String :=
+    if n = smtLibMaxCodePoint then none
+    else some ("(re.range " ++ encodeCodePoint (n + 1) ++ " " ++ encodeCodePoint smtLibMaxCodePoint ++ ")")
+  match low, high with
+  | some l, some h => return s!"(re.union {l} {h})"
+  | some l, none   => return l
+  | none,   some h => return h
+  | none,   none   => return "re.none"
+
+def encodeDelimPatElem (d : Char) : DelimPatElem → EncoderM String
+  | .multiStar  => return "(re.* re.allchar)"
+  | .star       => do return s!"(re.* {← encodeNonDelim d})"
+  | .justChar c => return s!"(str.to_re \"{← encodeString c.toString}\")"
+
+def encodeDelimPattern (p : DelimPattern) (d : Char) : EncoderM String :=
+  match p with
+  | []  => return "(str.to_re \"\")"
+  | [e] => encodeDelimPatElem d e
+  | p   => return s!"(re.++ {String.intercalate " " (← p.mapM (encodeDelimPatElem d))})"
+
 def defineEntity (tyEnc : String) (entity : EntityUID) : EncoderM String := do
   match (← get).enums.get? entity.ty with
   | .some members =>
@@ -296,6 +341,8 @@ def defineApp (tyEnc : String) (op : Op) (tEncs : List String) (ts : List Term):
     | t :: _ => defineRecordGet tyEnc a args t.typeOf
     | []     => throw (IO.userError s!"Bad term: (record.get {a}) applied to no arguments")
   | Op.string.like p => defineTerm tyEnc s!"(str.in_re {args} {← encodePattern p})"
+  | Op.string.likeExtended p d =>
+    defineTerm tyEnc s!"(str.in_re {args} {← encodeDelimPattern p d})"
   | .uuf f         => defineTerm tyEnc s!"({← encodeUUF f} {args})"
   | _              => defineTerm tyEnc s!"({encodeOp op} {args})"
 

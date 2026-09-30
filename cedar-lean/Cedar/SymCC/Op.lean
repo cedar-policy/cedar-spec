@@ -96,6 +96,9 @@ public inductive Op : Type where
   | option.get
   | record.get  : Attr → Op
   | string.like : Pattern → Op
+  /-- Delimiter-aware `like(pattern, delim)` — RFC #115.
+      Uses `DelimPattern` from `Cedar.Spec.WildcardDelimited`. -/
+  | string.likeExtended : DelimPattern → Char → Op
   ---------- Extension ADT operators with a trusted mapping to SMT ----------
   | ext : ExtOp → Op
 
@@ -168,6 +171,7 @@ public def Op.mkName : Op → String
   | Op.option.get    => "option.get"
   | Op.record.get _  => "record.get"
   | Op.string.like _ => "string.like"
+  | Op.string.likeExtended _ _ => "string.likeExtended"
   | .ext _         => "ext"
 
 public def Op.lt : Op → Op → Bool
@@ -175,6 +179,8 @@ public def Op.lt : Op → Op → Bool
   | .zero_extend n₁, .zero_extend n₂ => n₁ < n₂
   | Op.record.get a₁, Op.record.get a₂   => a₁ < a₂
   | Op.string.like p₁, Op.string.like p₂ => p₁ < p₂
+  | Op.string.likeExtended p₁ d₁, Op.string.likeExtended p₂ d₂ =>
+    p₁ < p₂ || (p₁ = p₂ && d₁ < d₂)
   | .ext xty₁, .ext xty₂             => xty₁ < xty₂
   | ty₁, ty₂                         => ty₁.mkName < ty₂.mkName
 

@@ -41,6 +41,9 @@ inductive UnaryResidualWellTyped : UnaryOp → Residual → CedarType → Prop
   | like {x₁ : Residual} {p : Pattern}
     (h₁ : x₁.typeOf = .string) :
     UnaryResidualWellTyped (.like p) x₁ (.bool .anyBool)
+  | likeDelimited {x₁ : Residual} {p : DelimPattern} {d : Char}
+    (h₁ : x₁.typeOf = .string) :
+    UnaryResidualWellTyped (.likeDelimited p d) x₁ (.bool .anyBool)
   | is {ety₁ ety₂ : EntityType}
     (h₁ : x₁.typeOf = .entity ety₂) :
     UnaryResidualWellTyped (.is ety₁) x₁ (.bool .anyBool)
