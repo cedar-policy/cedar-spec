@@ -19,26 +19,15 @@ module
 import Std.Data.HashMap
 
 /-!
-# Delimiter-aware wildcard matching — instrumented for runtime analysis
-
-Ghost-counter variant of `Cedar.Spec.WildcardDelimited`.  The DP is
-identical in behaviour, but its state now carries an auxiliary `Nat`
-counter that is incremented on every function entry.  This lets us
-prove an O(|text| · |pattern|) upper bound on the number of function
-invocations without changing the observable behaviour: the projection
-onto the value coordinate matches the un-instrumented DP.
-
-The bound proved here is
-  `steps ≤ 3 · (text.length + 1) · (pattern.length + 1)`.
+Ghost-counter variant of `Cedar.Spec.WildcardDelimited` used to prove the
+`steps ≤ 3 · (text.length + 1) · (pattern.length + 1)` runtime bound.
+The DP is identical to the un-instrumented version apart from a step
+counter in the state.
 -/
 
 namespace Cedar.Spec.Runtime
 
 open Std (HashMap)
-
--- ---------------------------------------------------------------------------
--- 1.  Types (mirror of Cedar.Spec)
--- ---------------------------------------------------------------------------
 
 public inductive DelimPatElem where
   | multiStar
@@ -47,10 +36,6 @@ public inductive DelimPatElem where
 deriving Repr, DecidableEq, Inhabited
 
 public abbrev DelimPattern := List DelimPatElem
-
--- ---------------------------------------------------------------------------
--- 2.  Recursive specification (no memoisation)
--- ---------------------------------------------------------------------------
 
 public def matchesDelimited (text : List Char) (pattern : DelimPattern) (delim : Char) : Bool :=
   match text, pattern with
@@ -71,35 +56,20 @@ termination_by text.length + pattern.length
 decreasing_by
   all_goals (simp_wf ; try omega)
 
--- ---------------------------------------------------------------------------
--- 3.  Instrumented memoized DP with a ghost step counter
--- ---------------------------------------------------------------------------
-
 abbrev DelimCache := HashMap (Nat × Nat) Bool
 
-/-- State: (memo cache, step counter). -/
 abbrev DelimState := DelimCache × Nat
 
 abbrev DelimStateM (α) := StateM DelimState α
 
-/-- Increment the ghost step counter. -/
 def bumpSteps : DelimStateM Unit :=
   modifyGet fun s => ((), (s.1, s.2 + 1))
 
-/--
-`wildcardMatchDelimitedIdx text pattern i j h₁ h₂ delim` returns `true` iff
-`text[i:]` matches `pattern[j:]` with delimiter `delim`.
-
-Instrumented version: every entry increments the ghost step counter in the
-state before doing anything else.  The value coordinate is identical to the
-un-instrumented DP in `Cedar.Spec.WildcardDelimited`.
--/
 def wildcardMatchDelimitedIdx
     (text : List Char) (pattern : DelimPattern) (i j : Nat)
     (h₁ : i ≤ text.length) (h₂ : j ≤ pattern.length)
     (delim : Char) : DelimStateM Bool := do
   bumpSteps
-  -- Cache lookup
   if let .some b := (← get).1.get? (i, j) then
     return b
   let mut r := false
@@ -130,24 +100,14 @@ termination_by
 decreasing_by
   all_goals { simp_wf ; omega }
 
-/-- Public entry point. Runs the instrumented DP starting from an empty cache
-    and a zero counter, and returns just the boolean value. -/
 public def wildcardMatchDelimited (text : String) (pattern : DelimPattern) (delim : Char) : Bool :=
   (wildcardMatchDelimitedIdx text.toList pattern 0 0 (by simp) (by simp) delim ({}, 0)).1
 
-/-- Total number of function invocations performed by
-    `wildcardMatchDelimited text pattern delim`.  This is the ghost counter
-    read out from the final state. -/
 public def wildcardMatchDelimitedSteps (text : String) (pattern : DelimPattern)
     (delim : Char) : Nat :=
   (wildcardMatchDelimitedIdx text.toList pattern 0 0 (by simp) (by simp) delim ({}, 0)).2.2
 
--- ---------------------------------------------------------------------------
--- 4.  Runtime upper bound: steps ≤ 3·(|text|+1)·(|pattern|+1)
--- ---------------------------------------------------------------------------
-
 set_option linter.unusedSimpArgs false in
-/-- The step counter is only ever increased. -/
 theorem steps_monotone
     (text : List Char) (pattern : DelimPattern) (i j : Nat)
     (h₁ : i ≤ text.length) (h₂ : j ≤ pattern.length) (delim : Char)
@@ -161,7 +121,7 @@ theorem steps_monotone
     simp only [bumpSteps, bind, StateT.bind, get, getThe, MonadStateOf.get, StateT.get,
                modifyGet, MonadStateOf.modifyGet, StateT.modifyGet, pure]
     rcases hget : state.1.get? (i, j) with _ | b
-    · -- Cache miss
+    ·
       simp only [hget]
       by_cases hj : j = pattern.length
       · subst hj
@@ -217,12 +177,11 @@ theorem steps_monotone
               (wildcardMatchDelimitedIdx text pattern (i + 1) (j + 1) (by omega) (by omega) delim
                 (state.1, state.2 + 1)).snd.snd
             omega
-    · -- Cache hit
+    ·
       show state.snd ≤ state.snd + 1
       omega
 
 set_option linter.unusedSimpArgs false in
-/-- The cache size is only ever increased. -/
 theorem cache_size_monotone
     (text : List Char) (pattern : DelimPattern) (i j : Nat)
     (h₁ : i ≤ text.length) (h₂ : j ≤ pattern.length) (delim : Char)
@@ -236,7 +195,7 @@ theorem cache_size_monotone
     simp only [bumpSteps, bind, StateT.bind, get, getThe, MonadStateOf.get, StateT.get,
                modifyGet, MonadStateOf.modifyGet, StateT.modifyGet, pure]
     rcases hget : state.1.get? (i, j) with _ | b
-    · -- Cache miss
+    ·
       simp only [hget]
       by_cases hj : j = pattern.length
       · subst hj
@@ -292,14 +251,10 @@ theorem cache_size_monotone
               ((wildcardMatchDelimitedIdx text pattern (i + 1) (j + 1) (by omega) (by omega) delim
                 (state.1, state.2 + 1)).snd.1.insert (i, j) _).size
             exact Nat.le_trans ih Std.HashMap.size_le_size_insert
-    · -- Cache hit
+    ·
       show state.1.size ≤ state.1.size
       exact Nat.le_refl _
 
-/-- Invariant: every key in the cache is a "valid" index pair with
-    `i ≤ text.length` and `j ≤ pattern.length`.  Every insertion made by
-    `wildcardMatchDelimitedIdx` is a valid key, so this invariant is
-    preserved once it holds. -/
 private def CacheKeysBounded
     (text : List Char) (pattern : DelimPattern) (cache : DelimCache) : Prop :=
   ∀ k l, cache.contains (k, l) → k ≤ text.length ∧ l ≤ pattern.length
@@ -317,8 +272,6 @@ private theorem CacheKeysBounded.insert
   · subst hk; subst hl; exact hkl
   · exact h k' l' hc'
 
-/-- Length of the enumeration of pairs `(i, j)` with `i ∈ [0, n]` and
-    `j ∈ [0, m]`. -/
 private theorem flatMap_range_length (n m : Nat) :
     ((List.range (n + 1)).flatMap
         (fun i => (List.range (m + 1)).map (fun j => (i, j)))).length
@@ -331,8 +284,6 @@ private theorem flatMap_range_length (n m : Nat) :
     rw [List.range_succ, List.map_append]
     simp [ih, Nat.succ_mul]
 
-/-- If every key in a `DelimCache` is a valid index pair, the cache size is
-    bounded by the size of the rectangle. -/
 private theorem CacheKeysBounded.size_le
     {text : List Char} {pattern : DelimPattern} {cache : DelimCache}
     (h : CacheKeysBounded text pattern cache) :
@@ -355,7 +306,6 @@ private theorem CacheKeysBounded.size_le
     _ = (text.length + 1) * (pattern.length + 1) :=
         flatMap_range_length text.length pattern.length
 
-/-- Preservation lemma: the DP preserves the `CacheKeysBounded` invariant. -/
 private theorem wildcardMatchDelimitedIdx_preserves_bounded
     (text : List Char) (pattern : DelimPattern) (i j : Nat)
     (h₁ : i ≤ text.length) (h₂ : j ≤ pattern.length) (delim : Char) :
@@ -431,13 +381,6 @@ private theorem wildcardMatchDelimitedIdx_preserves_bounded
     · simp only [StateT.pure, pure]
       exact hcache
 
-/-- The cache never has more than `(text.length + 1) · (pattern.length + 1)`
-    entries.  (Every key is a pair `(i, j)` with `i ∈ [0, text.length]` and
-    `j ∈ [0, pattern.length]`.)
-
-    The hypothesis `hcache_bound` is that every key already present in the
-    input cache satisfies the "valid index pair" invariant; the DP only ever
-    inserts valid pairs so the invariant is preserved. -/
 theorem cache_size_le
     (text : List Char) (pattern : DelimPattern) (i j : Nat)
     (h₁ : i ≤ text.length) (h₂ : j ≤ pattern.length) (delim : Char)
@@ -450,9 +393,6 @@ theorem cache_size_le
     hcache_bound).size_le
 
 set_option linter.unusedSimpArgs false in
-/-- Freshness lemma: `wildcardMatchDelimitedIdx text pattern i' j' ...` never inserts a
-    key `(i, j)` with `i < i' ∨ j < j'`. So if `(i, j)` was absent from the input
-    cache and this bound holds, it remains absent from the output cache. -/
 private theorem wildcardMatchDelimitedIdx_preserves_absent
     (text : List Char) (pattern : DelimPattern) (i' j' : Nat)
     (h₁' : i' ≤ text.length) (h₂' : j' ≤ pattern.length) (delim : Char) :
@@ -568,14 +508,6 @@ private theorem wildcardMatchDelimitedIdx_preserves_absent
       exact habsent
 
 set_option linter.unusedSimpArgs false in
-/-- **Core step-count invariant.**  The number of new steps performed is at
-    most `1 + 3 · (number of new cache entries)`.
-
-    Justification.  A cache-hit call is 1 step and 0 new entries.  A
-    cache-miss call is 1 step for itself; each of its ≤ 2 recursive calls
-    contributes its own step-budget by induction; and it adds exactly one
-    new entry to the cache — the pair `(i, j)`, which is fresh because every
-    descendant recursion has `i' ≥ i` and `j' ≥ j` with at least one strict. -/
 theorem steps_le_growth
     (text : List Char) (pattern : DelimPattern) (i j : Nat)
     (h₁ : i ≤ text.length) (h₂ : j ≤ pattern.length) (delim : Char)
@@ -590,7 +522,7 @@ theorem steps_le_growth
     simp only [bumpSteps, bind, StateT.bind, get, getThe, MonadStateOf.get, StateT.get,
                modifyGet, MonadStateOf.modifyGet, StateT.modifyGet, pure]
     rcases hget : state.1.get? (i, j) with _ | b
-    · -- Cache miss
+    ·
       simp only [hget]
       have habsent : ¬ state.1.contains (i, j) := by
         rw [Std.HashMap.contains_eq_isSome_getElem?]
@@ -600,7 +532,6 @@ theorem steps_le_growth
       by_cases hj : j = pattern.length
       · subst hj
         simp only [↓reduceDIte]
-        -- s' = state.snd + 1, cache_new = state.1.insert (i, pattern.length) _.size = state.1.size + 1.
         show state.snd + 1 ≤ state.snd + 3 * ((state.1.insert (i, pattern.length)
           (decide (i = text.length))).size - state.1.size) + 1
         rw [Std.HashMap.size_insert]
@@ -612,7 +543,6 @@ theorem steps_le_growth
         by_cases hi : i = text.length
         · subst hi
           simp only [↓reduceDIte]
-          -- absence of (text.length, j) preserved through recursive call
           have habsent_intermediate_multiStar :
               ¬ (wildcardMatchDelimitedIdx text pattern text.length (j + 1) h₁ (by omega) delim
                 (state.1, state.2 + 1)).2.1.contains (text.length, j) := by
@@ -756,13 +686,11 @@ theorem steps_le_growth
             rw [Std.HashMap.size_insert, if_neg hnin]
             simp only at ih hmono_c
             omega
-    · -- Cache hit
+    ·
       simp only [StateT.pure, pure]
       show state.snd + 1 ≤ state.snd + 3 * (state.1.size - state.1.size) + 1
       omega
 
-/-- **Public runtime bound.**  The number of function invocations of
-    `wildcardMatchDelimited` is at most `3·(|text|+1)·(|pattern|+1) + 1`. -/
 public theorem wildcardMatchDelimited_steps_le
     (text : String) (pattern : DelimPattern) (delim : Char) :
     wildcardMatchDelimitedSteps text pattern delim ≤

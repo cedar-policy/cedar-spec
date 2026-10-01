@@ -121,7 +121,6 @@ message PatElem {
     oneof elem {
         bool star = 1;
         uint32 char = 2;
-        // RFC #115: `**` metacharacter. Only produced by delimited `like`.
         bool multi_star = 3;
     }
 }
@@ -130,11 +129,8 @@ message Pattern {
     repeated PatElem pattern = 1;
 }
 
-// RFC #115: delimiter-aware pattern for `string.likeExtended`.
 message DelimPattern {
     repeated PatElem pattern = 1;
-    // The single-character delimiter. UTF-8 encoded, must denote exactly
-    // one Unicode scalar value.
     string delim = 2;
 }
 
@@ -146,7 +142,6 @@ message Op {
         string record_get = 4;
         Pattern string_like = 5;
         ExtOp ext_op = 6;
-        // RFC #115: `string.likeExtended p d` — delimiter-aware `like`.
         DelimPattern string_like_extended = 7;
     }
 
@@ -374,7 +369,6 @@ message Residual {
     cedar_policy_core.Name fn_name = 11;
     repeated cedar_policy_core.Expr.Like.PatternElem pattern = 12;
     cedar_policy_core.Name entity_type = 13;
-    // RFC #115: single-character `delim` for `LIKE_DELIMITED` residuals.
     optional string delim = 14;
 
     enum Kind {
@@ -394,7 +388,6 @@ message Residual {
         ERROR = 13;
         LIKE = 14;
         IS = 15;
-        // RFC #115: `LIKE_DELIMITED` residual for `like(pattern, delim)`.
         LIKE_DELIMITED = 16;
     }
 }

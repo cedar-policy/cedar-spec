@@ -132,7 +132,6 @@ instance : ProtoEnum Wildcard where
   | 0 => .ok .star
   | n => .error s!"Field {n} does not exist in enum"
 
-/-- Proto enum for `**` (RFC #115). Field 3 in the `Like.PatternElem` message. -/
 inductive MultiWildcard where
   | starStar
 deriving Inhabited
@@ -142,13 +141,13 @@ instance : ProtoEnum MultiWildcard where
   | 0 => .ok .starStar
   | n => .error s!"Field {n} does not exist in enum"
 
-/-- Proto-level pattern element: superset of `Spec.PatElem` that also carries
-    a `multiStar` marker.  A parsed `Like` message chooses between plain
-    `like` and `likeDelimited` at merge time based on presence of `delim`. -/
+-- Proto-level pattern element. `multiStar` is only valid under delimited
+-- `like`; the choice between `like` and `likeDelimited` is made at merge
+-- time based on presence of `delim`.
 inductive RawPatElem where
   | star
   | justChar (c : Char)
-  | multiStar    -- `**` — only valid under delimited `like`.
+  | multiStar
 deriving Inhabited
 
 @[inline]
@@ -169,7 +168,6 @@ def RawPatElem.mergeC (_ : RawPatElem) (x2 : String) : RawPatElem :=
 
 @[inline]
 def RawPatElem.merge (_ : RawPatElem) (y : RawPatElem) : RawPatElem :=
-  -- Each constructor merges through replacement.
   y
 
 @[inline]
@@ -192,17 +190,12 @@ instance : Message RawPatElem where
   parseField := RawPatElem.parseField
   merge      := RawPatElem.merge
 
-/-- Convert a raw pattern element to a `Spec.PatElem` for undelimited `like`.
-    `.multiStar` in undelimited context is not legal — the Rust encoder never
-    produces it there.  We panic to catch a corrupt encoding rather than
-    silently forgetting the pattern's meaning. -/
 def RawPatElem.toPatElem : RawPatElem → PatElem
   | .star       => .star
   | .justChar c => .justChar c
   | .multiStar  =>
-    panic!("PatElem.MultiWildcard is only valid in a delimited `like(pattern, delim)` — the outer message must set `delim`")
+    panic!("PatElem.MultiWildcard is only valid in a delimited like(pattern, delim); the outer message must set delim")
 
-/-- Convert a raw pattern element to a `Spec.DelimPatElem` for delimited `like`. -/
 def RawPatElem.toDelimPatElem : RawPatElem → DelimPatElem
   | .star       => .star
   | .justChar c => .justChar c
@@ -210,10 +203,6 @@ def RawPatElem.toDelimPatElem : RawPatElem → DelimPatElem
 
 end PatElem
 
-/-- `Field Pattern` — used by `UnaryOp.merge`'s `.like` arm and by the AST
-    equality checks below.  Reads a repeated `RawPatElem` and drops any
-    `multiStar` markers (which are only legal under delimited `like`; the
-    typechecker would reject them here anyway). -/
 instance : Field Pattern :=
   Field.fromInterField
     (λ (elems : Repeated PatElem.RawPatElem) => elems.toList.map PatElem.RawPatElem.toPatElem)
@@ -980,7 +969,6 @@ partial def Proto.ExprKind.Like.parseField (t : Proto.Tag) : BParsec (MergeFn Pr
     let x : Repeated PatElem.RawPatElem ← Field.guardedParse t
     pureMergeFn (Proto.ExprKind.Like.mergePattern · x)
   | 3 =>
-    -- RFC #115: optional `delim` field.
     let x : String ← Field.guardedParse t
     pureMergeFn (Proto.ExprKind.Like.mergeDelim · x)
   | _ =>

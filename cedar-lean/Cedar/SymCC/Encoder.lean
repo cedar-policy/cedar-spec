@@ -266,24 +266,17 @@ def encodePattern : Pattern → EncoderM String
   | [e] => encodePatElem e
   | p   => return s!"(re.++ {String.intercalate " " (← p.mapM encodePatElem)})"
 
-/-- Encode a single character as an SMT-LIB code-point escape, e.g. `"\u{2e}"`. -/
 def encodeCharCodepoint (c : Char) : String :=
   "\"\\u{" ++ String.ofList (Nat.toDigits 16 c.toNat) ++ "}\""
 
-/-- Format `k : Nat` as its lowercase hex representation. -/
 def hexStr (k : Nat) : String := String.ofList (Nat.toDigits 16 k)
 
-/-- Encode a code point `k` as an SMT-LIB unicode literal, e.g. `"\u{2e}"`. -/
 def encodeCodePoint (k : Nat) : String :=
   "\"\\u{" ++ hexStr k ++ "}\""
 
-/-- Encode the regular expression `nonDelim(d)` — the set of single Unicode
-    scalar values other than `d` — as a union of two `re.range` intervals.
-
-    RFC #115: this is the union-of-ranges form.  We deliberately avoid
-    `re.comp`/`re.inter`, which trigger the cvc5#12815 NFA-determinization
-    blowup.  When `d = U+0000` the low range is empty and omitted; when
-    `d = smtLibMaxCodePoint` the high range is empty. -/
+-- Encode `nonDelim(d)` (all single scalar values other than `d`) as a
+-- union of two `re.range` intervals. We avoid `re.comp`/`re.inter` because
+-- they trigger the cvc5#12815 NFA-determinization blowup.
 def encodeNonDelim (d : Char) : EncoderM String := do
   let n := d.toNat
   if n > smtLibMaxCodePoint then

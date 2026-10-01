@@ -289,7 +289,6 @@ public def string.like (t : Term) (p : Pattern) : Term :=
   | .prim (.string s) => wildcardMatch s p
   | _                 => .app (Op.string.like p) [t] .bool
 
-/-- Delimiter-aware `like(pattern, delim)` factory — RFC #115. -/
 public def string.likeExtended (t : Term) (p : DelimPattern) (d : Char) : Term :=
   match t with
   | .prim (.string s) => wildcardMatchDelimited s p d

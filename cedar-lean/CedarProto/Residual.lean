@@ -36,7 +36,6 @@ open _root_.Proto
 inductive ResidualKind where
   | val | var | ite | and | or | unaryApp | binaryApp
   | getAttr | hasAttr | extHasAttr | set | record | call | error | like | is
-  /-- RFC #115: delimiter-aware `like(pattern, delim)`. -/
   | likeDelimited
 deriving Inhabited, Repr
 
@@ -80,7 +79,6 @@ structure ProtoResidual where
   fnName     : Option Spec.Proto.Name := none
   pattern    : Array PatElem := #[]
   entityType : Option EntityType := none
-  -- RFC #115: `delim` for `.likeDelimited` residuals.
   delim      : Option Char := none
 
 instance : Inhabited ProtoResidual where
@@ -144,7 +142,6 @@ partial def parseField (t : _root_.Proto.Tag) : BParsec (MergeFn ProtoResidual) 
     let x : EntityType ← Field.guardedParse t
     pureMergeFn (λ r => { r with entityType := some x })
   | 14 =>
-    -- RFC #115: `delim` field for `.likeDelimited` residuals.
     let x : String ← Field.guardedParse t
     pureMergeFn (λ r => match x.toList with
       | [c] => { r with delim := .some c }

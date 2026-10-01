@@ -41,9 +41,6 @@ public inductive UnaryOp where
   | neg
   | isEmpty
   | like (p : Pattern)
-  /-- Delimiter-aware `like(pattern, delim)` — RFC #115.
-      Uses the standalone `DelimPattern` type from `Cedar.Spec.WildcardDelimited`,
-      whose `star` element does not cross `d` and whose `multiStar` element does. -/
   | likeDelimited (p : DelimPattern) (d : Char)
   | is (ety : EntityType)
 

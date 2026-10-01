@@ -212,8 +212,6 @@ end BaseOp
 inductive PatElem where
   | star
   | char : Char -> PatElem
-  /-- `**` — matches any run of characters, delimiters included.  RFC #115.
-      Only valid in the delimited `string.likeExtended` form. -/
   | multiStar
 deriving Repr, Inhabited
 
@@ -244,14 +242,12 @@ namespace PatElem
     merge := merge
   }
 
-  /-- Convert to `Spec.PatElem` (undelimited).  `multiStar` is invalid here. -/
   def toCedar (elem : PatElem) : Cedar.Spec.PatElem :=
     match elem with
     | .star => .star
     | .char c => .justChar c
     | .multiStar => panic!("PatElem.multiStar is only valid in `string.likeExtended`")
 
-  /-- Convert to `Spec.DelimPatElem` (delimited form).  RFC #115. -/
   def toCedarDelim (elem : PatElem) : Cedar.Spec.DelimPatElem :=
     match elem with
     | .star => .star
@@ -280,7 +276,6 @@ namespace Pattern
   def toCedar (p : Pattern) : Cedar.Spec.Pattern := (p.map PatElem.toCedar).toList
 end Pattern
 
-/-- Delimiter-aware pattern for `Op.string.likeExtended`.  RFC #115. -/
 structure DelimPattern where
   pattern : List PatElem := []
   delim   : Option Char := none
@@ -325,7 +320,6 @@ inductive Op where
   | record.get : String -> Op
   | string.like : Pattern -> Op
   | ext : ExtOp -> Op
-  /-- `string.likeExtended p d` — delimiter-aware `like`.  RFC #115. -/
   | string.likeExtended : DelimPattern -> Op
 deriving Repr, Inhabited
 
