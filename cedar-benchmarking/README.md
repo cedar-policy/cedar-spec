@@ -99,6 +99,8 @@ Each `results` object in the JSON output has the following fields:
 | `protobuf_schema_parse_unchecked` | Parse schema from protobuf encoding, skipping input validation     |
 | `validation`                  | Validate policies against a schema                                     |
 | `authorization`               | Run authorization requests                                             |
+| `tpe`                         | Run TPE with unknown principal/resource IDs and context                 |
+| `symbolic_compilation`        | Compile policies and encode always-allows assertions as SMT-LIB        |
 | `entity_parse_with_schema`    | Parse entities with schema validation                                  |
 | `entity_parse_without_schema` | Parse entities without schema                                          |
 | `protobuf_entity_parse`       | Parse entities from protobuf encoding                                  |

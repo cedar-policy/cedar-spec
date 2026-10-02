@@ -53,8 +53,10 @@ large_enum_variant = "allow"
 arbitrary = "1.4"
 cedar-policy = { version = "4", path = "../cedar/cedar-policy", features = [
     "protobufs",
+    "tpe",
 ] }
 cedar-policy-core = { version = "4", path = "../cedar/cedar-policy-core" }
+cedar-policy-symcc = { version = "0.7.0", path = "../cedar/cedar-policy-symcc" }
 cedar-policy-generators = { version = "4", path = "../cedar-policy-generators", features = [
     "cedar-policy",
 ] }
@@ -65,3 +67,4 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sysinfo = "0.39.6"
 owo-colors = "4"
+tokio = { version = "=1.53.1", features = ["rt"] }
