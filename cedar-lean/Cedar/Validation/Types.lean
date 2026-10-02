@@ -189,6 +189,7 @@ public def ActionSchema.descendentOf (as : ActionSchema)  (uid₁ uid₂ : Entit
 public structure Schema where
   ets : EntitySchema
   acts : ActionSchema
+deriving Inhabited
 
 public structure RequestType where
   principal : EntityType
