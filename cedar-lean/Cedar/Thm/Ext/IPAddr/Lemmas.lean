@@ -1,0 +1,1842 @@
+/-
+ Copyright Cedar Contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
+module
+
+public import Cedar.Thm.Ext.IPAddr.Grammar
+
+import all Cedar.Spec.Ext.Util
+import all Cedar.Spec.Ext.IPAddr
+import all Cedar.Thm.Data.String
+import all Cedar.Thm.Ext.IPAddr.Grammar
+import all Init.Data.Repr
+import all Init.Data.String.Legacy
+import Init.Data.String.Lemmas.Pattern.TakeDrop.Pred
+import Init.Data.List.SplitOn.Lemmas
+
+namespace Cedar.Thm.IPAddr
+open Cedar.Spec.Ext
+open IPAddr
+open String
+
+/-! # IPAddr grammar bridge lemmas
+
+These lemmas connect the parser-independent grammar definitions in
+`Cedar.Thm.Ext.IPAddr.Grammar` (`IsWfIPNet`, `IsIPNetValue`, and the component value functions) to
+the actual `Cedar.Spec.Ext.IPAddr.parse`. They culminate in the per-form parse characterizations
+the aggregator `parse_sound`/`parse_complete` build on.
+
+The parser structure (from `Cedar.Spec.Ext.IPAddr`) is:
+- `parse str = if (parseIPv4Net str).isSome then parseIPv4Net str else parseIPv6Net str`;
+- `parseIPv4Net` splits on `'/'`, parses four `parseNumV4` groups (split on `'.'`) and an optional
+  `parsePrefixNat` prefix;
+- `parseIPv6Net` splits on `'/'`, parses the address via `parseSegsV6` (which handles `::` via
+  `splitOn "::"` and pads to eight hextets) and an optional `parsePrefixNat` prefix.
+
+Each numeric primitive (`parseNumV4`, `parseNumV6`, `parsePrefixNat`) enforces the length /
+leading-zero / range side conditions that the grammar predicates transcribe. -/
+
+/-! ## Numeric-token bridges -/
+
+/-- `parseNumV4` accepts exactly the canonical ≤ 3-digit groups with value ≤ 255, returning
+    `natOf`. -/
+theorem parseNumV4_eq_some {s : String} (hwf : IsCanonicalNat s ∧ s.length ≤ 3)
+    (hcon : natOf s ≤ 255) :
+    parseNumV4 s = some (BitVec.ofNat 8 (natOf s)) :=
+  by
+  unfold parseNumV4
+  dsimp only
+  rw [ite_eq_left]
+  · cases hnat : toNat?' s with
+    | none =>
+      have hs := hwf.1.1.toNat?'_isSome
+      simp [hnat] at hs
+    | some n =>
+      simp [hnat, natOf] at hcon ⊢
+      omega
+  · simp only [Bool.and_eq_true, decide_eq_true_eq]
+    exact ⟨⟨hwf.1.1.1, hwf.2⟩, hwf.1.2⟩
+
+/-- Conversely, if `parseNumV4` accepts `s`, it is a canonical ≤ 3-digit group whose value is at
+    most 255. -/
+theorem parseNumV4_isSome_wf {s : String} (h : (parseNumV4 s).isSome) :
+    (IsCanonicalNat s ∧ s.length ≤ 3) ∧ natOf s ≤ 255 :=
+  by
+  simp only [parseNumV4] at h
+  split at h <;> rename_i hg
+  · cases hnat : toNat?' s with
+    | none => simp [hnat, bind, Option.bind] at h
+    | some n =>
+      simp only [hnat, bind, Option.bind] at h
+      have hnle : n ≤ 255 := by
+        by_contra hnle
+        simp [hnle] at h
+      simp only [Bool.and_eq_true, decide_eq_true_eq] at hg
+      have hdig : IsDigits s := isDigits_of_toNat?'_isSome (by simp [hnat])
+      exact ⟨⟨⟨hdig, hg.2⟩, hg.1.2⟩, by simpa [natOf, hnat] using hnle⟩
+  · simp at h
+
+/-- `parseNumV6` accepts exactly the 1–4 digit hex groups, returning `hexValue`. -/
+private theorem toHexNat_le_of_isHexDigit {c : Char} (h : isHexDigit c = true) :
+    toHexNat c ≤ 15 := by
+  simp only [isHexDigit, Bool.or_eq_true, Bool.and_eq_true, decide_eq_true_eq] at h
+  unfold toHexNat
+  split <;> rename_i hd
+  · have hb := Char.isDigit_iff_toNat.mp hd
+    have hs := Nat.sub_le_sub_right hb.2 '0'.toNat
+    have hc : '9'.toNat - '0'.toNat = 9 := by decide
+    omega
+  split <;> rename_i hl
+  · simp only [Bool.and_eq_true, decide_eq_true_eq] at hl
+    have hs := Nat.sub_le_sub_right
+      (show c.toNat ≤ 'f'.toNat by
+        simpa only [Char.le_def, UInt32.le_iff_toNat_le, Char.toNat] using hl.2)
+      'a'.toNat
+    have hc : 'f'.toNat - 'a'.toNat = 5 := by decide
+    omega
+  split <;> rename_i hu
+  · simp only [Bool.and_eq_true, decide_eq_true_eq] at hu
+    have hs := Nat.sub_le_sub_right
+      (show c.toNat ≤ 'F'.toNat by
+        simpa only [Char.le_def, UInt32.le_iff_toNat_le, Char.toNat] using hu.2)
+      'A'.toNat
+    have hc : 'F'.toNat - 'A'.toNat = 5 := by decide
+    omega
+  · simp only [Bool.and_eq_true, decide_eq_true_eq] at hd hl hu
+    have hfalse :
+        ¬((c.isDigit = true ∨ ('a' ≤ c ∧ c ≤ 'f')) ∨ ('A' ≤ c ∧ c ≤ 'F')) :=
+      not_or_intro (not_or_intro hd hl) hu
+    exact (hfalse h).elim
+
+private theorem foldHex_lt (l : List Char) (acc : Nat)
+    (h : ∀ c ∈ l, isHexDigit c = true) :
+    l.foldl (fun n c => n * 16 + toHexNat c) acc < (acc + 1) * 16 ^ l.length := by
+  induction l generalizing acc with
+  | nil => simp
+  | cons c cs ih =>
+      simp only [List.foldl_cons, List.length_cons, Nat.pow_succ]
+      have hdigit : toHexNat c ≤ 15 := toHexNat_le_of_isHexDigit (h c (by simp))
+      have hacc : acc * 16 + toHexNat c + 1 ≤ (acc + 1) * 16 := by omega
+      have htail := ih (acc * 16 + toHexNat c) (by
+        intro x hx
+        exact h x (by simp [hx]))
+      apply Nat.lt_of_lt_of_le htail
+      apply Nat.le_trans (Nat.mul_le_mul_right _ hacc)
+      simp only [Nat.mul_assoc, Nat.mul_comm]
+      exact Nat.le_refl _
+
+theorem parseNumV6_eq_some {s : String} (hwf : IsHexGroup s) :
+    parseNumV6 s = some (BitVec.ofNat 16 (hexValue s)) :=
+  by
+  have hbound :
+      s.foldl (fun n c => n * 16 + toHexNat c) 0 ≤ 0xffff := by
+    rw [String.foldl_eq_foldl_toList]
+    have hlt := foldHex_lt s.toList 0 hwf.2.2
+    simp only [Nat.zero_add, Nat.one_mul, String.length_toList] at hlt
+    have hpow : 16 ^ s.length ≤ 16 ^ 4 :=
+      Nat.pow_le_pow_right (by omega) hwf.2.1
+    omega
+  unfold parseNumV6
+  rw [ite_eq_left, ite_eq_left hbound]
+  · simp [hexValue, String.foldl_eq_foldl_toList]
+  · simp only [Bool.and_eq_true, decide_eq_true_eq]
+    exact ⟨⟨hwf.1, hwf.2.1⟩, by
+      rw [String.all_bool_eq]
+      simpa only [List.all_eq_true] using hwf.2.2⟩
+
+/-- Conversely, if `parseNumV6` accepts `s` it is a well-formed hex group. -/
+theorem parseNumV6_isSome_wf {s : String} (h : (parseNumV6 s).isSome) : IsHexGroup s :=
+  by
+  by_cases hsyn :
+      (0 < s.length && s.length ≤ 4 && s.all isHexDigit) = true
+  · simp only [Bool.and_eq_true, decide_eq_true_eq] at hsyn
+    rw [String.all_bool_eq] at hsyn
+    exact ⟨hsyn.1.1, hsyn.1.2, by
+      simpa only [List.all_eq_true] using hsyn.2⟩
+  ·
+    simp only [parseNumV6] at h
+    rw [ite_eq_right hsyn] at h
+    simp at h
+
+/-- `parsePrefixNat` accepts exactly the canonical numbers with at most `digits` digits and value
+    at most `size`. -/
+theorem parsePrefixNat_eq_some {s : String} {digits size : Nat}
+    (hwf : IsCanonicalNat s ∧ s.length ≤ digits ∧ natOf s ≤ size) :
+    (parsePrefixNat s digits size).isSome :=
+  by
+  unfold parsePrefixNat
+  rw [ite_eq_left]
+  · cases hnat : toNat?' s with
+    | none =>
+      have hs := hwf.1.1.toNat?'_isSome
+      simp [hnat] at hs
+    | some n =>
+      have hnle : n ≤ size := by
+        simpa [natOf, hnat] using hwf.2.2
+      simp [hnle]
+  · simp only [Bool.and_eq_true, decide_eq_true_eq]
+    exact ⟨⟨hwf.1.1.1, hwf.2.1⟩, hwf.1.2⟩
+
+private theorem parsePrefixNat_eq_value {s : String} {digits size : Nat}
+    (hwf : IsCanonicalNat s ∧ s.length ≤ digits ∧ natOf s ≤ size) :
+    parsePrefixNat s digits size = some (Fin.ofNat (size + 1) (natOf s)) := by
+  unfold parsePrefixNat
+  rw [ite_eq_left]
+  · cases hnat : toNat?' s with
+    | none =>
+      have hs := hwf.1.1.toNat?'_isSome
+      simp [hnat] at hs
+    | some n =>
+      have hnle : n ≤ size := by
+        simpa [natOf, hnat] using hwf.2.2
+      simp [hnat, hnle, natOf]
+  · simp only [Bool.and_eq_true, decide_eq_true_eq]
+    exact ⟨⟨hwf.1.1.1, hwf.2.1⟩, hwf.1.2⟩
+
+private theorem parsePrefixNat_isSome_wf {s : String} {digits size : Nat}
+    (h : (parsePrefixNat s digits size).isSome) :
+    IsCanonicalNat s ∧ s.length ≤ digits ∧ natOf s ≤ size := by
+  simp only [parsePrefixNat] at h
+  split at h <;> rename_i hguard
+  · cases hnat : toNat?' s with
+    | none => simp [hnat, bind, Option.bind] at h
+    | some n =>
+      simp only [hnat, bind, Option.bind] at h
+      have hnle : n ≤ size := by
+        by_contra hnle
+        simp [hnle] at h
+      simp only [Bool.and_eq_true, decide_eq_true_eq] at hguard
+      have hdig : IsDigits s := isDigits_of_toNat?'_isSome (by simp [hnat])
+      exact ⟨⟨hdig, hguard.2⟩, hguard.1.2, by simpa [natOf, hnat] using hnle⟩
+  · simp at h
+
+private theorem parsePrefixNat_some_wf {s : String} {digits size : Nat}
+    {pre : Fin (size + 1)} (h : parsePrefixNat s digits size = some pre) :
+    (IsCanonicalNat s ∧ s.length ≤ digits ∧ natOf s ≤ size) ∧
+      pre.val = natOf s := by
+  have hisSome : (parsePrefixNat s digits size).isSome := by
+    rw [h]
+    simp
+  have hwf := parsePrefixNat_isSome_wf hisSome
+  have heq := parsePrefixNat_eq_value hwf
+  rw [h] at heq
+  injection heq with heq
+  subst pre
+  refine ⟨hwf, ?_⟩
+  simp only [Fin.val_ofNat]
+  rw [Nat.mod_eq_of_lt (by omega)]
+
+/-! ## IPv4 form -/
+
+private theorem noDotOfCanonical {s : String} (h : IsCanonicalNat s) :
+    ∀ c ∈ s.toList, (fun x : Char => decide (x = '.')) c = false := by
+  intro c hc
+  simp only [decide_eq_false_iff_not]
+  intro heq
+  subst c
+  have hd := h.1.2 '.' hc
+  simp at hd
+
+private theorem noSlashOfCanonical {s : String} (h : IsCanonicalNat s) :
+    ∀ c ∈ s.toList, (fun x : Char => decide (x = '/')) c = false := by
+  intro c hc
+  simp only [decide_eq_false_iff_not]
+  intro heq
+  subst c
+  have hd := h.1.2 '/' hc
+  simp at hd
+
+private theorem noSepAppend {s₁ s₂ : String} {p : Char → Bool}
+    (h₁ : ∀ c ∈ s₁.toList, p c = false)
+    (h₂ : ∀ c ∈ s₂.toList, p c = false) :
+    ∀ c ∈ (s₁ ++ s₂).toList, p c = false := by
+  intro c hc
+  rw [String.toList_append] at hc
+  rcases List.mem_append.mp hc with h | h
+  · exact h₁ c h
+  · exact h₂ c h
+
+private theorem noSlashDot :
+    ∀ c ∈ ".".toList, (fun x : Char => decide (x = '/')) c = false := by
+  simp
+
+private theorem splitToList_eq4 (s₁ s₂ s₃ s₄ : String) (p : Char → Bool) (sep : Char)
+    (hsep : p sep = true) (h₁ : ∀ c ∈ s₁.toList, p c = false)
+    (h₂ : ∀ c ∈ s₂.toList, p c = false) (h₃ : ∀ c ∈ s₃.toList, p c = false)
+    (h₄ : ∀ c ∈ s₄.toList, p c = false) :
+    (s₁ ++ String.singleton sep ++ s₂ ++ String.singleton sep ++ s₃ ++
+      String.singleton sep ++ s₄).splitToList p = [s₁, s₂, s₃, s₄] := by
+  rw [String.splitToList_of_valid]
+  simp only [String.toList_append, String.toList_singleton, List.append_assoc,
+    List.nil_append, List.cons_append]
+  rw [List.splitOnP_append_cons_of_forall_mem h₁ sep hsep]
+  rw [List.splitOnP_append_cons_of_forall_mem h₂ sep hsep]
+  rw [List.splitOnP_append_cons_of_forall_mem h₃ sep hsep]
+  rw [List.splitOnP_eq_singleton h₄]
+  simp
+
+private theorem eq_intercalate_of_splitToList_eq {s : String} {parts : List String}
+    (sep : Char) (h : s.splitToList (fun c => decide (c = sep)) = parts) :
+    s = String.intercalate (String.singleton sep) parts := by
+  rw [String.splitToList_of_valid] at h
+  have hp : (fun c : Char => decide (c = sep)) = (fun c => c == sep) := by
+    funext c
+    apply Bool.eq_iff_iff.mpr
+    rw [decide_eq_true_eq, beq_iff_eq]
+  have hsplits : List.splitOn sep s.toList = parts.map String.toList := by
+    rw [List.splitOn_eq_splitOnP]
+    have h' := congrArg (List.map String.toList) h
+    simpa [Function.comp_def, hp] using h'
+  have hi := congrArg (List.intercalate [sep]) hsplits
+  rw [List.intercalate_splitOn] at hi
+  rw [← String.toList_inj]
+  simpa [String.toList_intercalate] using hi
+
+private theorem noSlashV4 (v : V4Components) (hsyn : v.syntaxWf) :
+    ∀ c ∈ v.asString.toList, (fun x : Char => decide (x = '/')) c = false := by
+  simpa [V4Components.asString, String.append_assoc] using
+    noSepAppend (noSlashOfCanonical hsyn.1.1)
+      (noSepAppend noSlashDot
+        (noSepAppend (noSlashOfCanonical hsyn.2.1.1)
+          (noSepAppend noSlashDot
+            (noSepAppend (noSlashOfCanonical hsyn.2.2.1.1)
+              (noSepAppend noSlashDot (noSlashOfCanonical hsyn.2.2.2.1))))))
+
+/-- `parseSegsV4` inverts `V4Components.asString` on well-formed, in-range V4 groups. -/
+theorem parseSegsV4_asString {v : V4Components} (hsyn : v.syntaxWf) (hcon : v.constraintsWf) :
+    parseSegsV4 v.asString = some v.toAddr :=
+  by
+  have hsplit :
+      v.asString.splitToList (· = '.') = [v.g₀, v.g₁, v.g₂, v.g₃] := by
+    simpa [V4Components.asString, String.append_assoc] using
+      splitToList_eq4 v.g₀ v.g₁ v.g₂ v.g₃ (fun x : Char => decide (x = '.')) '.'
+        (by simp) (noDotOfCanonical hsyn.1.1) (noDotOfCanonical hsyn.2.1.1)
+        (noDotOfCanonical hsyn.2.2.1.1) (noDotOfCanonical hsyn.2.2.2.1)
+  unfold parseSegsV4
+  rw [hsplit]
+  simp only
+  rw [parseNumV4_eq_some hsyn.1 hcon.1]
+  rw [parseNumV4_eq_some hsyn.2.1 hcon.2.1]
+  rw [parseNumV4_eq_some hsyn.2.2.1 hcon.2.2.1]
+  rw [parseNumV4_eq_some hsyn.2.2.2 hcon.2.2.2]
+  simp [V4Components.toAddr]
+
+private theorem parseSegsV4_some_wf {str : String} {addr : IPv4Addr}
+    (h : parseSegsV4 str = some addr) :
+    ∃ v : V4Components,
+      str = v.asString ∧ v.syntaxWf ∧ v.constraintsWf ∧ addr = v.toAddr := by
+  unfold parseSegsV4 at h
+  generalize hsplits : str.splitToList (· = '.') = parts at h
+  rcases parts with _ | ⟨g₀, parts⟩
+  · simp at h
+  rcases parts with _ | ⟨g₁, parts⟩
+  · simp at h
+  rcases parts with _ | ⟨g₂, parts⟩
+  · simp at h
+  rcases parts with _ | ⟨g₃, parts⟩
+  · simp at h
+  rcases parts with _ | ⟨extra, parts⟩
+  ·
+    cases h₀ : parseNumV4 g₀ with
+    | none => simp [h₀] at h
+    | some a₀ =>
+      cases h₁ : parseNumV4 g₁ with
+      | none => simp [h₀, h₁] at h
+      | some a₁ =>
+        cases h₂ : parseNumV4 g₂ with
+        | none => simp [h₀, h₁, h₂] at h
+        | some a₂ =>
+          cases h₃ : parseNumV4 g₃ with
+          | none => simp [h₀, h₁, h₂, h₃] at h
+          | some a₃ =>
+            simp [h₀, h₁, h₂, h₃] at h
+            have hisSome₀ : (parseNumV4 g₀).isSome := by rw [h₀]; simp
+            have hisSome₁ : (parseNumV4 g₁).isSome := by rw [h₁]; simp
+            have hisSome₂ : (parseNumV4 g₂).isSome := by rw [h₂]; simp
+            have hisSome₃ : (parseNumV4 g₃).isSome := by rw [h₃]; simp
+            have hwf₀ := parseNumV4_isSome_wf hisSome₀
+            have hwf₁ := parseNumV4_isSome_wf hisSome₁
+            have hwf₂ := parseNumV4_isSome_wf hisSome₂
+            have hwf₃ := parseNumV4_isSome_wf hisSome₃
+            have ha₀ := parseNumV4_eq_some hwf₀.1 hwf₀.2
+            have ha₁ := parseNumV4_eq_some hwf₁.1 hwf₁.2
+            have ha₂ := parseNumV4_eq_some hwf₂.1 hwf₂.2
+            have ha₃ := parseNumV4_eq_some hwf₃.1 hwf₃.2
+            rw [h₀] at ha₀
+            rw [h₁] at ha₁
+            rw [h₂] at ha₂
+            rw [h₃] at ha₃
+            injection ha₀ with ha₀
+            injection ha₁ with ha₁
+            injection ha₂ with ha₂
+            injection ha₃ with ha₃
+            subst a₀
+            subst a₁
+            subst a₂
+            subst a₃
+            refine ⟨⟨g₀, g₁, g₂, g₃⟩, ?_, ?_, ?_, ?_⟩
+            · have hs := eq_intercalate_of_splitToList_eq '.' hsplits
+              simpa [V4Components.asString, String.append_assoc] using hs
+            · exact ⟨hwf₀.1, hwf₁.1, hwf₂.1, hwf₃.1⟩
+            · exact ⟨hwf₀.2, hwf₁.2, hwf₂.2, hwf₃.2⟩
+            · simpa [V4Components.toAddr] using h.symm
+  · simp at h
+
+/-- `parseIPv4Net` succeeds on a well-formed V4 string, yielding `v4Value`. -/
+theorem parseIPv4Net_eq_some {v : V4Components} {pre : Option String}
+    (hsyn : v.syntaxWf) (hcon : v.constraintsWf)
+    (hpre : IsWfOptionalPrefix 2 (ADDR_SIZE V4_WIDTH) pre) :
+    parseIPv4Net (v.asString ++ (match pre with | none => "" | some p => "/" ++ p))
+      = some (v4Value v pre) :=
+  by
+  unfold parseIPv4Net
+  cases pre with
+  | none =>
+      have hsplit : v.asString.splitToList (· = '/') = [v.asString] :=
+        splitToList_no_sep v.asString (fun x : Char => decide (x = '/')) (noSlashV4 v hsyn)
+      simp only [String.append_empty]
+      rw [hsplit]
+      simp only
+      rw [parseSegsV4_asString hsyn hcon]
+      simp [v4Value, prefixValue, IPNetPrefix.ofNat]
+  | some p =>
+      have hsplit :
+          (v.asString ++ ("/" ++ p)).splitToList (· = '/') = [v.asString, p] := by
+        simpa [String.append_assoc] using
+          splitToList_eq v.asString p (fun x : Char => decide (x = '/')) '/'
+            (by simp) (noSlashV4 v hsyn) (noSlashOfCanonical hpre.1)
+      simp only
+      rw [hsplit]
+      simp only
+      rw [parsePrefixNat_eq_value hpre, parseSegsV4_asString hsyn hcon]
+      change IsCanonicalNat p ∧ p.length ≤ 2 ∧ natOf p ≤ ADDR_SIZE V4_WIDTH at hpre
+      have hlt : natOf p < ADDR_SIZE V4_WIDTH + 1 := by omega
+      simp [v4Value, prefixValue, IPNetPrefix.ofNat, Fin.ofNat, Nat.mod_eq_of_lt hlt]
+
+/-- Soundness for V4: a successful `parseIPv4Net` means the string is a well-formed V4 rendering
+    whose value is the returned net. -/
+theorem parseIPv4Net_isSome_wf {str : String} {net : IPNet} (h : parseIPv4Net str = some net) :
+    IsV4Value str net :=
+  by
+  unfold parseIPv4Net at h
+  generalize hsplits : str.splitToList (· = '/') = parts at h
+  rcases parts with _ | ⟨addrStr, rest⟩
+  · simp at h
+  rcases rest with _ | ⟨preStr, rest⟩
+  ·
+    cases ha : parseSegsV4 addrStr with
+    | none => simp [ha] at h
+    | some addr =>
+      simp [ha] at h
+      obtain ⟨v, haddrStr, hsyn, hcon, haddr⟩ := parseSegsV4_some_wf ha
+      have hstr := eq_intercalate_of_splitToList_eq '/' hsplits
+      rw [String.intercalate_singleton] at hstr
+      rw [haddrStr] at hstr
+      refine ⟨v, none, ⟨hsyn, hcon, trivial, by simpa using hstr⟩, ?_⟩
+      subst addr
+      simpa [v4Value, prefixValue, IPNetPrefix.ofNat] using h.symm
+  rcases rest with _ | ⟨extra, rest⟩
+  ·
+    cases hp : parsePrefixNat preStr 2 (ADDR_SIZE V4_WIDTH) with
+    | none => simp [hp] at h
+    | some pre =>
+      cases ha : parseSegsV4 addrStr with
+      | none => simp [hp, ha] at h
+      | some addr =>
+        simp [hp, ha] at h
+        obtain ⟨v, haddrStr, hsyn, hcon, haddr⟩ := parseSegsV4_some_wf ha
+        obtain ⟨hpre, hpreValue⟩ := parsePrefixNat_some_wf hp
+        have hstr := eq_intercalate_of_splitToList_eq '/' hsplits
+        rw [String.intercalate_cons_cons, String.intercalate_singleton] at hstr
+        rw [haddrStr] at hstr
+        refine ⟨v, some preStr, ⟨hsyn, hcon, hpre, ?_⟩, ?_⟩
+        · simpa [String.append_assoc] using hstr
+        · subst addr
+          simpa [v4Value, prefixValue, hpreValue] using h.symm
+  · simp at h
+
+/-! ## IPv6 form -/
+
+private def groupValues (parts : List String) : List (BitVec 16) :=
+  parts.map (fun part => BitVec.ofNat 16 (hexValue part))
+
+private theorem hexValue_zero : hexValue "0" = 0 := by
+  unfold hexValue
+  simp [String.foldl_eq_foldl_toList, toHexNat]
+
+private def finishV6 (groups : List (BitVec 16)) : Option IPv6Addr :=
+  match groups with
+  | [a₀, a₁, a₂, a₃, a₄, a₅, a₆, a₇] =>
+      some (IPv6Addr.mk a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇)
+  | _ => none
+
+private theorem finishV6_length_of_some {groups : List (BitVec 16)} {addr : IPv6Addr}
+    (h : finishV6 groups = some addr) :
+    groups.length = 8 := by
+  unfold finishV6 at h
+  rcases groups with _ | ⟨a₀, groups⟩
+  · simp at h
+  rcases groups with _ | ⟨a₁, groups⟩
+  · simp at h
+  rcases groups with _ | ⟨a₂, groups⟩
+  · simp at h
+  rcases groups with _ | ⟨a₃, groups⟩
+  · simp at h
+  rcases groups with _ | ⟨a₄, groups⟩
+  · simp at h
+  rcases groups with _ | ⟨a₅, groups⟩
+  · simp at h
+  rcases groups with _ | ⟨a₆, groups⟩
+  · simp at h
+  rcases groups with _ | ⟨a₇, groups⟩
+  · simp at h
+  rcases groups with _ | ⟨extra, groups⟩
+  · rfl
+  · simp at h
+
+private theorem finishV6_groupValues_eq_toAddr {v : V6Components}
+    (hlen : v.expand.length = 8) :
+    finishV6 (groupValues v.expand) = some v.toAddr := by
+  unfold V6Components.toAddr
+  generalize hexpand : v.expand = groups at hlen ⊢
+  rcases groups with _ | ⟨g₀, groups⟩
+  · simp at hlen
+  rcases groups with _ | ⟨g₁, groups⟩
+  · simp at hlen
+  rcases groups with _ | ⟨g₂, groups⟩
+  · simp at hlen
+  rcases groups with _ | ⟨g₃, groups⟩
+  · simp at hlen
+  rcases groups with _ | ⟨g₄, groups⟩
+  · simp at hlen
+  rcases groups with _ | ⟨g₅, groups⟩
+  · simp at hlen
+  rcases groups with _ | ⟨g₆, groups⟩
+  · simp at hlen
+  rcases groups with _ | ⟨g₇, groups⟩
+  · simp at hlen
+  rcases groups with _ | ⟨extra, groups⟩
+  · simp [finishV6, groupValues]
+  · simp at hlen
+
+private theorem noColonOfHex {s : String} (h : IsHexGroup s) :
+    ∀ c ∈ s.toList, (fun x : Char => decide (x = ':')) c = false := by
+  intro c hc
+  simp only [decide_eq_false_iff_not]
+  intro heq
+  subst c
+  have hm := h.2.2 ':' hc
+  simp [isHexDigit] at hm
+
+private theorem neColonOfHex {s : String} (h : IsHexGroup s) :
+    ∀ c ∈ s.toList, c ≠ ':' := by
+  intro c hc heq
+  subst c
+  have hm := h.2.2 ':' hc
+  simp [isHexDigit] at hm
+
+private theorem noSlashOfHex {s : String} (h : IsHexGroup s) :
+    ∀ c ∈ s.toList, (fun x : Char => decide (x = '/')) c = false := by
+  intro c hc
+  simp only [decide_eq_false_iff_not]
+  intro heq
+  subst c
+  have hm := h.2.2 '/' hc
+  simp [isHexDigit] at hm
+
+private theorem noDotOfHex {s : String} (h : IsHexGroup s) :
+    ∀ c ∈ s.toList, (fun x : Char => decide (x = '.')) c = false := by
+  intro c hc
+  simp only [decide_eq_false_iff_not]
+  intro heq
+  subst c
+  have hm := h.2.2 '.' hc
+  simp [isHexDigit] at hm
+
+private theorem List.splitOnP_intercalate (parts : List (List α)) (hne : parts ≠ [])
+    (p : α → Bool) (sep : α) (hsep : p sep = true)
+    (hparts : ∀ part ∈ parts, ∀ x ∈ part, p x = false) :
+    List.splitOnP p ([sep].intercalate parts) = parts := by
+  induction parts with
+  | nil => exact (hne rfl).elim
+  | cons part rest ih =>
+      cases rest with
+      | nil =>
+          rw [List.intercalate_singleton]
+          exact List.splitOnP_eq_singleton (hparts part (by simp))
+      | cons next tail =>
+          rw [List.intercalate_cons_cons, List.append_assoc, List.singleton_append,
+            List.splitOnP_append_cons_of_forall_mem (hparts part (by simp)) sep hsep]
+          congr 1
+          apply ih
+          · simp
+          · intro item hitem x hx
+            exact hparts item (by simp [hitem]) x hx
+
+private theorem splitToList_intercalate (parts : List String) (hne : parts ≠ [])
+    (p : Char → Bool) (sep : Char) (hsep : p sep = true)
+    (hparts : ∀ part ∈ parts, ∀ c ∈ part.toList, p c = false) :
+    (String.intercalate (String.singleton sep) parts).splitToList p = parts := by
+  rw [String.splitToList_of_valid, String.toList_intercalate, String.toList_singleton]
+  rw [List.splitOnP_intercalate (parts.map String.toList) (by simpa using hne)
+    p sep hsep]
+  · simp
+  · intro chars hchars c hc
+    rw [List.mem_map] at hchars
+    obtain ⟨part, hpart, rfl⟩ := hchars
+    exact hparts part hpart c hc
+
+private theorem mapM_parseNumV6_eq_some {parts : List String}
+    (hall : ∀ part ∈ parts, IsHexGroup part) :
+    parts.mapM parseNumV6 = some (groupValues parts) := by
+  induction parts with
+  | nil => simp [groupValues]
+  | cons part parts ih =>
+      simp only [List.mem_cons, forall_eq_or_imp] at hall
+      simp [groupValues, parseNumV6_eq_some hall.1, ih hall.2]
+
+private theorem mapM_parseNumV6_some_wf {parts : List String} {values : List (BitVec 16)}
+    (h : parts.mapM parseNumV6 = some values) :
+    (∀ part ∈ parts, IsHexGroup part) ∧ values = groupValues parts := by
+  induction parts generalizing values with
+  | nil =>
+      simp at h
+      subst values
+      simp [groupValues]
+  | cons part parts ih =>
+      cases hp : parseNumV6 part with
+      | none => simp [hp] at h
+      | some value =>
+        cases ht : parts.mapM parseNumV6 with
+        | none => simp [hp, ht] at h
+        | some values' =>
+          simp [hp, ht] at h
+          subst values
+          have hpart : IsHexGroup part := parseNumV6_isSome_wf (by rw [hp]; simp)
+          obtain ⟨hparts, hvalues⟩ := ih ht
+          have hvalue := parseNumV6_eq_some hpart
+          rw [hp] at hvalue
+          injection hvalue with hvalue
+          subst value
+          refine ⟨?_, by simp [groupValues, hvalues]⟩
+          intro item hitem
+          simp only [List.mem_cons] at hitem
+          rcases hitem with rfl | hitem
+          · exact hpart
+          · exact hparts item hitem
+
+private theorem parseNumSegsV6_eq_some {parts : List String}
+    (hall : ∀ part ∈ parts, IsHexGroup part) :
+    parseNumSegsV6 (String.intercalate ":" parts) = some (groupValues parts) := by
+  cases parts with
+  | nil => simp [parseNumSegsV6, groupValues]
+  | cons part parts =>
+      have hsplit :
+          (String.intercalate ":" (part :: parts)).splitToList (· = ':') =
+            part :: parts := by
+        exact splitToList_intercalate (part :: parts) (by simp)
+          (fun x : Char => decide (x = ':')) ':' (by simp)
+          (fun item hitem => noColonOfHex (hall item hitem))
+      have hpartNonempty : part ≠ "" := by
+        intro heq
+        have hlen := (hall part (by simp)).1
+        simp [heq] at hlen
+      have hnonempty : String.intercalate ":" (part :: parts) ≠ "" := by
+        cases parts <;> simp [hpartNonempty]
+      unfold parseNumSegsV6
+      rw [ite_eq_right (by simpa [String.isEmpty_iff] using hnonempty), hsplit]
+      exact mapM_parseNumV6_eq_some hall
+
+private theorem parseNumSegsV6_some_wf {str : String} {values : List (BitVec 16)}
+    (h : parseNumSegsV6 str = some values) :
+    ∃ parts,
+      str = String.intercalate ":" parts ∧
+      (∀ part ∈ parts, IsHexGroup part) ∧
+      values = groupValues parts := by
+  unfold parseNumSegsV6 at h
+  split at h <;> rename_i hempty
+  · have hstr : str = "" := String.isEmpty_iff.mp hempty
+    simp only [Option.some.injEq] at h
+    subst str
+    subst values
+    exact ⟨[], by simp, by simp, rfl⟩
+  · generalize hsplits : str.splitToList (· = ':') = parts at h
+    obtain ⟨hall, hvalues⟩ := mapM_parseNumV6_some_wf h
+    refine ⟨parts, ?_, hall, hvalues⟩
+    exact eq_intercalate_of_splitToList_eq ':' hsplits
+
+/-! ## Specialized model of `String.splitOn "::"` -/
+
+/-- A character-list model of splitting on `"::"`, used only in the proof layer. -/
+private def splitDoubleColonModelAux : List Char → List Char → List String
+  | current, ':' :: ':' :: rest =>
+      String.ofList current :: splitDoubleColonModelAux [] rest
+  | current, c :: rest =>
+      splitDoubleColonModelAux (current ++ [c]) rest
+  | current, [] =>
+      [String.ofList current]
+
+/-- The proof-layer model of `String.splitOn "::"`. -/
+public def splitDoubleColonModel (str : String) : List String :=
+  splitDoubleColonModelAux [] str.toList
+
+/--
+The two reachable separator-cursor states of `String.splitOnAux` for the fixed separator `"::"`.
+When `pending` is true, the scanner has matched the first colon and is waiting for the second.
+-/
+private def splitDoubleColonScan : Bool → List Char → List Char → List String
+  | false, current, [] => [String.ofList current]
+  | false, current, c :: rest =>
+      if c = ':' then
+        splitDoubleColonScan true current rest
+      else
+        splitDoubleColonScan false (current ++ [c]) rest
+  | true, current, [] => [String.ofList (current ++ [':'])]
+  | true, current, c :: rest =>
+      if c = ':' then
+        String.ofList current :: splitDoubleColonScan false [] rest
+      else
+        splitDoubleColonScan false (current ++ [':']) (c :: rest)
+termination_by pending _ remaining =>
+  remaining.length * 2 + if pending then 1 else 0
+
+private def splitDoubleColonModelState
+    (pending : Bool) (current remaining : List Char) : List String :=
+  if pending then
+    splitDoubleColonModelAux current (':' :: remaining)
+  else
+    splitDoubleColonModelAux current remaining
+
+private theorem splitDoubleColonScan_eq_model (pending current remaining) :
+    splitDoubleColonScan pending current remaining =
+      splitDoubleColonModelState pending current remaining := by
+  induction pending, current, remaining using splitDoubleColonScan.induct <;>
+    simp [splitDoubleColonScan, splitDoubleColonModelState, splitDoubleColonModelAux, *,
+      List.append_assoc]
+
+private def splitDoubleColonScannedChars
+    (pending : Bool) (pre current : List Char) : List Char :=
+  pre ++ current ++ if pending then [':'] else []
+
+private def splitDoubleColonSepPos (pending : Bool) : String.Pos.Raw :=
+  if pending then ⟨1⟩ else 0
+
+private theorem splitOnAux_doubleColon_eq_scan :
+    ∀ pending current remaining pre acc,
+      String.splitOnAux
+          (String.ofList
+            (splitDoubleColonScannedChars pending pre current ++ remaining))
+          "::"
+          ⟨String.utf8Len pre⟩
+          ⟨String.utf8Len (splitDoubleColonScannedChars pending pre current)⟩
+          (splitDoubleColonSepPos pending)
+          acc =
+        acc.reverse ++ splitDoubleColonScan pending current remaining := by
+  intro pending current remaining
+  induction pending, current, remaining using splitDoubleColonScan.induct <;>
+    intro pre acc
+  case case1 current =>
+    simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, Bool.false_eq_true,
+      ↓reduceIte, List.append_nil, splitDoubleColonScan]
+    rw [String.splitOnAux]
+    rw [ite_eq_left]
+    · rw [String.utf8Len_append]
+      have hextract :
+          String.Pos.Raw.extract (String.ofList (pre ++ current))
+            ⟨String.utf8Len pre⟩
+            ⟨String.utf8Len pre + String.utf8Len current⟩ =
+              String.ofList current := by
+        simpa using String.extract_of_valid pre current []
+      rw [hextract]
+      simp
+    · simpa using (String.atEnd_of_valid (pre ++ current) []).2 rfl
+  case case2 current rest ih =>
+    simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, Bool.false_eq_true,
+      ↓reduceIte, List.append_nil, splitDoubleColonScan]
+    have hnot :
+        ¬String.Pos.Raw.atEnd (String.ofList ((pre ++ current) ++ ':' :: rest))
+          ⟨String.utf8Len (pre ++ current)⟩ := by
+      simpa using
+        (not_congr (String.atEnd_of_valid (pre ++ current) (':' :: rest))).2 (by simp)
+    rw [String.splitOnAux, ite_eq_right hnot]
+    rw [show
+      String.Pos.Raw.get (String.ofList ((pre ++ current) ++ ':' :: rest))
+          ⟨String.utf8Len (pre ++ current)⟩ = ':' by
+        simpa using String.get_of_valid (pre ++ current) (':' :: rest)]
+    rw [show String.Pos.Raw.get "::" 0 = ':' by rfl]
+    simp only [beq_self_eq_true, ↓reduceIte]
+    rw [show
+      String.Pos.Raw.next (String.ofList ((pre ++ current) ++ ':' :: rest))
+          ⟨String.utf8Len (pre ++ current)⟩ =
+            ⟨String.utf8Len (pre ++ current) + ':'.utf8Size⟩ by
+        simpa using String.next_of_valid (pre ++ current) ':' rest]
+    rw [show String.Pos.Raw.next "::" 0 = ⟨1⟩ by rfl]
+    rw [ite_eq_right (show ¬String.Pos.Raw.atEnd "::" ⟨1⟩ by decide)]
+    simpa [splitDoubleColonScannedChars, splitDoubleColonSepPos, String.utf8Len_append,
+      List.append_assoc, Nat.add_assoc] using ih pre acc
+  case case3 current c rest hc ih =>
+    simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, Bool.false_eq_true,
+      ↓reduceIte, List.append_nil, splitDoubleColonScan, ite_eq_right hc]
+    have hnot :
+        ¬String.Pos.Raw.atEnd (String.ofList ((pre ++ current) ++ c :: rest))
+          ⟨String.utf8Len (pre ++ current)⟩ := by
+      simpa using
+        (not_congr (String.atEnd_of_valid (pre ++ current) (c :: rest))).2 (by simp)
+    rw [String.splitOnAux, ite_eq_right hnot]
+    rw [show
+      String.Pos.Raw.get (String.ofList ((pre ++ current) ++ c :: rest))
+          ⟨String.utf8Len (pre ++ current)⟩ = c by
+        simpa using String.get_of_valid (pre ++ current) (c :: rest)]
+    rw [show String.Pos.Raw.get "::" 0 = ':' by rfl]
+    rw [ite_eq_right (by simpa using hc)]
+    simp only [String.Pos.Raw.unoffsetBy_zero]
+    rw [show
+      String.Pos.Raw.next (String.ofList ((pre ++ current) ++ c :: rest))
+          ⟨String.utf8Len (pre ++ current)⟩ =
+            ⟨String.utf8Len (pre ++ current) + c.utf8Size⟩ by
+        simpa using String.next_of_valid (pre ++ current) c rest]
+    simpa [splitDoubleColonScannedChars, splitDoubleColonSepPos, String.utf8Len_append,
+      List.append_assoc, Nat.add_assoc] using ih pre acc
+  case case4 current =>
+    simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, ↓reduceIte,
+      List.append_nil, splitDoubleColonScan]
+    rw [String.splitOnAux]
+    rw [ite_eq_left]
+    · simp only [String.utf8Len_append]
+      have hextract :
+          String.Pos.Raw.extract (String.ofList (pre ++ current ++ [':']))
+            ⟨String.utf8Len pre⟩
+            ⟨String.utf8Len pre + String.utf8Len current + String.utf8Len [':']⟩ =
+              String.ofList (current ++ [':']) := by
+        simpa [List.append_assoc, String.utf8Len_append, Nat.add_assoc] using
+          String.extract_of_valid pre (current ++ [':']) []
+      rw [hextract]
+      simp
+    · simpa [List.append_assoc] using
+        (String.atEnd_of_valid (pre ++ current ++ [':']) []).2 rfl
+  case case5 current rest ih =>
+    simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, ↓reduceIte,
+      splitDoubleColonScan]
+    have hnot :
+        ¬String.Pos.Raw.atEnd
+          (String.ofList ((pre ++ current ++ [':']) ++ ':' :: rest))
+          ⟨String.utf8Len (pre ++ current ++ [':'])⟩ := by
+      simpa using
+        (not_congr
+          (String.atEnd_of_valid (pre ++ current ++ [':']) (':' :: rest))).2
+          (by simp)
+    rw [String.splitOnAux, ite_eq_right hnot]
+    rw [show
+      String.Pos.Raw.get
+          (String.ofList ((pre ++ current ++ [':']) ++ ':' :: rest))
+          ⟨String.utf8Len (pre ++ current ++ [':'])⟩ = ':' by
+        simpa using String.get_of_valid (pre ++ current ++ [':']) (':' :: rest)]
+    rw [show String.Pos.Raw.get "::" ⟨1⟩ = ':' by rfl]
+    simp only [beq_self_eq_true, ↓reduceIte]
+    rw [show
+      String.Pos.Raw.next
+          (String.ofList ((pre ++ current ++ [':']) ++ ':' :: rest))
+          ⟨String.utf8Len (pre ++ current ++ [':'])⟩ =
+            ⟨String.utf8Len (pre ++ current ++ [':']) + ':'.utf8Size⟩ by
+        simpa using String.next_of_valid (pre ++ current ++ [':']) ':' rest]
+    rw [show String.Pos.Raw.next "::" ⟨1⟩ = ⟨2⟩ by rfl]
+    rw [ite_eq_left (show String.Pos.Raw.atEnd "::" ⟨2⟩ by decide)]
+    have hunoffset :
+        (⟨String.utf8Len (pre ++ current ++ [':']) + ':'.utf8Size⟩ :
+          String.Pos.Raw).unoffsetBy ⟨2⟩ =
+            ⟨String.utf8Len (pre ++ current)⟩ := by
+      ext
+      simp [String.utf8Len_append, String.utf8Len_cons, Char.utf8Size]
+    rw [hunoffset]
+    have hextract :
+        String.Pos.Raw.extract
+          (String.ofList ((pre ++ current ++ [':']) ++ ':' :: rest))
+          ⟨String.utf8Len pre⟩
+          ⟨String.utf8Len (pre ++ current)⟩ =
+            String.ofList current := by
+      simpa [List.append_assoc] using
+        String.extract_of_valid pre current ([':', ':'] ++ rest)
+    rw [hextract]
+    simpa [splitDoubleColonScannedChars, splitDoubleColonSepPos, String.utf8Len_append,
+      List.append_assoc, Nat.add_assoc] using
+        ih (pre ++ current ++ [':', ':']) (String.ofList current :: acc)
+  case case6 current c rest hc ih =>
+    simp only [splitDoubleColonScannedChars, splitDoubleColonSepPos, ↓reduceIte,
+      splitDoubleColonScan, ite_eq_right hc]
+    have hnot :
+        ¬String.Pos.Raw.atEnd
+          (String.ofList ((pre ++ current ++ [':']) ++ c :: rest))
+          ⟨String.utf8Len (pre ++ current ++ [':'])⟩ := by
+      simpa using
+        (not_congr
+          (String.atEnd_of_valid (pre ++ current ++ [':']) (c :: rest))).2
+          (by simp)
+    rw [String.splitOnAux, ite_eq_right hnot]
+    rw [show
+      String.Pos.Raw.get
+          (String.ofList ((pre ++ current ++ [':']) ++ c :: rest))
+          ⟨String.utf8Len (pre ++ current ++ [':'])⟩ = c by
+        simpa using String.get_of_valid (pre ++ current ++ [':']) (c :: rest)]
+    rw [show String.Pos.Raw.get "::" ⟨1⟩ = ':' by rfl]
+    rw [ite_eq_right (by simpa using hc)]
+    have hunoffset :
+        (⟨String.utf8Len (pre ++ current ++ [':'])⟩ :
+          String.Pos.Raw).unoffsetBy ⟨1⟩ =
+            ⟨String.utf8Len (pre ++ current)⟩ := by
+      ext
+      simp [String.utf8Len_append, String.utf8Len_cons, Char.utf8Size]
+    rw [hunoffset]
+    rw [show
+      String.Pos.Raw.next
+          (String.ofList ((pre ++ current ++ [':']) ++ c :: rest))
+          ⟨String.utf8Len (pre ++ current)⟩ =
+            ⟨String.utf8Len (pre ++ current) + ':'.utf8Size⟩ by
+        have h := String.next_of_valid (pre ++ current) ':' (c :: rest)
+        simpa [List.append_assoc] using h]
+    simpa [splitDoubleColonScan, ite_eq_right hc, splitDoubleColonScannedChars,
+      splitDoubleColonSepPos, String.utf8Len_append, List.append_assoc, Nat.add_assoc] using
+        ih pre acc
+
+/-- `String.splitOn "::"` agrees with the proof-layer character-list model on every string. -/
+public theorem splitOn_doubleColon_eq (s : String) :
+    s.splitOn "::" = splitDoubleColonModel s := by
+  unfold String.splitOn
+  rw [ite_eq_right (by decide)]
+  have h := splitOnAux_doubleColon_eq_scan false [] s.toList [] []
+  simpa [splitDoubleColonScannedChars, splitDoubleColonSepPos,
+    splitDoubleColonScan_eq_model, splitDoubleColonModelState, splitDoubleColonModel] using h
+
+private theorem renderGroups_cons_toList (part : String) (parts : List String) :
+    (String.intercalate ":" (part :: parts)).toList =
+      part.toList ++
+        match parts with
+        | [] => []
+        | _ => ':' :: (String.intercalate ":" parts).toList := by
+  cases parts <;> simp [String.toList_append]
+
+private theorem splitDoubleColonModelAux_consume_noColon
+    (current chars rest : List Char)
+    (h : ∀ c ∈ chars, c ≠ ':') :
+    splitDoubleColonModelAux current (chars ++ rest) =
+      splitDoubleColonModelAux (current ++ chars) rest := by
+  induction chars generalizing current with
+  | nil => simp
+  | cons c cs ih =>
+      have hc : c ≠ ':' := h c (by simp)
+      have hnonmatch :
+          ∀ suffix, c = ':' → cs ++ rest = ':' :: suffix → False := by
+        intro suffix heq _
+        exact hc heq
+      rw [List.cons_append, splitDoubleColonModelAux.eq_2 current c (cs ++ rest) hnonmatch]
+      simpa only [List.append_assoc, List.singleton_append] using
+        ih (current ++ [c]) (fun d hd => h d (by simp [hd]))
+
+private theorem splitDoubleColonModelAux_consume_renderGroups
+    (current suffix : List Char) (parts : List String)
+    (hall : ∀ part ∈ parts, IsHexGroup part) :
+    splitDoubleColonModelAux current ((String.intercalate ":" parts).toList ++ suffix) =
+      splitDoubleColonModelAux (current ++ (String.intercalate ":" parts).toList) suffix := by
+  induction parts generalizing current with
+  | nil => simp
+  | cons part parts ih =>
+      cases parts with
+      | nil =>
+          simpa using splitDoubleColonModelAux_consume_noColon current part.toList suffix
+            (neColonOfHex (hall part (by simp)))
+      | cons next tail =>
+          have hpart := hall part (by simp)
+          have hnext := hall next (by simp)
+          have htail : ∀ item ∈ next :: tail, IsHexGroup item := by
+            intro item hitem
+            exact hall item (by simp [hitem])
+          have hnextList : next.toList ≠ [] := by
+            intro heq
+            have hlen := hnext.1
+            rw [← String.length_toList, heq] at hlen
+            simp at hlen
+          obtain ⟨c, cs, hcList⟩ := List.exists_cons_of_ne_nil hnextList
+          have hc : c ≠ ':' := neColonOfHex hnext c (by simp [hcList])
+          obtain ⟨tailChars, hrenderTail⟩ :
+              ∃ tailChars, (String.intercalate ":" (next :: tail)).toList =
+                c :: tailChars := by
+            rw [renderGroups_cons_toList, hcList]
+            exact ⟨_, rfl⟩
+          have hnonmatch :
+              ∀ rest, ':' = ':' →
+                (String.intercalate ":" (next :: tail)).toList ++ suffix =
+                  ':' :: rest → False := by
+            intro rest _ heq
+            rw [hrenderTail] at heq
+            injection heq with heq
+            exact hc heq
+          rw [renderGroups_cons_toList]
+          simp only [List.cons_append, List.append_assoc]
+          rw [splitDoubleColonModelAux_consume_noColon current part.toList
+            (':' :: ((String.intercalate ":" (next :: tail)).toList ++ suffix))
+            (neColonOfHex hpart)]
+          rw [splitDoubleColonModelAux.eq_2 (current ++ part.toList) ':'
+            ((String.intercalate ":" (next :: tail)).toList ++ suffix) hnonmatch]
+          have hrec := ih ((current ++ part.toList) ++ [':']) htail
+          rw [hrec]
+          congr 1
+          simp only [List.append_assoc, List.singleton_append]
+
+private theorem ofList_intercalate_toList (sep : String) (parts : List String) :
+    String.ofList (sep.toList.intercalate (parts.map String.toList)) =
+      String.intercalate sep parts := by
+  apply String.toList_inj.mp
+  simp
+
+private theorem splitDoubleColonModel_renderGroups (parts : List String)
+    (hall : ∀ part ∈ parts, IsHexGroup part) :
+    splitDoubleColonModel (String.intercalate ":" parts) =
+      [String.intercalate ":" parts] := by
+  unfold splitDoubleColonModel
+  have h := splitDoubleColonModelAux_consume_renderGroups [] [] parts hall
+  simp [splitDoubleColonModelAux] at h
+  rw [String.toList_intercalate]
+  rw [← ofList_intercalate_toList ":" parts]
+  exact h
+
+private theorem splitDoubleColonModel_renderGroups_gap (left right : List String)
+    (hleft : ∀ part ∈ left, IsHexGroup part)
+    (hright : ∀ part ∈ right, IsHexGroup part) :
+    splitDoubleColonModel (String.intercalate ":" left ++ "::" ++
+      String.intercalate ":" right) =
+      [String.intercalate ":" left, String.intercalate ":" right] := by
+  unfold splitDoubleColonModel
+  simp only [String.toList_append]
+  rw [show "::".toList = [':', ':'] by rfl]
+  simp only [List.append_assoc, List.cons_append, List.nil_append]
+  rw [splitDoubleColonModelAux_consume_renderGroups []
+    (':' :: ':' :: (String.intercalate ":" right).toList) left hleft]
+  rw [splitDoubleColonModelAux.eq_1]
+  have hrightAux := splitDoubleColonModelAux_consume_renderGroups [] [] right hright
+  simp [splitDoubleColonModelAux] at hrightAux
+  have hrightChars :
+      [':'].intercalate (right.map String.toList) =
+        (String.intercalate ":" right).toList := by simp
+  rw [hrightChars] at hrightAux
+  simp only [String.ofList_toList] at hrightAux
+  simp only [List.nil_append, String.ofList_toList]
+  rw [hrightAux]
+
+private theorem splitDoubleColonModelAux_ne_nil (current remaining : List Char) :
+    splitDoubleColonModelAux current remaining ≠ [] := by
+  induction current, remaining using splitDoubleColonModelAux.induct with
+  | case1 current rest ih => simp [splitDoubleColonModelAux]
+  | case2 current c rest hnomatch ih =>
+      rw [splitDoubleColonModelAux.eq_2 current c rest hnomatch]
+      exact ih
+  | case3 current => simp [splitDoubleColonModelAux]
+
+private theorem intercalate_splitDoubleColonModelAux (current remaining : List Char) :
+    String.intercalate "::" (splitDoubleColonModelAux current remaining) =
+      String.ofList current ++ String.ofList remaining := by
+  induction current, remaining using splitDoubleColonModelAux.induct with
+  | case1 current rest ih =>
+      rw [splitDoubleColonModelAux.eq_1]
+      have hne : splitDoubleColonModelAux [] rest ≠ [] :=
+        splitDoubleColonModelAux_ne_nil [] rest
+      obtain ⟨part, parts, hparts⟩ := List.exists_cons_of_ne_nil hne
+      rw [hparts, String.intercalate_cons_cons]
+      rw [hparts] at ih
+      rw [ih]
+      change
+        String.ofList current ++ "::" ++ String.ofList rest =
+          String.ofList current ++ String.ofList (':' :: ':' :: rest)
+      have hcolon :
+          String.ofList (':' :: ':' :: rest) = "::" ++ String.ofList rest := by
+        apply String.toList_inj.mp
+        simp
+      rw [hcolon]
+      simp only [String.append_assoc]
+  | case2 current c rest hnomatch ih =>
+      rw [splitDoubleColonModelAux.eq_2 current c rest hnomatch]
+      simpa only [← String.ofList_append, List.append_assoc, List.singleton_append] using ih
+  | case3 current =>
+      simp [splitDoubleColonModelAux]
+
+private theorem eq_intercalate_of_splitDoubleColonModel_eq {str : String} {parts : List String}
+    (h : splitDoubleColonModel str = parts) :
+    str = String.intercalate "::" parts := by
+  unfold splitDoubleColonModel at h
+  rw [← h, intercalate_splitDoubleColonModelAux]
+  simp
+
+/-- `parseSegsV6` inverts `V6Components.asString` on a syntactically well-formed V6 address:
+    `full gs` (no `::`) splits to exactly 8 hextets; `gap l r` splits on `::` into two sides that
+    `parseSegsV6` pads to 8. -/
+theorem parseSegsV6_asString {v : V6Components} (hsyn : v.syntaxWf) :
+    parseSegsV6 v.asString = some v.toAddr :=
+  by
+  cases v with
+  | full parts =>
+      obtain ⟨hlen, hall⟩ := hsyn
+      have hsplit :
+          splitDoubleColonModel (V6Components.asString (.full parts)) =
+            [String.intercalate ":" parts] := by
+        simpa [V6Components.asString] using splitDoubleColonModel_renderGroups parts hall
+      have hparse :
+          parseNumSegsV6 (String.intercalate ":" parts) =
+            some (groupValues parts) :=
+        parseNumSegsV6_eq_some hall
+      unfold parseSegsV6
+      rw [splitOn_doubleColon_eq, hsplit]
+      simp only
+      rw [hparse]
+      change finishV6 (groupValues parts) =
+        some (V6Components.toAddr (.full parts))
+      apply finishV6_groupValues_eq_toAddr (v := .full parts)
+      simpa [V6Components.expand] using hlen
+  | gap left right =>
+      obtain ⟨hcount, hleft, hright⟩ := hsyn
+      have hsplit :
+          splitDoubleColonModel (V6Components.asString (.gap left right)) =
+            [String.intercalate ":" left, String.intercalate ":" right] := by
+        simpa [V6Components.asString] using
+          splitDoubleColonModel_renderGroups_gap left right hleft hright
+      have hleftParse :
+          parseNumSegsV6 (String.intercalate ":" left) =
+            some (groupValues left) :=
+        parseNumSegsV6_eq_some hleft
+      have hrightParse :
+          parseNumSegsV6 (String.intercalate ":" right) =
+            some (groupValues right) :=
+        parseNumSegsV6_eq_some hright
+      have hvalueCount : (groupValues left).length + (groupValues right).length < 8 := by
+        simpa [groupValues] using hcount
+      unfold parseSegsV6
+      rw [splitOn_doubleColon_eq, hsplit]
+      simp only
+      rw [hleftParse, hrightParse]
+      simp only [bind, Option.bind]
+      rw [ite_eq_left hvalueCount]
+      change
+        finishV6
+            (groupValues left ++
+              List.replicate
+                (8 - ((groupValues left).length + (groupValues right).length)) 0 ++
+              groupValues right) =
+          some (V6Components.toAddr (.gap left right))
+      have hfinish :
+          finishV6 (groupValues (V6Components.expand (.gap left right))) =
+            some (V6Components.toAddr (.gap left right)) := by
+        apply finishV6_groupValues_eq_toAddr
+        simp only [V6Components.expand, List.length_append, List.length_replicate]
+        omega
+      simpa [V6Components.expand, groupValues, hexValue_zero] using hfinish
+
+private theorem parseSegsV6_some_wf {str : String} {addr : IPv6Addr}
+    (h : parseSegsV6 str = some addr) :
+    ∃ v : V6Components,
+      str = v.asString ∧ v.syntaxWf ∧ addr = v.toAddr := by
+  unfold parseSegsV6 at h
+  rw [splitOn_doubleColon_eq] at h
+  generalize hsplits : splitDoubleColonModel str = splits at h
+  rcases splits with _ | ⟨leftStr, rest⟩
+  · simp at h
+  rcases rest with _ | ⟨rightStr, rest⟩
+  ·
+    cases hp : parseNumSegsV6 leftStr with
+    | none => simp [hp] at h
+    | some values =>
+      simp only [hp, bind, Option.bind] at h
+      change finishV6 values = some addr at h
+      obtain ⟨parts, hleftStr, hall, hvalues⟩ := parseNumSegsV6_some_wf hp
+      have hlenValues := finishV6_length_of_some h
+      have hlen : parts.length = 8 := by
+        rw [hvalues] at hlenValues
+        simpa [groupValues] using hlenValues
+      refine ⟨.full parts, ?_, ⟨hlen, hall⟩, ?_⟩
+      · have hstr := eq_intercalate_of_splitDoubleColonModel_eq hsplits
+        rw [String.intercalate_singleton, hleftStr] at hstr
+        simpa [V6Components.asString] using hstr
+      · rw [hvalues] at h
+        have hfinish :
+            finishV6 (groupValues parts) =
+              some (V6Components.toAddr (.full parts)) := by
+          apply finishV6_groupValues_eq_toAddr (v := .full parts)
+          simpa [V6Components.expand] using hlen
+        rw [hfinish] at h
+        injection h with haddr
+        exact haddr.symm
+  rcases rest with _ | ⟨extra, rest⟩
+  ·
+    cases hleftParse : parseNumSegsV6 leftStr with
+    | none => simp [hleftParse] at h
+    | some leftValues =>
+      cases hrightParse : parseNumSegsV6 rightStr with
+      | none => simp [hleftParse, hrightParse] at h
+      | some rightValues =>
+        simp only [hleftParse, hrightParse, bind, Option.bind] at h
+        split at h <;> rename_i hcount
+        ·
+          change
+            finishV6
+                (leftValues ++
+                  List.replicate (8 - (leftValues.length + rightValues.length)) 0 ++
+                  rightValues) =
+              some addr at h
+          obtain ⟨left, hleftStr, hleft, hleftValues⟩ :=
+            parseNumSegsV6_some_wf hleftParse
+          obtain ⟨right, hrightStr, hright, hrightValues⟩ :=
+            parseNumSegsV6_some_wf hrightParse
+          rw [hleftValues, hrightValues] at h hcount
+          have hsyntaxCount : left.length + right.length < 8 := by
+            simpa [groupValues] using hcount
+          refine ⟨.gap left right, ?_, ⟨hsyntaxCount, hleft, hright⟩, ?_⟩
+          · have hstr := eq_intercalate_of_splitDoubleColonModel_eq hsplits
+            rw [String.intercalate_cons_cons, String.intercalate_singleton,
+              hleftStr, hrightStr] at hstr
+            simpa [V6Components.asString, String.append_assoc] using hstr
+          · have hfinish :
+                finishV6 (groupValues (V6Components.expand (.gap left right))) =
+                  some (V6Components.toAddr (.gap left right)) := by
+              apply finishV6_groupValues_eq_toAddr
+              simp only [V6Components.expand, List.length_append, List.length_replicate]
+              omega
+            have hfinish' :
+                finishV6
+                    (groupValues left ++
+                      List.replicate
+                        (8 - ((groupValues left).length + (groupValues right).length)) 0 ++
+                      groupValues right) =
+                  some (V6Components.toAddr (.gap left right)) := by
+              simpa [V6Components.expand, groupValues, hexValue_zero] using hfinish
+            rw [hfinish'] at h
+            injection h with haddr
+            exact haddr.symm
+        · simp at h
+  · simp at h
+
+private theorem noSlashColon :
+    ∀ c ∈ ":".toList, (fun x : Char => decide (x = '/')) c = false := by
+  simp
+
+private theorem noSlashDoubleColon :
+    ∀ c ∈ "::".toList, (fun x : Char => decide (x = '/')) c = false := by
+  simp
+
+private theorem noSlashRenderGroups {parts : List String}
+    (hall : ∀ part ∈ parts, IsHexGroup part) :
+    ∀ c ∈ (String.intercalate ":" parts).toList,
+      (fun x : Char => decide (x = '/')) c = false := by
+  induction parts with
+  | nil => simp
+  | cons part parts ih =>
+      cases parts with
+      | nil =>
+          simpa using noSlashOfHex (hall part (by simp))
+      | cons next tail =>
+          have hpart := noSlashOfHex (hall part (by simp))
+          have htail := ih (fun item hitem => hall item (by simp [hitem]))
+          simpa [String.append_assoc] using
+            noSepAppend hpart (noSepAppend noSlashColon htail)
+
+private theorem noSlashV6 (v : V6Components) (hsyn : v.syntaxWf) :
+    ∀ c ∈ v.asString.toList, (fun x : Char => decide (x = '/')) c = false := by
+  cases v with
+  | full parts =>
+      exact noSlashRenderGroups hsyn.2
+  | gap left right =>
+      simpa [V6Components.asString, String.append_assoc] using
+        noSepAppend (noSlashRenderGroups hsyn.2.1)
+          (noSepAppend noSlashDoubleColon (noSlashRenderGroups hsyn.2.2))
+
+private theorem noDotColon :
+    ∀ c ∈ ":".toList, (fun x : Char => decide (x = '.')) c = false := by
+  simp
+
+private theorem noDotDoubleColon :
+    ∀ c ∈ "::".toList, (fun x : Char => decide (x = '.')) c = false := by
+  simp
+
+private theorem noDotRenderGroups {parts : List String}
+    (hall : ∀ part ∈ parts, IsHexGroup part) :
+    ∀ c ∈ (String.intercalate ":" parts).toList,
+      (fun x : Char => decide (x = '.')) c = false := by
+  induction parts with
+  | nil => simp
+  | cons part parts ih =>
+      cases parts with
+      | nil =>
+          simpa using noDotOfHex (hall part (by simp))
+      | cons next tail =>
+          have hpart := noDotOfHex (hall part (by simp))
+          have htail := ih (fun item hitem => hall item (by simp [hitem]))
+          simpa [String.append_assoc] using
+            noSepAppend hpart (noSepAppend noDotColon htail)
+
+private theorem noDotV6 (v : V6Components) (hsyn : v.syntaxWf) :
+    ∀ c ∈ v.asString.toList, (fun x : Char => decide (x = '.')) c = false := by
+  cases v with
+  | full parts =>
+      exact noDotRenderGroups hsyn.2
+  | gap left right =>
+      simpa [V6Components.asString, String.append_assoc] using
+        noSepAppend (noDotRenderGroups hsyn.2.1)
+          (noSepAppend noDotDoubleColon (noDotRenderGroups hsyn.2.2))
+
+/-- `parseIPv6Net` succeeds on a well-formed V6 string, yielding `v6Value`. -/
+theorem parseIPv6Net_eq_some {v : V6Components} {pre : Option String}
+    (hsyn : v.syntaxWf)
+    (hpre : IsWfOptionalPrefix 3 (ADDR_SIZE V6_WIDTH) pre) :
+    parseIPv6Net (v.asString ++ (match pre with | none => "" | some p => "/" ++ p))
+      = some (v6Value v pre) :=
+  by
+  unfold parseIPv6Net
+  cases pre with
+  | none =>
+      have hsplit : v.asString.splitToList (· = '/') = [v.asString] :=
+        splitToList_no_sep v.asString (fun x : Char => decide (x = '/')) (noSlashV6 v hsyn)
+      simp only [String.append_empty]
+      rw [hsplit]
+      simp only
+      rw [parseSegsV6_asString hsyn]
+      simp [v6Value, prefixValue, IPNetPrefix.ofNat]
+  | some p =>
+      have hsplit :
+          (v.asString ++ ("/" ++ p)).splitToList (· = '/') = [v.asString, p] := by
+        simpa [String.append_assoc] using
+          splitToList_eq v.asString p (fun x : Char => decide (x = '/')) '/'
+            (by simp) (noSlashV6 v hsyn) (noSlashOfCanonical hpre.1)
+      simp only
+      rw [hsplit]
+      simp only
+      rw [parsePrefixNat_eq_value hpre, parseSegsV6_asString hsyn]
+      change IsCanonicalNat p ∧ p.length ≤ 3 ∧ natOf p ≤ ADDR_SIZE V6_WIDTH at hpre
+      have hlt : natOf p < ADDR_SIZE V6_WIDTH + 1 := by omega
+      simp [v6Value, prefixValue, IPNetPrefix.ofNat, Fin.ofNat, Nat.mod_eq_of_lt hlt]
+
+/-- Soundness for V6: a successful `parseIPv6Net` means the string is a well-formed V6 rendering. -/
+theorem parseIPv6Net_isSome_wf {str : String} {net : IPNet} (h : parseIPv6Net str = some net) :
+    IsV6Value str net :=
+  by
+  unfold parseIPv6Net at h
+  generalize hsplits : str.splitToList (· = '/') = parts at h
+  rcases parts with _ | ⟨addrStr, rest⟩
+  · simp at h
+  rcases rest with _ | ⟨preStr, rest⟩
+  ·
+    cases ha : parseSegsV6 addrStr with
+    | none => simp [ha] at h
+    | some addr =>
+      simp [ha] at h
+      obtain ⟨v, haddrStr, hsyn, haddr⟩ := parseSegsV6_some_wf ha
+      have hstr := eq_intercalate_of_splitToList_eq '/' hsplits
+      rw [String.intercalate_singleton, haddrStr] at hstr
+      refine ⟨v, none, ⟨hsyn, trivial, by simpa using hstr⟩, ?_⟩
+      subst addr
+      simpa [v6Value, prefixValue, IPNetPrefix.ofNat] using h.symm
+  rcases rest with _ | ⟨extra, rest⟩
+  ·
+    cases hp : parsePrefixNat preStr 3 (ADDR_SIZE V6_WIDTH) with
+    | none => simp [hp] at h
+    | some pre =>
+      cases ha : parseSegsV6 addrStr with
+      | none => simp [hp, ha] at h
+      | some addr =>
+        simp [hp, ha] at h
+        obtain ⟨v, haddrStr, hsyn, haddr⟩ := parseSegsV6_some_wf ha
+        obtain ⟨hpre, hpreValue⟩ := parsePrefixNat_some_wf hp
+        have hstr := eq_intercalate_of_splitToList_eq '/' hsplits
+        rw [String.intercalate_cons_cons, String.intercalate_singleton,
+          haddrStr] at hstr
+        refine ⟨v, some preStr, ⟨hsyn, hpre, ?_⟩, ?_⟩
+        · simpa [String.append_assoc] using hstr
+        · subst addr
+          simpa [v6Value, prefixValue, hpreValue] using h.symm
+  · simp at h
+
+/-- The V4 and V6 accepted-string sets are disjoint: no string parses as both. In particular a
+    well-formed V6 string is not accepted by `parseIPv4Net` (needed for the `parse`'s V4-first
+    fall-through to reach V6). -/
+theorem parseIPv4Net_none_of_isWfV6 {str : String} (h : IsWfV6 str) :
+    parseIPv4Net str = none :=
+  by
+  obtain ⟨v, pre, ⟨hsyn, hpre, rfl⟩⟩ := h
+  have haddrNone : parseSegsV4 v.asString = none := by
+    have hsplit : v.asString.splitToList (· = '.') = [v.asString] :=
+      splitToList_no_sep v.asString (fun x : Char => decide (x = '.')) (noDotV6 v hsyn)
+    unfold parseSegsV4
+    rw [hsplit]
+  unfold parseIPv4Net
+  cases pre with
+  | none =>
+      have hsplit : v.asString.splitToList (· = '/') = [v.asString] :=
+        splitToList_no_sep v.asString (fun x : Char => decide (x = '/')) (noSlashV6 v hsyn)
+      simp only [String.append_empty]
+      rw [hsplit]
+      simp only
+      rw [haddrNone]
+      rfl
+  | some p =>
+      have hsplit :
+          (v.asString ++ ("/" ++ p)).splitToList (· = '/') = [v.asString, p] := by
+        simpa [String.append_assoc] using
+          splitToList_eq v.asString p (fun x : Char => decide (x = '/')) '/'
+            (by simp) (noSlashV6 v hsyn) (noSlashOfCanonical hpre.1)
+      simp only
+      rw [hsplit]
+      simp only
+      cases parsePrefixNat p 2 (ADDR_SIZE V4_WIDTH)
+      · rfl
+      · rw [haddrNone]
+        rfl
+
+/-- Well-formed IPv4 syntax is exactly syntax to which the grammar assigns some V4 value. -/
+public theorem isWfV4_iff_exists_value {str : String} :
+    IsWfV4 str ↔ ∃ net, IsV4Value str net := by
+  constructor
+  · rintro ⟨v, pre, hproduction⟩
+    exact ⟨v4Value v pre, v, pre, hproduction, rfl⟩
+  · rintro ⟨_, v, pre, hproduction, _⟩
+    exact ⟨v, pre, hproduction⟩
+
+/-- Well-formed IPv6 syntax is exactly syntax to which the grammar assigns some V6 value. -/
+public theorem isWfV6_iff_exists_value {str : String} :
+    IsWfV6 str ↔ ∃ net, IsV6Value str net := by
+  constructor
+  · rintro ⟨v, pre, hproduction⟩
+    exact ⟨v6Value v pre, v, pre, hproduction, rfl⟩
+  · rintro ⟨_, v, pre, hproduction, _⟩
+    exact ⟨v, pre, hproduction⟩
+
+/-! ## Canonical-rendering lemmas -/
+
+private theorem canonical_toString (n : Nat) :
+    (toString n).startsWith "0" → toString n = "0" := by
+  induction n using Nat.strongRecOn with
+  | ind n ih =>
+    intro hstarts
+    rw [String.startsWith_string_iff] at hstarts
+    by_cases hlt : n < 10
+    · rw [Nat.toString_eq_repr, Nat.repr_of_lt hlt] at hstarts ⊢
+      simp at hstarts
+      subst n
+      apply String.toList_inj.mp
+      simp
+    · have hge : 10 ≤ n := by omega
+      have hq : n / 10 < n := Nat.div_lt_self (by omega) (by omega)
+      have hqstarts : (toString (n / 10)).startsWith "0" := by
+        have hrepr :
+            (toString n).toList =
+              (toString (n / 10)).toList ++
+                (String.singleton (Nat.digitChar (n % 10))).toList := by
+          rw [Nat.toString_eq_repr, Nat.repr_of_ge hge, String.toList_append]
+          simp [Nat.toString_eq_repr]
+        rw [hrepr] at hstarts
+        cases hlist : (toString (n / 10)).toList with
+        | nil =>
+          have hne : toString (n / 10) ≠ "" := by
+            rw [Nat.toString_eq_repr]
+            exact Nat.repr_ne_empty
+          exfalso
+          apply hne
+          apply String.toList_inj.mp
+          rw [hlist]
+          rfl
+        | cons c cs =>
+          rw [hlist] at hstarts
+          simp only [List.cons_append] at hstarts
+          rw [String.startsWith_string_iff, hlist]
+          simpa using hstarts
+      have hqzero : toString (n / 10) = "0" := ih (n / 10) hq hqstarts
+      have heq := congrArg toNat?' hqzero
+      rw [toNat?'_toString] at heq
+      have htoStringZero : toString (0 : Nat) = "0" := by
+        rw [Nat.toString_eq_repr, Nat.repr_of_lt (by omega)]
+        apply String.toList_inj.mp
+        simp
+      have hzero : toNat?' "0" = some 0 := by
+        rw [← htoStringZero, toNat?'_toString]
+      rw [hzero] at heq
+      injection heq with hqeq
+      omega
+
+private theorem isCanonicalNat_toString (n : Nat) : IsCanonicalNat (toString n) :=
+  ⟨isDigits_toString n, canonical_toString n⟩
+
+private theorem toString_length_le {n width : Nat} (hbound : n < 10 ^ width)
+    (hwidth : 0 < width) :
+    (toString n).length ≤ width := by
+  rw [Nat.toString_eq_repr]
+  exact (Nat.length_repr_le_iff hwidth).mpr hbound
+
+private theorem v4Addr_toNat_mk (a₀ a₁ a₂ a₃ : BitVec 8) :
+    (IPv4Addr.mk a₀ a₁ a₂ a₃).toNat =
+      ((a₀.toNat * 256 + a₁.toNat) * 256 + a₂.toNat) * 256 + a₃.toNat := by
+  unfold IPv4Addr.mk
+  simp only [BitVec.toNat_append]
+  rw [← Nat.shiftLeft_add_eq_or_of_lt (BitVec.isLt a₃)]
+  rw [← Nat.shiftLeft_add_eq_or_of_lt (BitVec.isLt a₂)]
+  rw [← Nat.shiftLeft_add_eq_or_of_lt (BitVec.isLt a₁)]
+  simp [Nat.shiftLeft_eq]
+
+private theorem v4Components_toAddr_of_addr (addr : IPv4Addr) :
+    let v := addr.toNat
+    V4Components.toAddr
+        ⟨toString ((v >>> 24) &&& 0xff), toString ((v >>> 16) &&& 0xff),
+          toString ((v >>> 8) &&& 0xff), toString (v &&& 0xff)⟩ =
+      addr := by
+  dsimp only
+  unfold V4Components.toAddr natOf
+  repeat rw [toNat?'_toString]
+  simp only [Option.getD_some]
+  apply BitVec.eq_of_toNat_eq
+  rw [v4Addr_toNat_mk]
+  simp
+  have hmask : (0xff : Nat) = 2 ^ 8 - 1 := by decide
+  simp only [hmask, Nat.and_two_pow_sub_one_eq_mod, Nat.shiftRight_eq_div_pow]
+  have hbound := BitVec.isLt addr
+  change addr.toNat < 2 ^ 32 at hbound
+  omega
+
+private theorem v4Prefix_of_toNat (pre : IPv4Prefix) :
+    (pre.toNat : IPv4Prefix) = pre := by
+  cases pre with
+  | none => rfl
+  | some pre =>
+      have hbound := BitVec.isLt pre
+      change pre.toNat < 2 ^ 5 at hbound
+      change (if pre.toNat < 32 then some (BitVec.ofNat 5 pre.toNat) else none) = some pre
+      rw [ite_eq_left (by omega)]
+      congr
+      apply BitVec.eq_of_toNat_eq
+      simp
+
+private theorem mask255_le (n : Nat) : n &&& 0xff ≤ 255 := by
+  have h := Nat.and_lt_two_pow n (n := 8) (y := 0xff) (by decide)
+  omega
+
+private theorem v4Prefix_toNat_le (pre : IPv4Prefix) : pre.toNat ≤ 32 := by
+  cases pre with
+  | none =>
+      change 32 ≤ 32
+      omega
+  | some pre =>
+      have hbound := BitVec.isLt pre
+      change pre.toNat < 2 ^ 5 at hbound
+      change pre.toNat ≤ 32
+      omega
+
+theorem parse_toString_v4 (addr : IPv4Addr) (pre : IPv4Prefix) :
+    IPAddr.ip (toString (IPNet.V4 ⟨addr, pre⟩)) = some (IPNet.V4 ⟨addr, pre⟩) := by
+  let v := addr.toNat
+  let g₀ := toString ((v >>> 24) &&& 0xff)
+  let g₁ := toString ((v >>> 16) &&& 0xff)
+  let g₂ := toString ((v >>> 8) &&& 0xff)
+  let g₃ := toString (v &&& 0xff)
+  let p := toString pre.toNat
+  let c : V4Components := ⟨g₀, g₁, g₂, g₃⟩
+  have hsyn : c.syntaxWf := by
+    refine
+      ⟨⟨isCanonicalNat_toString _, toString_length_le (by
+          have h := mask255_le (v >>> 24)
+          omega) (by omega)⟩,
+        ⟨isCanonicalNat_toString _, toString_length_le (by
+          have h := mask255_le (v >>> 16)
+          omega) (by omega)⟩,
+        ⟨isCanonicalNat_toString _, toString_length_le (by
+          have h := mask255_le (v >>> 8)
+          omega) (by omega)⟩,
+        ⟨isCanonicalNat_toString _, toString_length_le (by
+          have h := mask255_le v
+          omega) (by omega)⟩⟩
+  have hcon : c.constraintsWf := by
+    simp only [V4Components.constraintsWf, c, g₀, g₁, g₂, g₃, natOf]
+    repeat rw [toNat?'_toString]
+    simp only [Option.getD_some]
+    exact ⟨mask255_le _, mask255_le _, mask255_le _, mask255_le _⟩
+  have hpre : IsWfOptionalPrefix 2 (ADDR_SIZE V4_WIDTH) (some p) := by
+    simp only [IsWfOptionalPrefix]
+    refine
+      ⟨isCanonicalNat_toString _,
+        toString_length_le (by
+          have h := v4Prefix_toNat_le pre
+          omega) (by omega),
+        ?_⟩
+    simp only [p, natOf]
+    rw [toNat?'_toString]
+    simp only [Option.getD_some]
+    change pre.toNat ≤ 32
+    exact v4Prefix_toNat_le pre
+  have haddr : c.toAddr = addr := by
+    simpa [c, g₀, g₁, g₂, g₃, v] using v4Components_toAddr_of_addr addr
+  have hpfx : prefixValue V4_WIDTH (some p) = pre := by
+    simp only [prefixValue, p, natOf]
+    rw [toNat?'_toString]
+    simp only [Option.getD_some]
+    exact v4Prefix_of_toNat pre
+  have hvalue : v4Value c (some p) = IPNet.V4 ⟨addr, pre⟩ := by
+    simp [v4Value, haddr, hpfx]
+  have hrender :
+      toString (IPNet.V4 ⟨addr, pre⟩) = c.asString ++ ("/" ++ p) := by
+    calc
+      toString (IPNet.V4 ⟨addr, pre⟩) =
+          s!"{(addr.toNat >>> 24) &&& 0xff}.{(addr.toNat >>> 16) &&& 0xff}.\
+            {(addr.toNat >>> 8) &&& 0xff}.{addr.toNat &&& 0xff}/{pre.toNat}" := rfl
+      _ = c.asString ++ ("/" ++ p) := by
+        have hdot : toString "." = "." := rfl
+        have hslash : toString "/" = "/" := rfl
+        simp [c, g₀, g₁, g₂, g₃, p, v, V4Components.asString, hdot, hslash,
+          String.append_assoc]
+  have hparse :
+      parseIPv4Net (c.asString ++ ("/" ++ p)) = some (v4Value c (some p)) := by
+    simpa using parseIPv4Net_eq_some (v := c) (pre := some p) hsyn hcon hpre
+  calc
+    IPAddr.ip (toString (IPNet.V4 ⟨addr, pre⟩)) =
+        IPAddr.ip (c.asString ++ ("/" ++ p)) := congrArg IPAddr.ip hrender
+    _ = some (v4Value c (some p)) := by
+      unfold IPAddr.ip parse
+      simp only
+      rw [hparse]
+      simp
+    _ = some (IPNet.V4 ⟨addr, pre⟩) := congrArg some hvalue
+
+private theorem digitChar_isHexDigit {n : Nat} (h : n < 16) :
+    isHexDigit n.digitChar = true := by
+  by_cases hten : n < 10
+  · unfold isHexDigit
+    rw [Nat.isDigit_digitChar]
+    simp [hten]
+  · have hn : n = 10 ∨ n = 11 ∨ n = 12 ∨ n = 13 ∨ n = 14 ∨ n = 15 := by omega
+    rcases hn with rfl | rfl | rfl | rfl | rfl | rfl
+    · rw [show Nat.digitChar 10 = 'a' by simp]
+      simp [isHexDigit]
+    · rw [show Nat.digitChar 11 = 'b' by simp]
+      simp [isHexDigit]
+    · rw [show Nat.digitChar 12 = 'c' by simp]
+      simp [isHexDigit]
+    · rw [show Nat.digitChar 13 = 'd' by simp]
+      simp [isHexDigit]
+    · rw [show Nat.digitChar 14 = 'e' by simp]
+      simp [isHexDigit]
+    · rw [show Nat.digitChar 15 = 'f' by simp]
+      simp [isHexDigit]
+
+private theorem toHex_eq_digits (n : Nat) :
+    toHex n =
+      String.singleton ((n % 0x10000) / 0x1000).digitChar ++
+        String.singleton ((n % 0x1000) / 0x100).digitChar ++
+        String.singleton ((n % 0x100) / 0x10).digitChar ++
+        String.singleton ((n % 0x10) / 0x1).digitChar := by
+  simp only [toHex, hexDigitRepr]
+  change
+    String.singleton ((n % 0x10000) / 0x1000).digitChar ++
+        String.singleton ((n % 0x1000) / 0x100).digitChar ++
+        String.singleton ((n % 0x100) / 0x10).digitChar ++
+        String.singleton ((n % 0x10) / 0x1).digitChar = _
+  rfl
+
+private theorem toHex_isHexGroup (n : Nat) : IsHexGroup (toHex n) := by
+  have h₀ : (n % 0x10000) / 0x1000 < 16 := by omega
+  have h₁ : (n % 0x1000) / 0x100 < 16 := by omega
+  have h₂ : (n % 0x100) / 0x10 < 16 := by omega
+  have h₃ : (n % 0x10) / 0x1 < 16 := by omega
+  rw [toHex_eq_digits]
+  unfold IsHexGroup
+  constructor
+  · simp
+  constructor
+  · simp
+  · intro c hc
+    simp only [String.toList_append, String.toList_singleton, List.mem_append,
+      List.mem_singleton] at hc
+    rcases hc with ((rfl | rfl) | rfl) | rfl
+    · exact digitChar_isHexDigit h₀
+    · exact digitChar_isHexDigit h₁
+    · exact digitChar_isHexDigit h₂
+    · exact digitChar_isHexDigit h₃
+
+private theorem toHexNat_digitChar {n : Nat} (h : n < 16) :
+    toHexNat n.digitChar = n := by
+  by_cases hten : n < 10
+  · unfold toHexNat
+    have hdigit : n.digitChar.isDigit = true := by
+      rw [Nat.isDigit_digitChar]
+      simp [hten]
+    rw [ite_eq_left hdigit]
+    exact Nat.toNat_digitChar_sub_48_of_lt_ten hten
+  · have hn : n = 10 ∨ n = 11 ∨ n = 12 ∨ n = 13 ∨ n = 14 ∨ n = 15 := by omega
+    rcases hn with rfl | rfl | rfl | rfl | rfl | rfl
+    · rw [show Nat.digitChar 10 = 'a' by simp]
+      simp [toHexNat]
+    · rw [show Nat.digitChar 11 = 'b' by simp]
+      simp [toHexNat]
+    · rw [show Nat.digitChar 12 = 'c' by simp]
+      simp [toHexNat]
+    · rw [show Nat.digitChar 13 = 'd' by simp]
+      simp [toHexNat]
+    · rw [show Nat.digitChar 14 = 'e' by simp]
+      simp [toHexNat]
+    · rw [show Nat.digitChar 15 = 'f' by simp]
+      simp [toHexNat]
+
+private theorem hexValue_toHex (n : Nat) :
+    hexValue (toHex n) = n % 0x10000 := by
+  have h₀ : (n % 0x10000) / 0x1000 < 16 := by omega
+  have h₁ : (n % 0x1000) / 0x100 < 16 := by omega
+  have h₂ : (n % 0x100) / 0x10 < 16 := by omega
+  have h₃ : (n % 0x10) / 0x1 < 16 := by omega
+  rw [toHex_eq_digits]
+  unfold hexValue
+  simp only [String.foldl_eq_foldl_toList, String.toList_append,
+    String.toList_singleton, List.foldl_append, List.foldl_cons, List.foldl_nil]
+  rw [toHexNat_digitChar h₀, toHexNat_digitChar h₁, toHexNat_digitChar h₂,
+    toHexNat_digitChar h₃]
+  omega
+
+private theorem v6Components_toAddr_of_addr (addr : IPv6Addr) :
+    let v := addr.toNat
+    V6Components.toAddr
+      (.full
+        [toHex ((v >>> 112) &&& 0xffff), toHex ((v >>> 96) &&& 0xffff),
+          toHex ((v >>> 80) &&& 0xffff), toHex ((v >>> 64) &&& 0xffff),
+          toHex ((v >>> 48) &&& 0xffff), toHex ((v >>> 32) &&& 0xffff),
+          toHex ((v >>> 16) &&& 0xffff), toHex (v &&& 0xffff)]) =
+      addr := by
+  dsimp only
+  unfold V6Components.toAddr V6Components.expand
+  simp only [List.getD_cons_zero, List.getD_cons_succ]
+  change IPv6Addr.mk
+    (BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> 112) &&& 0xffff))))
+    (BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> 96) &&& 0xffff))))
+    (BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> 80) &&& 0xffff))))
+    (BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> 64) &&& 0xffff))))
+    (BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> 48) &&& 0xffff))))
+    (BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> 32) &&& 0xffff))))
+    (BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> 16) &&& 0xffff))))
+    (BitVec.ofNat 16 (hexValue (toHex (addr.toNat &&& 0xffff)))) = addr
+  have hchunk (start : Nat) :
+      BitVec.ofNat 16 (hexValue (toHex ((addr.toNat >>> start) &&& 0xffff))) =
+        addr.extractLsb' start 16 := by
+    rw [hexValue_toHex]
+    apply BitVec.eq_of_toNat_eq
+    simp only [BitVec.toNat_ofNat, BitVec.extractLsb'_toNat]
+    have hmask : (0xffff : Nat) = 2 ^ 16 - 1 := by decide
+    rw [hmask, Nat.and_two_pow_sub_one_eq_mod]
+    simp
+  rw [hchunk 112, hchunk 96, hchunk 80, hchunk 64, hchunk 48, hchunk 32, hchunk 16]
+  rw [show BitVec.ofNat 16 (hexValue (toHex (addr.toNat &&& 0xffff))) =
+      addr.extractLsb' 0 16 by simpa using hchunk 0]
+  unfold IPv6Addr.mk
+  repeat rw [BitVec.extractLsb'_append_extractLsb'_eq_extractLsb' (by omega)]
+  exact BitVec.extractLsb'_eq_self
+
+private theorem v6Prefix_of_toNat (pre : IPv6Prefix) :
+    (pre.toNat : IPv6Prefix) = pre := by
+  cases pre with
+  | none => rfl
+  | some pre =>
+      have hbound := BitVec.isLt pre
+      change pre.toNat < 2 ^ 7 at hbound
+      change (if pre.toNat < 128 then some (BitVec.ofNat 7 pre.toNat) else none) = some pre
+      rw [ite_eq_left hbound]
+      congr
+      apply BitVec.eq_of_toNat_eq
+      simp
+
+private theorem v6Prefix_toNat_le (pre : IPv6Prefix) : pre.toNat ≤ 128 := by
+  cases pre with
+  | none =>
+      change 128 ≤ 128
+      omega
+  | some pre =>
+      have hbound := BitVec.isLt pre
+      change pre.toNat < 2 ^ 7 at hbound
+      change pre.toNat ≤ 128
+      omega
+
+theorem parse_toString_v6 (addr : IPv6Addr) (pre : IPv6Prefix) :
+    IPAddr.ip (toString (IPNet.V6 ⟨addr, pre⟩)) = some (IPNet.V6 ⟨addr, pre⟩) := by
+  let v := addr.toNat
+  let h₀ := toHex ((v >>> 112) &&& 0xffff)
+  let h₁ := toHex ((v >>> 96) &&& 0xffff)
+  let h₂ := toHex ((v >>> 80) &&& 0xffff)
+  let h₃ := toHex ((v >>> 64) &&& 0xffff)
+  let h₄ := toHex ((v >>> 48) &&& 0xffff)
+  let h₅ := toHex ((v >>> 32) &&& 0xffff)
+  let h₆ := toHex ((v >>> 16) &&& 0xffff)
+  let h₇ := toHex (v &&& 0xffff)
+  let p := toString pre.toNat
+  let c : V6Components := .full [h₀, h₁, h₂, h₃, h₄, h₅, h₆, h₇]
+  have hsyn : c.syntaxWf := by
+    constructor
+    · rfl
+    · intro part hpart
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at hpart
+      rcases hpart with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
+        exact toHex_isHexGroup _
+  have hpre : IsWfOptionalPrefix 3 (ADDR_SIZE V6_WIDTH) (some p) := by
+    simp only [IsWfOptionalPrefix]
+    refine
+      ⟨isCanonicalNat_toString _,
+        toString_length_le (by
+          have h := v6Prefix_toNat_le pre
+          omega) (by omega),
+        ?_⟩
+    simp only [p, natOf]
+    rw [toNat?'_toString]
+    simp only [Option.getD_some]
+    change pre.toNat ≤ 128
+    exact v6Prefix_toNat_le pre
+  have haddr : c.toAddr = addr := by
+    simpa [c, h₀, h₁, h₂, h₃, h₄, h₅, h₆, h₇, v] using
+      v6Components_toAddr_of_addr addr
+  have hpfx : prefixValue V6_WIDTH (some p) = pre := by
+    simp only [prefixValue, p, natOf]
+    rw [toNat?'_toString]
+    simp only [Option.getD_some]
+    exact v6Prefix_of_toNat pre
+  have hvalue : v6Value c (some p) = IPNet.V6 ⟨addr, pre⟩ := by
+    simp [v6Value, haddr, hpfx]
+  have hrender :
+      toString (IPNet.V6 ⟨addr, pre⟩) = c.asString ++ ("/" ++ p) := by
+    have hcanonical :
+        toString (IPNet.V6 ⟨addr, pre⟩) =
+          s!"{toHex ((addr.toNat >>> 112) &&& 0xffff)}:\
+            {toHex ((addr.toNat >>> 96) &&& 0xffff)}:\
+            {toHex ((addr.toNat >>> 80) &&& 0xffff)}:\
+            {toHex ((addr.toNat >>> 64) &&& 0xffff)}:\
+            {toHex ((addr.toNat >>> 48) &&& 0xffff)}:\
+            {toHex ((addr.toNat >>> 32) &&& 0xffff)}:\
+            {toHex ((addr.toNat >>> 16) &&& 0xffff)}:\
+            {toHex (addr.toNat &&& 0xffff)}/{pre.toNat}" := by
+      rfl
+    rw [hcanonical]
+    have hstring (s : String) : toString s = s := rfl
+    simp [c, h₀, h₁, h₂, h₃, h₄, h₅, h₆, h₇, p, v, V6Components.asString,
+      hstring, String.append_assoc]
+  have hwf : IsWfV6 (c.asString ++ ("/" ++ p)) :=
+    ⟨c, some p, ⟨hsyn, hpre, rfl⟩⟩
+  have hv4 : parseIPv4Net (c.asString ++ ("/" ++ p)) = none :=
+    parseIPv4Net_none_of_isWfV6 hwf
+  have hv6 :
+      parseIPv6Net (c.asString ++ ("/" ++ p)) = some (v6Value c (some p)) := by
+    simpa using parseIPv6Net_eq_some (v := c) (pre := some p) hsyn hpre
+  calc
+    IPAddr.ip (toString (IPNet.V6 ⟨addr, pre⟩)) =
+        IPAddr.ip (c.asString ++ ("/" ++ p)) := congrArg IPAddr.ip hrender
+    _ = some (v6Value c (some p)) := by
+      unfold IPAddr.ip parse
+      simp only
+      rw [hv4, hv6]
+      rfl
+    _ = some (IPNet.V6 ⟨addr, pre⟩) := congrArg some hvalue
+
+end Cedar.Thm.IPAddr
