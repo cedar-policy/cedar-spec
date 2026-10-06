@@ -14,16 +14,11 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Data
-import Cedar.Thm.Tactics
-import Cedar.Thm.Authorization
-import Cedar.Thm.PolicySlice
-import Cedar.Thm.SymCC.Opt
-import Cedar.Thm.Typechecking
-import Cedar.Thm.Validation
-import Cedar.Thm.WellTyped
-import Cedar.Thm.TPE
-import Cedar.Thm.BatchedEvaluator
-import Cedar.Thm.WellTypedVerification
-import Cedar.Thm.Frontend
-import Cedar.Thm.Frontend.Authorizer
+module
+
+/- Those are the modules part of Cedar's frontend (e.g. parsers and internal representation
+     transformations).
+   As of this writing, only the CST for policies is implemented in Lean.
+ -/
+
+public import Cedar.Frontend.Cst
