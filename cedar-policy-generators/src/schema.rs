@@ -1170,7 +1170,7 @@ impl Schema {
         // ensures we get a DAG
         for i in 0..entity_types.len() {
             let (_, ref mut entity_type) = entity_types[i];
-            match entity_type.kind.clone() {
+            match entity_type.kind {
                 EntityTypeKind::Standard(StandardEntityType {
                     ref mut member_of_types,
                     ..
