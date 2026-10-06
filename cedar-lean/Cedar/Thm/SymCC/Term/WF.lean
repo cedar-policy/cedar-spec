@@ -1852,15 +1852,28 @@ public theorem wf_datetime_durationSince {εs : SymEntities} {t₁ t₂ : Term}
   have ⟨hwf₅, hty₅⟩ := wf_bvssubo hwf₁ hwf₂ hty₁ hty₂
   simp only [Datetime.durationSince, wf_ifFalse hwf₅ hwf₄ hty₅, hty₄, _root_.and_self]
 
+public theorem wf_datetime_bvsmod_pos {εs : SymEntities} {x : Term} (d : Nat)
+  (h : x.WellFormed εs ∧ x.typeOf = .bitvec 64) :
+  (Datetime.bvsmod_pos x d).WellFormed εs ∧ (Datetime.bvsmod_pos x d).typeOf = .bitvec 64
+:= by
+  have hwf_bv_zero := @wf_bv εs _ (BitVec.ofNat 64 0)
+  have hwf_bv_d := @wf_bv εs _ (BitVec.ofNat 64 d)
+  have ⟨hwfle, htyle⟩ := wf_bvsle hwf_bv_zero h.left typeOf_bv h.right
+  have ⟨hwfrem, htyrem⟩ := wf_bvsrem h.left hwf_bv_d h.right typeOf_bv
+  have ⟨hwfeq, htyeq⟩ := wf_eq hwfrem hwf_bv_zero (by simp only [htyrem, typeOf_bv])
+  have ⟨hwfadd, htyadd⟩ := wf_bvadd hwfrem hwf_bv_d htyrem typeOf_bv
+  have ⟨hwfite₂, htyite₂⟩ := wf_ite hwfeq hwf_bv_zero hwfadd htyeq (by simp only [typeOf_bv, htyadd])
+  have ⟨hwf₁, hty₁⟩ := wf_ite hwfle hwfrem hwfite₂ htyle (by simp only [htyrem, htyite₂, typeOf_bv])
+  rw [htyrem] at hty₁
+  simp only [Datetime.bvsmod_pos, hwf₁, hty₁, _root_.and_self]
+
 public theorem wf_datetime_toDate {εs : SymEntities} {t : Term}
   (h : t.WellFormed εs ∧ t.typeOf = .ext .datetime) :
   (Datetime.toDate t).WellFormed εs ∧ (Datetime.toDate t).typeOf = .option (.ext .datetime)
 := by
   have ⟨hwf₀, hty₀⟩ := wf_ext_datetime_val h.left h.right
-  have hwf_bv_zero := @wf_bv εs _ (Int64.toBitVec 0)
-  have hwf_bv_ms_per_day := @wf_bv εs _ (Int64.toBitVec 86400000)
+  have ⟨hwf₁, hty₁⟩ := wf_datetime_bvsmod_pos 86400000 (And.intro hwf₀ hty₀)
   simp only [Datetime.toDate]
-  have ⟨hwf₁, hty₁⟩   := wf_bvsmod hwf₀ hwf_bv_ms_per_day hty₀ typeOf_bv
   have ⟨hwf₂, hty₂⟩   := wf_bvsub hwf₀ hwf₁ hty₀ hty₁
   have ⟨hwf₃, hty₃⟩   := wf_bvssubo hwf₀ hwf₁ hty₀ hty₁
   have ⟨hwf₄, hty₄⟩   := wf_ext_datetime_ofBitVec hwf₂ hty₂
@@ -1874,15 +1887,8 @@ public theorem wf_datetime_toTime {εs : SymEntities} {t : Term}
   (Datetime.toTime t).WellFormed εs ∧ (Datetime.toTime t).typeOf = .ext .duration
 := by
   have ⟨hwf₀, hty₀⟩ := wf_ext_datetime_val h.left h.right
-  have hwf_bv_zero := @wf_bv εs _ (Int64.toBitVec 0)
-  have hwf_bv_ms_per_day := @wf_bv εs _ (Int64.toBitVec 86400000)
-  have ⟨hwf₁, hty₁⟩ := wf_bvsle hwf_bv_zero hwf₀ typeOf_bv hty₀
-  have ⟨hwf₂, hty₂⟩ := wf_bvsrem hwf₀ hwf_bv_ms_per_day hty₀ typeOf_bv
-  have ⟨hwf₃, hty₃⟩ := wf_eq hwf₂ hwf_bv_zero (by simp only [hty₂, typeOf_bv])
-  have ⟨hwf₄, hty₄⟩ := wf_bvadd hwf₂ hwf_bv_ms_per_day hty₂ typeOf_bv
-  have ⟨hwf₅, hty₅⟩ := wf_ite hwf₃ hwf_bv_zero hwf₄ hty₃ (by simp only [typeOf_bv, hty₄])
-  have ⟨hwf₆, hty₆⟩ := wf_ite hwf₁ hwf₂ hwf₅ hty₁ (by simp only [hty₂, hty₅, typeOf_bv])
-  simp only [Datetime.toTime, wf_ext_duration_ofBitVec hwf₆ (by simp only [hty₆, hty₂]), _root_.and_self]
+  have ⟨hwf₁, hty₁⟩ := wf_datetime_bvsmod_pos 86400000 (And.intro hwf₀ hty₀)
+  simp only [Datetime.toTime, wf_ext_duration_ofBitVec hwf₁ hty₁, _root_.and_self]
 
 local macro "show_wf_duration_conversion" cfun:ident wf_thm:ident hwf:ident : tactic => do
  `(tactic| (
