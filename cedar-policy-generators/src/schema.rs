@@ -636,7 +636,10 @@ impl Bindings {
                 kind: EntityTypeKind::Standard(StandardEntityType {
                     member_of_types: member_of_types.clone(),
                     shape: json_schema::AttributesOrContext(self.rewrite_record_type(u, &shape.0)?),
-                    tags: tags.clone(),
+                    tags: tags
+                        .as_ref()
+                        .map(|tags| self.rewrite_type(u, &tags))
+                        .transpose()?,
                 }),
                 annotations: et.annotations.clone(),
                 loc: et.loc.clone(),
@@ -853,6 +856,14 @@ impl Schema {
         let mut bindings = Bindings::new();
         for (_, ty) in &self.attributes {
             bind_type(ty, u, &mut bindings)?;
+        }
+        for et in self.schema.entity_types.values() {
+            if let EntityTypeKind::Standard(StandardEntityType {
+                tags: Some(tag_ty), ..
+            }) = &et.kind
+            {
+                bind_type(tag_ty, u, &mut bindings)?;
+            }
         }
 
         let common_types = bindings.to_common_types(u)?;
