@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-use crate::abac::{
-    ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type, UnknownPool,
-};
+use crate::abac::{ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type};
 use crate::err::{while_doing, Error, Result};
 use crate::expr::ExprGenerator;
 use crate::hierarchy::Hierarchy;
@@ -51,8 +49,6 @@ pub struct Schema {
     pub settings: ABACSettings,
     /// constant pool
     pub constant_pool: ConstantPool,
-    /// unknown pool
-    pub unknown_pool: UnknownPool,
     /// data on available extension functions
     ext_funcs: AvailableExtensionFunctions,
     /// list of all entity types that are declared in the schema. Note that this
@@ -1006,7 +1002,6 @@ impl Schema {
             constant_pool: u
                 .arbitrary()
                 .map_err(|e| while_doing("generating constant pool".into(), e))?,
-            unknown_pool: UnknownPool::default(),
             ext_funcs: AvailableExtensionFunctions::create(&settings),
             settings,
             entity_types: nsdef
@@ -1097,7 +1092,6 @@ impl Schema {
             schema: self,
             settings: &self.settings,
             constant_pool: &self.constant_pool,
-            unknown_pool: &self.unknown_pool,
             ext_funcs: &self.ext_funcs,
             hierarchy,
         }
@@ -1381,7 +1375,6 @@ impl Schema {
             constant_pool: u
                 .arbitrary()
                 .map_err(|e| while_doing("generating constant pool".into(), e))?,
-            unknown_pool: UnknownPool::default(),
             ext_funcs: AvailableExtensionFunctions::create(&settings),
             settings,
             entity_types: entity_type_names,

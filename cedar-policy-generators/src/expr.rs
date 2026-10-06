@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-use crate::abac::{
-    AttrValue, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type, UnknownPool,
-};
+use crate::abac::{AttrValue, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type};
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::{generate_uid_with_type, Hierarchy};
 use crate::schema_gen::SchemaGen;
@@ -39,8 +37,6 @@ pub struct ExprGenerator<'a> {
     pub settings: &'a ABACSettings,
     /// Constant pool to use when needed
     pub constant_pool: &'a ConstantPool,
-    /// Unknown pool to use when needed
-    pub unknown_pool: &'a UnknownPool,
     /// data on available extension functions
     pub ext_funcs: &'a AvailableExtensionFunctions,
     /// If this is present, any literal UIDs included in generated `Expr`s will
@@ -303,21 +299,12 @@ impl ExprGenerator<'_> {
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
-        if self.should_generate_unknown(max_depth, u)? {
-            let v = self.generate_value_for_type(target_type, max_depth, u)?;
-            let name = self.unknown_pool.alloc(target_type.clone(), v);
-            let unknown_type: Option<ast::Type> = target_type.clone().try_into().ok();
-            match unknown_type {
-                Some(ty) => Ok(ast::Expr::unknown(ast::Unknown::new_with_type(name, ty))),
-                None => Ok(ast::Expr::unknown(ast::Unknown::new_untyped(name))),
-            }
-        } else {
-            match target_type {
-                Type::Bool => {
-                    if max_depth == 0 || u.len() < 10 {
-                        self.generate_expr_for_type_structurally_recursive(target_type, u)
-                    } else {
-                        gen!(u,
+        match target_type {
+            Type::Bool => {
+                if max_depth == 0 || u.len() < 10 {
+                    self.generate_expr_for_type_structurally_recursive(target_type, u)
+                } else {
+                    gen!(u,
                         // bool literal
                         2 => Ok(ast::Expr::val(u.arbitrary::<bool>()?)),
                         // == expression, where types on both sides match
@@ -596,13 +583,13 @@ impl ExprGenerator<'_> {
                         1 => self.generate_get_record_attr_for_type(&Type::Bool, max_depth, u),
                         // getting an entity tag with type bool
                         1 => self.generate_get_tag_for_type(&Type::Bool, max_depth, u))
-                    }
                 }
-                Type::Long => {
-                    if max_depth == 0 || u.len() < 10 {
-                        self.generate_expr_for_type_structurally_recursive(target_type, u)
-                    } else {
-                        gen!(u,
+            }
+            Type::Long => {
+                if max_depth == 0 || u.len() < 10 {
+                    self.generate_expr_for_type_structurally_recursive(target_type, u)
+                } else {
+                    gen!(u,
                         // int literal. weighted highly because all the other choices
                         // are recursive, and we don't want a scenario where we have,
                         // say, a 90% chance to recurse every time
@@ -664,13 +651,13 @@ impl ExprGenerator<'_> {
                         4 => self.generate_get_record_attr_for_type(&Type::Long, max_depth, u),
                         // getting an entity tag with type long
                         3 => self.generate_get_tag_for_type(&Type::Long, max_depth, u))
-                    }
                 }
-                Type::String => {
-                    if max_depth == 0 || u.len() < 10 {
-                        self.generate_expr_for_type_structurally_recursive(target_type, u)
-                    } else {
-                        gen!(u,
+            }
+            Type::String => {
+                if max_depth == 0 || u.len() < 10 {
+                    self.generate_expr_for_type_structurally_recursive(target_type, u)
+                } else {
+                    gen!(u,
                         // string literal. weighted highly because all the other choices
                         // are recursive, and we don't want a scenario where we have, say,
                         // a 90% chance to recurse every time
@@ -687,13 +674,13 @@ impl ExprGenerator<'_> {
                         4 => self.generate_get_record_attr_for_type(&Type::String, max_depth, u),
                         // getting an entity tag with type string
                         3 => self.generate_get_tag_for_type(&Type::String, max_depth, u))
-                    }
                 }
-                Type::Set(target_element_ty) => {
-                    if max_depth == 0 || u.len() < 10 {
-                        self.generate_expr_for_type_structurally_recursive(target_type, u)
-                    } else {
-                        gen!(u,
+            }
+            Type::Set(target_element_ty) => {
+                if max_depth == 0 || u.len() < 10 {
+                    self.generate_expr_for_type_structurally_recursive(target_type, u)
+                } else {
+                    gen!(u,
                         // set literal
                         6 => {
                             let mut l = Vec::new();
@@ -721,13 +708,13 @@ impl ExprGenerator<'_> {
                         3 => self.generate_get_record_attr_for_type(target_type, max_depth, u),
                         // getting an entity tag with the appropriate set type
                         3 => self.generate_get_tag_for_type(target_type, max_depth, u))
-                    }
                 }
-                Type::Record(m) => {
-                    if max_depth == 0 || u.len() < 10 {
-                        self.generate_expr_for_type_structurally_recursive(target_type, u)
-                    } else {
-                        gen!(u,
+            }
+            Type::Record(m) => {
+                if max_depth == 0 || u.len() < 10 {
+                    self.generate_expr_for_type_structurally_recursive(target_type, u)
+                } else {
+                    gen!(u,
                         // record literal
                         2 => {
                             let mut r = IndexMap::new();
@@ -750,14 +737,14 @@ impl ExprGenerator<'_> {
                         3 => self.generate_get_tag_for_type(target_type, max_depth, u),
                         // `context`
                         1 => Ok(ast::Expr::var(ast::Var::Context)))
-                    }
                 }
-                Type::Entity(ety) => {
-                    if max_depth == 0 || u.len() < 10 {
-                        // no recursion allowed, so, just do `principal`, `action`, or `resource`
-                        self.generate_expr_for_type_structurally_recursive(target_type, u)
-                    } else {
-                        gen!(u,
+            }
+            Type::Entity(ety) => {
+                if max_depth == 0 || u.len() < 10 {
+                    // no recursion allowed, so, just do `principal`, `action`, or `resource`
+                    self.generate_expr_for_type_structurally_recursive(target_type, u)
+                } else {
+                    gen!(u,
                         // UID literal, that exists
                         11 => Ok(ast::Expr::val(self.arbitrary_uid_with_type(ety, u)?)),
                         // UID literal, that doesn't exist
@@ -778,13 +765,13 @@ impl ExprGenerator<'_> {
                         5 => self.generate_get_record_attr_for_type(target_type, max_depth, u),
                         // getting an entity tag with type entity
                         5 => self.generate_get_tag_for_type(target_type, max_depth, u))
-                    }
                 }
-                Type::IPAddr | Type::Decimal | Type::DateTime | Type::Duration => {
-                    if max_depth == 0 || u.len() < 10 {
-                        self.generate_expr_for_type_structurally_recursive(target_type, u)
-                    } else {
-                        gen!(u,
+            }
+            Type::IPAddr | Type::Decimal | Type::DateTime | Type::Duration => {
+                if max_depth == 0 || u.len() < 10 {
+                    self.generate_expr_for_type_structurally_recursive(target_type, u)
+                } else {
+                    gen!(u,
                         // if-then-else expression, where both arms are extension types
                         2 => self.generate_ite_for_type(target_type, max_depth, u),
                         // extension function that returns an extension type
@@ -795,7 +782,6 @@ impl ExprGenerator<'_> {
                         2 => self.generate_get_record_attr_for_type(target_type, max_depth, u),
                         // getting an entity tag with extension type
                         5 => self.generate_get_tag_for_type(target_type, max_depth, u))
-                    }
                 }
             }
         }
@@ -1380,19 +1366,6 @@ impl ExprGenerator<'_> {
             <ast::Eid as Arbitrary>::size_hint(depth),
             Hierarchy::arbitrary_uid_with_type_size_hint(depth),
         )
-    }
-
-    /// Decide if we should fill the current AST node w/ an unknown
-    /// We want the chance of generating an unknown to go up the lower in the
-    /// AST we are.
-    fn should_generate_unknown(&self, max_depth: usize, u: &mut Unstructured<'_>) -> Result<bool> {
-        if self.settings.enable_unknowns {
-            let chance = self.settings.max_depth - max_depth;
-            let choice = u.int_in_range::<usize>(0..=self.settings.max_depth)?;
-            Ok(choice <= chance)
-        } else {
-            Ok(false)
-        }
     }
 }
 
