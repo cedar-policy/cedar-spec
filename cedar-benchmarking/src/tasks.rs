@@ -32,6 +32,8 @@ pub enum Target {
     ProtobufSchemaParseUnchecked,
     Validation,
     Authorization,
+    Tpe,
+    SymbolicCompilation,
     EntityParseWithSchema,
     EntityParseWithoutSchema,
     ProtobufEntityParse,
@@ -52,6 +54,8 @@ impl std::fmt::Display for Target {
             Self::ProtobufSchemaParseUnchecked => write!(f, "protobuf_schema_parse_unchecked"),
             Self::Validation => write!(f, "validation"),
             Self::Authorization => write!(f, "authorization"),
+            Self::Tpe => write!(f, "tpe"),
+            Self::SymbolicCompilation => write!(f, "symbolic_compilation"),
             Self::EntityParseWithSchema => write!(f, "entity_parse_with_schema"),
             Self::EntityParseWithoutSchema => write!(f, "entity_parse_without_schema"),
             Self::ProtobufEntityParse => write!(f, "protobuf_entity_parse"),
@@ -75,6 +79,8 @@ impl std::str::FromStr for Target {
             "protobuf_schema_parse_unchecked" => Ok(Self::ProtobufSchemaParseUnchecked),
             "validation" => Ok(Self::Validation),
             "authorization" => Ok(Self::Authorization),
+            "tpe" => Ok(Self::Tpe),
+            "symbolic_compilation" => Ok(Self::SymbolicCompilation),
             "entity_parse_with_schema" => Ok(Self::EntityParseWithSchema),
             "entity_parse_without_schema" => Ok(Self::EntityParseWithoutSchema),
             "protobuf_entity_parse" => Ok(Self::ProtobufEntityParse),
@@ -146,6 +152,18 @@ pub enum BenchmarkTask {
         json_schema_file: PathBuf,
         entities_file: PathBuf,
     },
+    Tpe {
+        name: String,
+        policy_file: PathBuf,
+        cedar_schema_file: PathBuf,
+        json_schema_file: PathBuf,
+        entities_file: PathBuf,
+    },
+    SymbolicCompilation {
+        name: String,
+        policy_file: PathBuf,
+        cedar_schema_file: PathBuf,
+    },
     EntityParseWithSchema {
         name: String,
         cedar_schema_file: PathBuf,
@@ -183,6 +201,8 @@ impl BenchmarkTask {
             | Self::ProtobufSchemaParseUnchecked { name, .. }
             | Self::Validation { name, .. }
             | Self::Authorization { name, .. }
+            | Self::Tpe { name, .. }
+            | Self::SymbolicCompilation { name, .. }
             | Self::EntityParseWithSchema { name, .. }
             | Self::EntityParseWithoutSchema { name, .. }
             | Self::ProtobufEntityParse { name, .. }
@@ -203,6 +223,8 @@ impl BenchmarkTask {
             Self::ProtobufSchemaParseUnchecked { .. } => Target::ProtobufSchemaParseUnchecked,
             Self::Validation { .. } => Target::Validation,
             Self::Authorization { .. } => Target::Authorization,
+            Self::Tpe { .. } => Target::Tpe,
+            Self::SymbolicCompilation { .. } => Target::SymbolicCompilation,
             Self::EntityParseWithSchema { .. } => Target::EntityParseWithSchema,
             Self::EntityParseWithoutSchema { .. } => Target::EntityParseWithoutSchema,
             Self::ProtobufEntityParse { .. } => Target::ProtobufEntityParse,
@@ -291,6 +313,13 @@ impl Task {
                     cedar_schema_file: cedar_schema_file.clone(),
                 });
             }
+            if self.is_target_enabled(Target::SymbolicCompilation) {
+                tasks.push(BenchmarkTask::SymbolicCompilation {
+                    name: self.name.clone(),
+                    policy_file: policy_file.clone(),
+                    cedar_schema_file: cedar_schema_file.clone(),
+                });
+            }
         }
 
         if let (Some(ref policy_file), Some(ref json_schema_file), Some(ref entities_file)) = (
@@ -306,6 +335,17 @@ impl Task {
                     json_schema_file: json_schema_file.clone(),
                     entities_file: entities_file.clone(),
                 });
+            }
+            if self.is_target_enabled(Target::Tpe) {
+                if let Some(ref cedar_schema_file) = self.cedar_schema_file {
+                    tasks.push(BenchmarkTask::Tpe {
+                        name: self.name.clone(),
+                        policy_file: policy_file.clone(),
+                        cedar_schema_file: cedar_schema_file.clone(),
+                        json_schema_file: json_schema_file.clone(),
+                        entities_file: entities_file.clone(),
+                    });
+                }
             }
         }
 
