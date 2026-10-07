@@ -30,7 +30,7 @@ open Cedar.Spec
 
 ----- Views of Schema, for validation -----
 
-def PartialEntitySchemaEntry.validationView : PartialEntitySchemaEntry → EntitySchemaEntry
+public def PartialEntitySchemaEntry.validationView : PartialEntitySchemaEntry → EntitySchemaEntry
   | .defined entry => entry
   | .external ancestors => .standard {
       ancestors,
@@ -38,7 +38,7 @@ def PartialEntitySchemaEntry.validationView : PartialEntitySchemaEntry → Entit
       tags := none
     }
 
-def PartialActionSchemaEntry.validationView : PartialActionSchemaEntry → ActionSchemaEntry
+public def PartialActionSchemaEntry.validationView : PartialActionSchemaEntry → ActionSchemaEntry
   | .defined entry => entry
   | .external ancestors => {
       appliesToPrincipal := Set.empty,
@@ -47,7 +47,7 @@ def PartialActionSchemaEntry.validationView : PartialActionSchemaEntry → Actio
       context := Map.empty
     }
 
-def PartialSchema.validationView (ps : PartialSchema) : Schema := {
+public def PartialSchema.validationView (ps : PartialSchema) : Schema := {
   ets := ps.ets.mapOnValues PartialEntitySchemaEntry.validationView,
   acts := ps.acts.mapOnValues PartialActionSchemaEntry.validationView
 }

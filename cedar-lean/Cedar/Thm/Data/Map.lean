@@ -1101,6 +1101,36 @@ public theorem mapMOnValues_mapOnValues [LT α] [DecidableLT α] [Monad m] [Lawf
   rw [List.mapM_map]
   rfl
 
+/-- Mapping every value to `some` preserves the map. -/
+public theorem mapMOnValues_some {α β} [LT α] [DecidableLT α]
+    (m : Map α β) :
+    m.mapMOnValues some = some m := by
+  cases m with
+  | mk kvs =>
+    simp only [Map.mapMOnValues, Map.toList_mk_id]
+    change (kvs.mapM some).bind (fun kvs => some (Map.mk kvs)) = some (Map.mk kvs)
+    rw [List.mapM_some]
+    rfl
+
+/-- Mapping map values succeeds exactly when every application succeeds. -/
+public theorem mapMOnValues_isSome {α β γ} [LT α] [DecidableLT α]
+    (m : Map α β) (f : β → Option γ) :
+    (m.mapMOnValues f).isSome = m.values.all (fun value => (f value).isSome) := by
+  cases m with
+  | mk kvs =>
+    let g := fun kv : α × β => (f kv.snd).bind fun value => some (kv.fst, value)
+    change ((kvs.mapM g).bind fun values => some (Map.mk values)).isSome =
+      (kvs.map Prod.snd).all (fun value => (f value).isSome)
+    calc
+      _ = (kvs.mapM g).isSome := by cases kvs.mapM g <;> rfl
+      _ = kvs.all (fun kv => (g kv).isSome) := List.mapM_isSome
+      _ = (kvs.map Prod.snd).all (fun value => (f value).isSome) := by
+        induction kvs with
+        | nil => rfl
+        | cons kv rest ih =>
+          simp only [List.all_cons, List.map_cons]
+          cases hf : f kv.snd <;> simp [g, hf, ih]
+
 /--
   This is not stated in terms of `Map.keys` because `Map.keys` produces a `Set`,
   and we want the even stronger property that it not only preserves the key-set,
@@ -1237,6 +1267,50 @@ theorem mapMOnValues_some_implies_forall₂ [LT α] [DecidableLT α] {f : β →
   subst k'
   simp only [true_and]
   exact h₂
+
+/--
+If a partial map of values succeeds, mapping a corresponding total function
+produces the same map.
+-/
+public theorem mapOnValues_eq_of_mapMOnValues_some
+    {α β γ} [LT α] [DecidableLT α]
+    {m : Map α β} {out : Map α γ} {f : β → Option γ}
+    (g : β → γ)
+    (hmap : m.mapMOnValues f = some out)
+    (hfg : ∀ input output, f input = some output → g input = output) :
+    m.mapOnValues g = out := by
+  cases m with
+  | mk inputs =>
+    change (do
+      let values ← inputs.mapM (fun kv =>
+        (f kv.snd).bind fun value => some (kv.fst, value))
+      some (Map.mk values)) = some out at hmap
+    cases hm : inputs.mapM (fun kv =>
+        (f kv.snd).bind fun value => some (kv.fst, value)) with
+    | none => simp [hm] at hmap
+    | some values =>
+      simp only [hm, Option.bind_some_fun, Option.some.injEq] at hmap
+      subst out
+      have hrel := List.mapM_some_iff_forall₂.mp hm
+      apply Map.eq_iff_toList_eq.mp
+      simp only [Map.mapOnValues, Map.toList_mk_id]
+      induction hrel with
+      | nil => rfl
+      | @cons input output inputs outputs hhead hrest ih =>
+        cases input with
+        | mk key value =>
+          cases output with
+          | mk outputKey outputValue =>
+            cases hf : f value with
+            | none => simp [hf] at hhead
+            | some mapped =>
+              simp only [hf] at hhead
+              obtain ⟨rfl, rfl⟩ := hhead
+              simp only [List.map_cons, List.cons.injEq, Prod.mk.injEq, true_and]
+              constructor
+              · exact hfg value outputValue hf
+              · apply ih
+                exact List.mapM_some_iff_forall₂.mpr hrest
 
 public theorem mapMOnValues_some_implies_all_some {α : Type 0} [LT α] [DecidableLT α] {f : β → Option γ} {m₁ : Map α β} {m₂ : Map α γ} :
   m₁.mapMOnValues f = some m₂ →
