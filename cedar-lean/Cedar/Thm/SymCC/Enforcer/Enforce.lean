@@ -250,18 +250,16 @@ private theorem partitioned_implies_ancestors_isUDF_eq {ety₁ ety₂ ety₃ : E
   f₁₂.isUDF = f₂₃.isUDF
 := by
   have ⟨hpd₁, hpd₂⟩ := hsε
-  specialize hpd₂ ety₁ δ₁ f₁₂ ety₂ δ₂ hδ₁ hδ₂ hf₁
-  have henum₁ := hpd₁ ety₁ δ₁ hδ₁
-  have henum₂ := hpd₁ ety₂ δ₂ hδ₂
-  simp only [SymEntityData.PartitionedAncestors, hpd₂] at henum₁ henum₂
-  cases h : δ₂.isEnum <;>
-  simp only [h, Bool.false_eq_true, ↓reduceIte] at henum₁ henum₂ <;>
-  specialize henum₁ ety₂ f₁₂ hf₁ <;>
-  specialize henum₂ ety₃ f₂₃ hf₂
-  · simp only [UnaryFunction.isUUF, UnaryFunction.isUDF] at *
-    cases f₁₂ <;> cases f₂₃ <;>
-    simp only [Bool.false_eq_true] at *
-  · simp only [henum₁, henum₂]
+  have ⟨henum_mono, hnotenum_empty⟩ :=
+    hpd₂ ety₁ δ₁ ety₂ δ₂ hδ₁ hδ₂ (Map.contains_iff_some_find?.mpr ⟨f₁₂, hf₁⟩)
+  have hpa₁ := hpd₁ ety₁ δ₁ hδ₁
+  have hpa₂ := hpd₁ ety₂ δ₂ hδ₂
+  rw [hpa₁.isUDF_iff_isEnum hf₁, hpa₂.isUDF_iff_isEnum hf₂]
+  by_cases henum₁ : δ₁.isEnum
+  · simp [henum₁, henum_mono henum₁]
+  · by_cases henum₂ : δ₂.isEnum
+    · exact absurd hf₂ (hnotenum_empty henum₁ henum₂ ▸ by simp [Map.not_find?_of_empty])
+    · simp [henum₁, henum₂]
 
 private theorem partitioned_uuf_implies_isUUF {ety pty₁ pty₂ : EntityType} {δ : SymEntityData} {f₁ : UUF} {f₂ : UnaryFunction} {εs : SymEntities}
   (hsε : εs.Partitioned)

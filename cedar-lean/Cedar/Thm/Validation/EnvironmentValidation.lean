@@ -235,10 +235,6 @@ theorem standard_schema_entry_validate_well_formed_is_sound
   split at this
   · rename_i entry hfind
     exists entry
-    simp only [hfind, true_and]
-    split at this
-    assumption
-    contradiction
   · contradiction
   -- Attribute types are well-formed
   split at hok
