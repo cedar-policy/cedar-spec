@@ -505,6 +505,23 @@ public theorem mapM_some {xs : List α} :
   case nil => simp only [mapM_nil, Option.pure_def]
   case cons hd tl ih => simp [ih]
 
+/-- `mapM` succeeds exactly when every application succeeds. -/
+public theorem mapM_isSome {xs : List α} {f : α → Option β} :
+    (xs.mapM f).isSome = xs.all (fun value => (f value).isSome) := by
+  induction xs with
+  | nil => rfl
+  | cons value rest ih =>
+    cases hv : f value with
+    | none => simp [List.mapM_cons, hv]
+    | some v =>
+      cases hr : rest.mapM f with
+      | none =>
+        simp [List.mapM_cons, hv, hr] at ih ⊢
+        exact ih
+      | some values =>
+        simp [List.mapM_cons, hv, hr] at ih ⊢
+        exact ih
+
 -- not public: you should be able to use the higher-level lemmas below
 theorem mapM_pmap_subtype [Monad m] [LawfulMonad m]
   {p : α → Prop}
