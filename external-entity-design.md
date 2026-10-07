@@ -363,7 +363,7 @@ entity F in [G, H];
 </tr>
 </table>
 
-<a id="example-8"></a>**8. Cycles through externals.** Entity type hierarchies may have cycles, as today, so `A` and `B` become ancestors of each other. Action hierarchies must stay acyclic, so a cycle there is `actionHierarchyCycle`.
+<a id="example-8"></a>**8. Error: a cross-schema cycle would enlarge defined ancestors.** `P` and `C` are each closed, but linking them would add `A` to `A`'s ancestor set and `B` to `B`'s. A successful link does not change a defined entity's closed ancestors.
 
 <table>
 <tr><th>P</th><th>C</th><th>link P C</th></tr>
@@ -386,16 +386,13 @@ entity B in A;
 </td>
 <td>
 
-```cedar
-entity A in B;
-entity B in A;
-```
+Error: `definedEntityAncestorsChanged`
 
 </td>
 </tr>
 </table>
 
-<a id="example-9"></a>**9. Error: a declared parent must be a direct parent of the definition.** `G` is an ancestor of `F`, but only through `X` (RFC, ["External ancestor types"](https://github.com/cedar-policy/rfcs/blob/rfc-validating-entities/text/0116-entity-validation-schema-fragments.md#external-ancestor-types)).
+<a id="example-9"></a>**9. A transitive ancestor satisfies an external declaration.** `C` compiles `F`'s closed ancestors to `X` and `G`, so it contains the ancestor promised by `P`. The Lean linker compares closed ancestor sets and does not distinguish direct parents.
 
 <table>
 <tr><th>P</th><th>C</th><th>link P C</th></tr>
@@ -419,7 +416,11 @@ entity F in X;
 </td>
 <td>
 
-Error: `externalParentNotDirect`
+```cedar
+entity G;
+entity X in G;
+entity F in X;
+```
 
 </td>
 </tr>
@@ -510,24 +511,139 @@ Error: `duplicateEntityType`
 </tr>
 </table>
 
+<a id="example-13"></a>**13. Error: an external cannot add an ancestor to a definition.** `P` defines `E` with the closed ancestor set containing only `X`. The ancestor `G` promised by `C` is absent from that definition.
+
+<table>
+<tr><th>P</th><th>C</th><th>link P C</th></tr>
+<tr>
+<td>
+
+```cedar
+external entity X;
+entity E in X;
+```
+
+</td>
+<td>
+
+```cedar
+external entity G;
+external entity E in G;
+```
+
+</td>
+<td>
+
+Error: `externalAncestorsNotInDefinition`
+
+</td>
+</tr>
+</table>
+
+<a id="example-14"></a>**14. Error: linking cannot enlarge a defined entity's closed ancestors.** Linking the new hierarchy for `X` would add `G` to the ancestors of the defined `E`. The linker rejects that change.
+
+<table>
+<tr><th>P</th><th>C</th><th>link P C</th></tr>
+<tr>
+<td>
+
+```cedar
+external entity X;
+entity E in X;
+```
+
+</td>
+<td>
+
+```cedar
+external entity G;
+external entity X in G;
+```
+
+</td>
+<td>
+
+Error: `definedEntityAncestorsChanged`
+
+</td>
+</tr>
+</table>
+
+<a id="example-15"></a>**15. An external entity's closed ancestors can grow.** This uses the same hierarchy as [example 14](#example-14), but `E` is external. Closing the linked hierarchy adds `G` to `E` without changing a definition.
+
+<table>
+<tr><th>P</th><th>C</th><th>link P C</th></tr>
+<tr>
+<td>
+
+```cedar
+external entity X;
+external entity E in X;
+```
+
+</td>
+<td>
+
+```cedar
+external entity G;
+external entity X in G;
+```
+
+</td>
+<td>
+
+```cedar
+external entity G;
+external entity X in G;
+external entity E in [X, G];
+```
+
+</td>
+</tr>
+</table>
+
+The distinction between examples 14 and 15 keeps intermediate links stable: closure may add facts to external entries, but a successful link never rewrites a definition.
+
 ### Validating entities and requests
-All rows use this partial schema `S`:
+Unless noted otherwise, all rows use this partial schema `S`:
 ```cedar
 external entity B;
 external entity D;
-entity A in B { b: B };
+entity A in B { b: B } tags B;
 entity R { act: Action };
 external action g;
 external action w in g;
-action act in g appliesTo { principal: B, resource: A };
+external action x in w;
+action act in g appliesTo {
+  principal: B,
+  resource: A,
+  context: {
+    reviewer?: B,
+    delegate?: Action,
+  },
+};
 ```
 
-An entity of a defined type may refer to externals in its attributes, tags and ancestors. An entity of an external type can't be validated, because its attributes, tags and ancestors are unknown. An external action's entity can, because its declaration fixes its parents and action entities have no attributes or tags ([decision 9](#decision-9)).
+An entity of a defined type may refer to externals in its attributes, tags and ancestors. An entity of an external type can't be validated, because its attributes, tags and ancestors are unknown. An external action's entity can, because its declaration fixes its ancestors and action entities have no attributes or tags ([decision 9](#decision-9)).
 
-Each entity is a record of its UID, attributes and parents, a shorthand for the usual entity JSON. `T::"id"` is an entity UID: entity type `T`, entity id `"id"`.
+Each displayed object denotes the complete singleton entity store. Its fields are shorthand for the usual entity JSON, except that `parents` shows the closed ancestor set seen by Lean; omitted tags mean an empty tag map. `[]` denotes the empty store. `T::"id"` is an entity UID with entity type `T` and entity id `"id"`. The Cedar source above reaches Lean with closed ancestor sets, so `x` has ancestors `w` and `g`.
 
 <table width="100%">
-<tr><th width="45%">Entity</th><th width="55%">Validate Against <code>S</code></th></tr>
+<tr><th width="45%">Entity store</th><th width="55%">Validate Against <code>S</code></th></tr>
+<tr>
+<td>
+
+```
+[]
+```
+
+</td>
+<td>
+
+Valid: partial validation checks only supplied entries and does not require the declared action entities `act`, `g`, `w` or `x` to be present
+
+</td>
+</tr>
 <tr>
 <td>
 
@@ -542,7 +658,26 @@ Each entity is a record of its UID, attributes and parents, a shorthand for the 
 </td>
 <td>
 
-Valid: an attribute that refers to an external type only needs the right type name
+Valid: an attribute that refers to external type `B` only needs a UID of that type. `A in B` permits a `B` ancestor but does not require every `A` entity to have one
+
+</td>
+</tr>
+<tr>
+<td>
+
+```
+{
+  uid: A::"a",
+  attrs: { b: B::"x" },
+  parents: [],
+  tags: { owner: B::"owner" }
+}
+```
+
+</td>
+<td>
+
+Valid: a tag on a defined entity may refer to an external entity type; the referenced `B` entity does not need to be in this store
 
 </td>
 </tr>
@@ -578,7 +713,7 @@ Valid: `S` declares `B` as a parent type of `A`, even though `B` is external
 </td>
 <td>
 
-Invalid: `D` is declared, but `S` doesn't say that `A` can be in `D`, so the ancestor can't be checked (RFC, ["External ancestor types"](https://github.com/cedar-policy/rfcs/blob/rfc-validating-entities/text/0116-entity-validation-schema-fragments.md#external-ancestor-types)). It becomes valid after linking `entity D; entity B in D;`
+Invalid: `D` is declared, but `S` doesn't say that `A` can be in `D`, so the ancestor can't be checked (RFC, ["External ancestor types"](https://github.com/cedar-policy/rfcs/blob/rfc-validating-entities/text/0116-entity-validation-schema-fragments.md#external-ancestor-types)). Linking `entity D; entity B in D;` is rejected because it would enlarge the closed ancestors of defined entity `A`
 
 </td>
 </tr>
@@ -614,7 +749,25 @@ Invalid: `B` itself is external
 </td>
 <td>
 
-Valid: `g` is a declared external action, and only its name is checked. Nothing about `g`'s parents or `appliesTo` is assumed
+Valid: `Action::"g"` is an exact action UID declared by `S`. Validation checks that declaration but does not use `g`'s ancestors or `appliesTo` when checking this value
+
+</td>
+</tr>
+<tr>
+<td>
+
+```
+{
+  uid: R::"r",
+  attrs: { act: Action::"missing" },
+  parents: []
+}
+```
+
+</td>
+<td>
+
+Invalid: an action-valued attribute must contain an exact action UID declared by `S`; having entity type `Action` is not sufficient
 
 </td>
 </tr>
@@ -686,7 +839,43 @@ Valid: `w`'s declaration fixes its parents to exactly `g`
 </td>
 <td>
 
-Invalid: `w`'s parents must be exactly `g`, in `S` and in every schema that links `S`
+Invalid: `w`'s ancestors must be exactly `{g}`, in `S` and in every schema that links `S`
+
+</td>
+</tr>
+<tr>
+<td>
+
+```
+{
+  uid: Action::"x",
+  attrs: {},
+  parents: [Action::"w", Action::"g"]
+}
+```
+
+</td>
+<td>
+
+Valid: `x`'s closed ancestor set contains both its declared parent `w` and the transitive ancestor `g`
+
+</td>
+</tr>
+<tr>
+<td>
+
+```
+{
+  uid: Action::"x",
+  attrs: {},
+  parents: [Action::"w"]
+}
+```
+
+</td>
+<td>
+
+Invalid: action entities must contain the exact closed ancestor set, so omitting transitive ancestor `g` is invalid
 
 </td>
 </tr>
@@ -710,6 +899,30 @@ Invalid: action entities can't have attributes, as today
 </tr>
 </table>
 
+`S₀` is `S` without the definition of `act`. Its remaining actions are external, so its validation view has no request environments.
+
+<table width="100%">
+<tr><th width="45%">Entity store</th><th width="55%">Validate Against <code>S₀</code></th></tr>
+<tr>
+<td>
+
+```
+{
+  uid: A::"a",
+  attrs: { b: 1 },
+  parents: []
+}
+```
+
+</td>
+<td>
+
+Invalid: partial validation scans the supplied store directly, so having no request environments does not bypass attribute validation
+
+</td>
+</tr>
+</table>
+
 <table width="100%">
 <tr><th width="45%">Request</th><th width="55%">Validate Against <code>S</code></th></tr>
 <tr>
@@ -727,7 +940,64 @@ Invalid: action entities can't have attributes, as today
 </td>
 <td>
 
-Valid: `B` is external, but `act` lists it in `appliesTo`
+Valid: `B` is external, but `act` lists it in `appliesTo`; the optional context fields may be omitted
+
+</td>
+</tr>
+<tr>
+<td>
+
+```
+{
+  principal: B::"x",
+  action: Action::"act",
+  resource: A::"a",
+  context: { reviewer: B::"reviewer" }
+}
+```
+
+</td>
+<td>
+
+Valid: the context of a defined action may contain a value of an external entity type
+
+</td>
+</tr>
+<tr>
+<td>
+
+```
+{
+  principal: B::"x",
+  action: Action::"act",
+  resource: A::"a",
+  context: { delegate: Action::"g" }
+}
+```
+
+</td>
+<td>
+
+Valid: external action `g` may appear as a context value even though it cannot be used as the request action
+
+</td>
+</tr>
+<tr>
+<td>
+
+```
+{
+  principal: B::"x",
+  action: Action::"act",
+  resource: A::"a",
+  context: { reviewer: D::"reviewer" }
+}
+```
+
+</td>
+<td>
+
+Invalid: `D` is declared and external, but `reviewer` requires the exact entity type `B`
 
 </td>
 </tr>
@@ -746,7 +1016,7 @@ Valid: `B` is external, but `act` lists it in `appliesTo`
 </td>
 <td>
 
-Invalid: `act` doesn't apply to `A` principals
+Invalid: `act` doesn't apply to `A` principals. Although `A` has ancestor type `B`, request validation requires the principal type listed in `appliesTo` exactly
 
 </td>
 </tr>

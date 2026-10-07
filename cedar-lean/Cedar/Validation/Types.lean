@@ -143,6 +143,10 @@ public def EntitySchemaEntry.isStandard : EntitySchemaEntry → Bool
   | .standard _ => true
   | .enum _     => false
 
+public def EntitySchemaEntry.withAncestors (ancestors : Set EntityType) : EntitySchemaEntry → EntitySchemaEntry
+  | .standard e => .standard { e with ancestors }
+  | .enum eids  => .enum eids
+
 public abbrev EntitySchema := Map EntityType EntitySchemaEntry
 
 public def EntitySchema.entityTypeMembers? (ets: EntitySchema) (et: EntityType) : Option (Set String) :=
