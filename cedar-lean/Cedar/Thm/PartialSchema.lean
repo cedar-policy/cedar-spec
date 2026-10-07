@@ -50,6 +50,24 @@ def PartialSchema.WellFormed (schema : PartialSchema) : Prop :=
   schema.ets.AncestorsClosed ∧
   env.ets.WellFormed env ∧ env.acts.WellFormed env
 
+/--
+`t` keeps every declaration of `s`: its entity types with their definitions,
+standard entity types, and listed ancestors, and its actions with their
+ancestors and definitions.
+-/
+structure DeclarationsKept (s t : PartialSchema) : Prop where
+  entities : ∀ ety, s.ets.contains ety → t.ets.contains ety
+  definitions : ∀ ety entry, s.ets.find? ety = some (.defined entry) →
+    t.ets.find? ety = some (.defined entry)
+  standard : ∀ ety entry, s.ets.find? ety = some entry → entry.isStandard = true →
+    ∃ entry', t.ets.find? ety = some entry' ∧ entry'.isStandard = true
+  ancestors : ∀ ety entry ancestor, s.ets.find? ety = some entry → ancestor ∈ entry.ancestors →
+    ∃ entry', t.ets.find? ety = some entry' ∧ ancestor ∈ entry'.ancestors
+  actions : ∀ uid entry, s.acts.find? uid = some entry →
+    ∃ entry', t.acts.find? uid = some entry' ∧ entry'.ancestors = entry.ancestors
+  actionDefinitions : ∀ uid entry, s.acts.find? uid = some (.defined entry) →
+    t.acts.find? uid = some (.defined entry)
+
 ---- Results ---
 
 /-- Coercing a schema to a partial schema and back preserves it. -/
