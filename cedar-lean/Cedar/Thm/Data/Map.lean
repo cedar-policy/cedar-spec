@@ -393,6 +393,11 @@ public theorem singleton_contains  [LT α] [DecidableLT α] [StrictLT α] [Decid
       simpa using h_eq
     simp [h_eq]
 
+/-- `Map.find?` returns the value of the first entry with the key. -/
+public theorem find?_eq_toList_find? {α β} [BEq α] (m : Map α β) (k : α) :
+  m.find? k = (m.toList.find? (·.fst == k)).map Prod.snd
+:= by
+  cases hf : m.toList.find? (·.fst == k) <;> simp [Map.find?, hf]
 /--
   Converse is available at `in_list_iff_find?_some` (requires `wf` though)
 
@@ -1556,6 +1561,20 @@ public theorem make_find?_eq_list_find?
       rw [List.list_find?_in_tail (f := Prod.fst) (k := k) h]
       simp only [List.find?, h]
       exact ih
+
+/-- Rebuilding a map from its entries with key-dependent values. -/
+public theorem make_toList_map_find? {α β γ}
+  [DecidableEq α] [LT α] [DecidableLT α] [StrictLT α]
+  (m : Map α β) (g : α → β → γ) (k : α) :
+  (Map.make (m.toList.map fun kv => (kv.fst, g kv.fst kv.snd))).find? k =
+    (m.find? k).map (g k)
+:= by
+  rw [make_find?_eq_list_find?, List.find?_map, find?_eq_toList_find?]
+  cases hf : m.toList.find? (·.fst == k) with
+  | none => simp [hf, Function.comp_def]
+  | some kv =>
+    have hk : kv.fst = k := by simpa using List.find?_some hf
+    simp [hf, hk, Function.comp_def]
 
 
 public theorem list_find?_iff_make_find?
