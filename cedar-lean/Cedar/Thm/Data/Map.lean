@@ -1850,6 +1850,13 @@ public theorem find?_append_left
     simpa [Map.contains] using h₁
   simp [h₁]
 
+public theorem filter_wf [LT α] [DecidableLT α] [StrictLT α] (p : α → β → Bool) (m : Map α β) :
+  WellFormed m →
+  WellFormed (m.filter p)
+:= by
+  intro h
+  exact wf_iff_sorted.mpr (List.filter_sortedBy _ (wf_iff_sorted.mp h))
+
 public theorem find?_filter_if_find? {α : Type u} {β : Type v} [BEq α] [LawfulBEq α]
   {k : α} {val : β} {m : Map α β} {p : α → β → Bool} :
   m.find? k = some val → p k val = true →

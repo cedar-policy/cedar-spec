@@ -36,12 +36,6 @@ private theorem isStandard_isValidEntityEID
     | enum => simp [PartialEntitySchemaEntry.isStandard, EntitySchemaEntry.isStandard] at h
   | external => rfl
 
-/-- The validation view keeps an action's ancestors. -/
-private theorem PartialActionSchemaEntry.validationView_ancestors
-    (entry : PartialActionSchemaEntry) :
-    entry.validationView.ancestors = entry.ancestors := by
-  cases entry <;> rfl
-
 /-- Linking keeps every action of the first schema's validation view, with the same ancestors. -/
 private theorem link_validationView_acts
     {p c t : PartialSchema}
