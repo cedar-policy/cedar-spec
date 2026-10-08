@@ -263,6 +263,28 @@ decreasing_by
   all_goals simp_wf
   all_goals omega
 
+/-- The empty record type is well-formed. -/
+theorem emptyRecord_wf {env : TypeEnv} :
+  (CedarType.record Map.empty).WellFormed env
+:=
+  .record_wf Map.wf_empty fun _ _ h => by simp at h
+
+/-- The empty record type is lifted. -/
+theorem emptyRecord_lifted : (CedarType.record Map.empty).IsLifted
+:=
+  .record_lifted fun _ _ h => by simp [Map.empty, Map.toList] at h
+
+/-- A standard entity type without tags is well-formed when its ancestors and attributes are. -/
+theorem standardEntry_wf {env : TypeEnv} {ancestors : Set EntityType}
+  {attrs : RecordType} (hwf : ancestors.WellFormed)
+  (hstandard : ∀ a ∈ ancestors,
+    ∃ entry, env.ets.find? a = some entry ∧ entry.isStandard)
+  (hattrs : (CedarType.record attrs).WellFormed env)
+  (hlifted : (CedarType.record attrs).IsLifted) :
+  EntitySchemaEntry.WellFormed env (.standard { ancestors, attrs, tags := none })
+:=
+  ⟨hwf, hstandard, hattrs, hlifted, by simp⟩
+
 theorem wf_env_implies_wf_entity_schema_entry {env : TypeEnv} {ety : EntityType} {entry : EntitySchemaEntry}
   (hwf : env.WellFormed)
   (hets : env.ets.find? ety = some entry) :

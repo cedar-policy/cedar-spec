@@ -140,6 +140,16 @@ public theorem mem_foldl_union_iff_mem_or_exists {α β} [LT α] [StrictLT α] [
       rw [← or_assoc, ← Set.mem_union] at h
       exact ih.mpr h
 
+/-- A fold of unions is well-formed if it starts from a well-formed set or adds a set. -/
+public theorem foldl_union_wf {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} {init : Set α} :
+  init.WellFormed ∨ xs ≠ [] →
+  (List.foldl (λ as b => as ∪ f b) init xs).WellFormed
+:= by
+  intro h
+  induction xs generalizing init with
+  | nil => simpa using h
+  | cons _ _ ih => exact ih (.inl (Set.union_wf _ _))
+
 public theorem mem_mapUnion_iff_mem_exists {α β} [LT α] [StrictLT α] [DecidableLT α] {f : β → Set α} {xs : List β} :
   ∀ e, e ∈ xs.mapUnion f ↔ ∃ s ∈ xs, e ∈ f s
 := by

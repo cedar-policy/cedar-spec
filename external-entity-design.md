@@ -1046,8 +1046,17 @@ Paths are relative to `cedar-lean/`.
 - `Cedar/Validation/PartialSchema.lean`: add `PartialEntitySchema`, `PartialActionSchema`, `PartialSchema`, coercion from `Schema`, and `PartialSchema.asSchema?`.
 - `Cedar/Validation/Linker.lean`: add `link P C : Except LinkError PartialSchema` using the closed-ancestor rules above.
 - `Cedar/Validation/PartialRequestEntityValidator.lean`: add `PartialSchema.validateEntities` and `PartialSchema.validateRequest` (decisions [4](#decision-4), [5](#decision-5) and [9](#decision-9)).
+- `Cedar/Validation/Types.lean`: add `EntitySchemaEntry.withAncestors`, which replaces a standard entry's ancestors.
 - Unchanged: the typechecker, `validate`, TPE, SymCC and every function on `Schema`.
-- New theorems ([next section](#main-theorems)) go in `Cedar/Thm/PartialSchema.lean`, `Cedar/Thm/Linker.lean` and `Cedar/Thm/PartialValidation.lean`, imported from `Cedar/Thm.lean`.
+- New theorems ([next section](#main-theorems)) go in `Cedar/Thm/External/PartialSchema.lean`, `Cedar/Thm/External/Linker.lean` and `Cedar/Thm/External/PartialValidation.lean`. `Cedar/Thm/External.lean` imports these three files, and `Cedar/Thm.lean` imports `Cedar/Thm/External.lean`.
+- General facts that the proofs need go in `Cedar/Thm/Data` and `Cedar/Thm/Validation`:
+  - `Cedar/Thm/Data/Relation.lean` (new, imported from `Cedar/Thm/Data.lean`): facts about `Relation.TransGen`, and about walks, which the linker proofs use to bound the rounds of `closeAncestors`.
+  - `Cedar/Thm/Data/Map.lean`: `filter_wf`, `find?_eq_toList_find?`, `make_toList_map_find?`, and facts about `mapMOnValues`.
+  - `Cedar/Thm/Data/MapUnion.lean`: `foldl_union_wf`; `mem_foldl_union_iff_mem_or_exists` becomes public.
+  - `Cedar/Thm/Data/List/Lemmas.lean`: `forall₂_find?_some`, `forall₂_find?_none` and `mapM_isSome`.
+  - `Cedar/Thm/Validation/Typechecker/WF.lean`: `CedarType.WellFormed.mono`, `TypeEnv.maps_wf_of_eq`, and well-formedness of the empty record type (`emptyRecord_wf`, `emptyRecord_lifted`) and of standard entries (`standardEntry_wf`).
+  - `Cedar/Thm/Validation/EnvironmentValidation.lean`: completeness of the `validateWellFormed` checks (`*_is_complete`), the converse of the existing soundness lemmas, and `mem_environments`, which describes `Schema.environments`.
+  - `Cedar/Thm/Validation/RequestEntityValidation.lean`: how `instanceOfType` and `instanceOfSchema` depend on the schema, such as `instanceOfType_mono`.
 - Unit tests go in `UnitTest/Linker.lean` and `UnitTest/PartialSchema.lean`, registered in `UnitTest/Main.lean`.
 
 ## Main theorems
@@ -1056,24 +1065,38 @@ Throughout, `P`, `C` and `D` are partial schemas, `S` is an entity store and `r`
 ### Semantic results
 
 - <a id="linking-order-independence"></a><a id="linking-commutativity"></a>Thm: Linking Commutativity:
-Changing the input order does not change a successful result.
+Changing the input order changes neither a successful result nor whether linking fails.
 ```
-P.WellFormed → C.WellFormed →
+C.WellFormed →
 link P C = .ok T → link C P = .ok T
+
+P.WellFormed → C.WellFormed →
+((∃ err, link P C = .error err) ↔ (∃ err, link C P = .error err))
 ```
 
 - <a id="linking-associativity"></a>Thm: Linking Associativity:
-Changing the grouping does not change a successful result.
+Changing the grouping changes neither a successful result nor whether linking fails.
 ```
 P.WellFormed → C.WellFormed → D.WellFormed →
 link P C = .ok T₁ → link T₁ D = .ok T →
 ∃ T₂, link C D = .ok T₂ ∧ link P T₂ = .ok T
+
+P.WellFormed → C.WellFormed → D.WellFormed →
+((∃ err, (do let T₁ ← link P C; link T₁ D) = .error err) ↔
+  (∃ err, (do let T₂ ← link C D; link P T₂) = .error err))
 ```
 
 - Well-Formedness Preservation:
 Linking two well-formed partial schemas gives a well-formed result.
 ```
 P.WellFormed → C.WellFormed → link P C = .ok T → T.WellFormed
+```
+
+- Completed Schemas Are Well-Formed:
+A complete link passes the existing schema well-formedness check.
+```
+P.WellFormed → C.WellFormed → link P C = .ok T →
+T.asSchema? = some s → s.validateWellFormed = .ok ()
 ```
 
 - Completion Existence:
@@ -1084,7 +1107,7 @@ P.WellFormed →
 ```
 
 - Defined Entity Ancestors Do Not Expand:
-A defined entity from either input keeps the same closed ancestor set. The statement below is symmetric for `C`.
+A defined entity from `P` keeps the same closed ancestor set. Swapping the inputs with [Linking Commutativity](#linking-commutativity) gives the same for `C`.
 ```
 P.WellFormed → C.WellFormed → link P C = .ok T →
 P.ets.find? n = some (.defined e) →
@@ -1094,7 +1117,7 @@ P.ets.find? n = some (.defined e) →
 - <a id="entity-validation-soundness"></a>Thm: Entity Validation Soundness:
 Entities valid against a partial schema stay valid after linking.
 ```
-P.WellFormed → C.WellFormed → link P C = .ok T →
+link P C = .ok T →
 P.validateEntities S = .ok () → T.validateEntities S = .ok ()
 ```
 
@@ -1131,9 +1154,9 @@ T.asSchema? = some s → T.validateRequest r = validateRequest s r
 
 P.WellFormed → C.WellFormed → link P C = .ok T →
 T.asSchema? = some s → T.validateEntities S = .ok () →
-validateEntities s (S.withActionsOf s) = .ok ()
+validateEntities s (S ++ s.acts.mapOnValues actionSchemaEntryToEntityData) = .ok ()
 ```
-`S.withActionsOf s` adds `actionSchemaEntryToEntityData` for every action in `s`.
+On an action that `S` already contains, `++` keeps the entity from `S`.
 
 ### Sanity rules
 These characterize the closed-ancestor linker; they are not semantic results.
@@ -1162,13 +1185,6 @@ link P C = .ok T →
 A partial schema converts exactly when it contains no external entry.
 ```
 P.asSchema?.isSome ↔ P.isComplete
-```
-
-- Completed Schemas Are Well-Formed:
-A complete link passes the existing schema well-formedness check.
-```
-P.WellFormed → C.WellFormed → link P C = .ok T →
-T.asSchema? = some s → s.validateWellFormed = .ok ()
 ```
 
 - Complete-Schema Bridge:
