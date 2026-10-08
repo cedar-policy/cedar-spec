@@ -82,14 +82,6 @@ private theorem forall₂_find?_none {α β} [DecidableEq α]
 private theorem not_mem_emptyc {α} (y : α) : ¬y ∈ (∅ : Set α) :=
   Set.not_mem_empty y
 
-/-- An element of a fold of unions is in the initial set or in one of the added sets. -/
-private theorem mem_foldl_union {α β} [LT α] [DecidableLT α] [StrictLT α]
-    (g : β → Set α) (l : List β) (init : Set α) (y : α) :
-    y ∈ l.foldl (fun acc a => acc ∪ g a) init ↔ y ∈ init ∨ ∃ a ∈ l, y ∈ g a := by
-  induction l generalizing init with
-  | nil => simp
-  | cons a l ih => simp [ih, Set.mem_union, or_assoc]
-
 /-- A fold of unions is well-formed if it starts from a well-formed set or adds a set. -/
 private theorem foldl_union_wf {α β} [LT α] [DecidableLT α] [StrictLT α]
     (g : β → Set α) (l : List β) (init : Set α) (h : init.WellFormed ∨ l ≠ []) :
@@ -97,12 +89,6 @@ private theorem foldl_union_wf {α β} [LT α] [DecidableLT α] [StrictLT α]
   induction l generalizing init with
   | nil => simpa using h
   | cons a l ih => exact ih _ (.inl (Set.union_wf _ _))
-
-/-- Filtering a well-formed map gives a well-formed map. -/
-private theorem Map.filter_wf {α β} [LT α] [DecidableLT α] [StrictLT α]
-    {m : Map α β} (f : α → β → Bool) (h : m.WellFormed) :
-    (m.filter f).WellFormed :=
-  Map.wf_iff_sorted.mpr (List.filter_sortedBy _ (Map.wf_iff_sorted.mp h))
 
 -- Facts about paths along a relation. Walks bound the rounds of `closeAncestors`.
 
@@ -188,42 +174,6 @@ private theorem Walk.nodup {α} {edge : α → α → Prop} {x y : α} {srcs : L
 
 -- Facts about well-formed types that `Cedar/Thm/Validation` does not provide yet.
 
-/-- A type stays well-formed in an environment that has every entity type of the original. -/
-private theorem CedarType.WellFormed.mono {env₁ env₂ : TypeEnv}
-    (hety : ∀ ety, EntityType.WellFormed env₁ ety → EntityType.WellFormed env₂ ety)
-    {ty : CedarType} (h : CedarType.WellFormed env₁ ty) :
-    CedarType.WellFormed env₂ ty := by
-  cases h with
-  | bool_wf => exact .bool_wf
-  | int_wf => exact .int_wf
-  | string_wf => exact .string_wf
-  | entity_wf h => exact .entity_wf (hety _ h)
-  | set_wf h => exact .set_wf (CedarType.WellFormed.mono hety h)
-  | ext_wf => exact .ext_wf
-  | @record_wf rty hmap hattrs =>
-    refine .record_wf hmap fun attr qty hfind => ?_
-    have hmem : (attr, qty) ∈ rty.1 := Map.find?_mem_toList hfind
-    have hlt := Map.sizeOf_lt_of_value hmem
-    cases hqty : qty with
-    | optional ty =>
-      have := hattrs attr qty hfind
-      rw [hqty] at this
-      cases this with
-      | optional_wf h =>
-        have : sizeOf ty < sizeOf qty := by simp [hqty]
-        exact .optional_wf (CedarType.WellFormed.mono hety h)
-    | required ty =>
-      have := hattrs attr qty hfind
-      rw [hqty] at this
-      cases this with
-      | required_wf h =>
-        have : sizeOf ty < sizeOf qty := by simp [hqty]
-        exact .required_wf (CedarType.WellFormed.mono hety h)
-termination_by sizeOf ty
-decreasing_by
-  all_goals simp_wf
-  all_goals omega
-
 /-- The empty record type is well-formed. -/
 private theorem emptyRecord_wf {env : TypeEnv} :
     (CedarType.record Map.empty).WellFormed env :=
@@ -232,34 +182,6 @@ private theorem emptyRecord_wf {env : TypeEnv} :
 /-- The empty record type is lifted. -/
 private theorem emptyRecord_lifted : (CedarType.record Map.empty).IsLifted :=
   .record_lifted fun _ _ h => by simp [Map.empty, Map.toList] at h
-
-/-- Whether an environment's maps are well-formed does not depend on its request type. -/
-private theorem TypeEnv.maps_wf_of_eq {env₁ env₂ : TypeEnv}
-    (hets : env₁.ets = env₂.ets) (hacts : env₁.acts = env₂.acts)
-    (h : env₁.ets.WellFormed env₁ ∧ env₁.acts.WellFormed env₁) :
-    env₂.ets.WellFormed env₂ ∧ env₂.acts.WellFormed env₂ := by
-  obtain ⟨ets, acts, reqty₁⟩ := env₁
-  obtain ⟨_, _, reqty₂⟩ := env₂
-  dsimp only at hets hacts
-  subst hets hacts
-  -- Entity types are well-formed in both environments by definition.
-  have hty : ∀ {ty}, CedarType.WellFormed ⟨ets, acts, reqty₁⟩ ty →
-      CedarType.WellFormed ⟨ets, acts, reqty₂⟩ ty :=
-    CedarType.WellFormed.mono (env₁ := ⟨ets, acts, reqty₁⟩)
-      (env₂ := ⟨ets, acts, reqty₂⟩) fun _ h => h
-  obtain ⟨⟨hetsMap, hentities⟩, hactsMap, hactions, hdisjoint, hacyclic, htransitive⟩ := h
-  refine ⟨⟨hetsMap, fun ety entry hfind => ?_⟩,
-    hactsMap, fun uid entry hfind => ?_, hdisjoint, hacyclic, htransitive⟩
-  · have hwf := hentities ety entry hfind
-    cases entry with
-    | enum => exact hwf
-    | standard =>
-      obtain ⟨hancestors, hstandard, hattrs, hlifted, htags⟩ := hwf
-      exact ⟨hancestors, hstandard, hty hattrs, hlifted,
-        fun ty h => ⟨hty (htags ty h).1, (htags ty h).2⟩⟩
-  · obtain ⟨h₁, h₂, h₃, hprincipals, hresources, hancestors, hcontext, hlifted⟩ :=
-      hactions uid entry hfind
-    exact ⟨h₁, h₂, h₃, hprincipals, hresources, hancestors, hty hcontext, hlifted⟩
 
 -- Facts about linking two entries.
 
@@ -750,8 +672,8 @@ private theorem ancestorEdge_closeRound {m : Map EntityType (Set EntityType)} {x
   cases m.find? x with
   | none => simp [not_mem_emptyc]
   | some s =>
-    simp only [Option.map_some, Option.getD_some, Set.foldl, mem_foldl_union,
-      Set.mem_elts_iff_mem_set]
+    simp only [Option.map_some, Option.getD_some, Set.foldl,
+      List.mem_foldl_union_iff_mem_or_exists, Set.mem_elts_iff_mem_set]
 
 /-- One round halves the length of every walk. -/
 private theorem Walk.closeRound {m : Map EntityType (Set EntityType)} {x y : EntityType}
@@ -1119,12 +1041,6 @@ private theorem PartialSchema.wfEnv_acts_contains (schema : PartialSchema) (uid 
 private theorem PartialEntitySchemaEntry.validationView_isStandard
     (entry : PartialEntitySchemaEntry) :
     entry.validationView.isStandard = entry.isStandard := by
-  cases entry <;> rfl
-
-/-- The validation view keeps an action's ancestors. -/
-private theorem PartialActionSchemaEntry.validationView_ancestors
-    (entry : PartialActionSchemaEntry) :
-    entry.validationView.ancestors = entry.ancestors := by
   cases entry <;> rfl
 
 private theorem PartialSchema.WellFormed.entry {schema : PartialSchema} {ety : EntityType}
@@ -1610,7 +1526,7 @@ private theorem PartialSchema.WellFormed.complement {p : PartialSchema} (hp : p.
     rw [PartialEntitySchemaEntry.complement_ancestors]
     exact hp.1 _ _ _ _ hpe hmem hpa
   case etsMap =>
-    exact Map.mapOnValues_wf.mp (Map.mapOnValues_wf.mp (Map.filter_wf _ hp.etsMap))
+    exact Map.mapOnValues_wf.mp (Map.mapOnValues_wf.mp (Map.filter_wf _ _ hp.etsMap))
   case ets =>
     intro ety ventry hventry
     obtain ⟨entry, hfind, rfl⟩ := PartialSchema.wfEnv_ets_find? hventry

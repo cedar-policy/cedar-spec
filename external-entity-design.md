@@ -1043,110 +1043,142 @@ Invalid: the `appliesTo` of an external action is unknown
 
 ## Codebase update
 Paths are relative to `cedar-lean/`.
-- `Cedar/Validation/Types.lean`: add `PartialEntitySchema`, mapping each entity type to `.defined (entry : EntitySchemaEntry)` or `.external (parents : Set EntityType)`.
-- Add `PartialActionSchema`, mapping each action to `.defined (entry : ActionSchemaEntry)` or `.external (parents : Set EntityUID)`.
-- `PartialSchema` holds both maps, and `Schema` coerces into it (decisions [1](#decision-1)–[3](#decision-3)).
-- `Cedar/Validation/Linker.lean` (new): the well-formedness check, `link P C : Except LinkError PartialSchema`, and `PartialSchema.toSchema?`. Their results are the examples above; `toSchema?` returns a `Schema` only when no external is left.
-- `Cedar/Validation/RequestEntityValidator.lean`: add `PartialSchema.validateEntities` and `PartialSchema.validateRequest` (decisions [4](#decision-4), [5](#decision-5) and [9](#decision-9)).
-- Unchanged: the typechecker, `validate`, TPE, SymCC and every function on `Schema`. So no existing theorem should break.
-- New theorems ([next section](#main-theorems)) go in `Cedar/Thm/Validation/Linker.lean` and `Cedar/Thm/Validation/PartialSchema.lean`, imported from `Cedar/Thm/Validation.lean`; `lake lint` fails if an import is missing.
-- Unit tests go in `UnitTest/Linker.lean` and `UnitTest/PartialSchema.lean`, registered in `UnitTest/Main.lean`. Each example above becomes a test, with the schemas written as Lean literals because Lean can't parse Cedar text.
+- `Cedar/Validation/PartialSchema.lean`: add `PartialEntitySchema`, `PartialActionSchema`, `PartialSchema`, coercion from `Schema`, and `PartialSchema.asSchema?`.
+- `Cedar/Validation/Linker.lean`: add `link P C : Except LinkError PartialSchema` using the closed-ancestor rules above.
+- `Cedar/Validation/PartialRequestEntityValidator.lean`: add `PartialSchema.validateEntities` and `PartialSchema.validateRequest` (decisions [4](#decision-4), [5](#decision-5) and [9](#decision-9)).
+- Unchanged: the typechecker, `validate`, TPE, SymCC and every function on `Schema`.
+- New theorems ([next section](#main-theorems)) go in `Cedar/Thm/PartialSchema.lean`, `Cedar/Thm/Linker.lean` and `Cedar/Thm/PartialValidation.lean`, imported from `Cedar/Thm.lean`.
+- Unit tests go in `UnitTest/Linker.lean` and `UnitTest/PartialSchema.lean`, registered in `UnitTest/Main.lean`.
 
 ## Main theorems
-Throughout, `link P C = .ok T`: T is the result of linking partial schema C into P.
+Throughout, `P`, `C` and `D` are partial schemas, `S` is an entity store and `r` is a request. The semantic results state their well-formedness preconditions explicitly; link results are not assumed well-formed.
 
 ### Semantic results
 
-- <a id="linking-order-independence"></a>Thm: Linking Order Independence: 
-The result doesn't depend on the order in which schemas are linked (commutativity and associativity).
+- <a id="linking-order-independence"></a><a id="linking-commutativity"></a>Thm: Linking Commutativity:
+Changing the input order does not change a successful result.
 ```
+P.WellFormed → C.WellFormed →
 link P C = .ok T → link C P = .ok T
-
-link P C = .ok T₁ → link T₁ D = .ok T → ∃ T₂, link C D = .ok T₂ ∧ link P T₂ = .ok T
 ```
 
-- Well-Formedness Preservation: 
-Linking two well-formed partial schemas gives a well-formed partial schema.
+- <a id="linking-associativity"></a>Thm: Linking Associativity:
+Changing the grouping does not change a successful result.
+```
+P.WellFormed → C.WellFormed → D.WellFormed →
+link P C = .ok T₁ → link T₁ D = .ok T →
+∃ T₂, link C D = .ok T₂ ∧ link P T₂ = .ok T
+```
+
+- Well-Formedness Preservation:
+Linking two well-formed partial schemas gives a well-formed result.
 ```
 P.WellFormed → C.WellFormed → link P C = .ok T → T.WellFormed
 ```
 
-- <a id="entity-validation-soundness"></a>Thm: Entity Validation Soundness: 
+- Completion Existence:
+Every well-formed partial schema has a complete linking extension.
+```
+P.WellFormed →
+∃ C T s, C.WellFormed ∧ link P C = .ok T ∧ T.asSchema? = some s
+```
+
+- Defined Entity Ancestors Do Not Expand:
+A defined entity from either input keeps the same closed ancestor set. The statement below is symmetric for `C`.
+```
+P.WellFormed → C.WellFormed → link P C = .ok T →
+P.ets.find? n = some (.defined e) →
+∃ e', T.ets.find? n = some (.defined e') ∧ e'.ancestors = e.ancestors
+```
+
+- <a id="entity-validation-soundness"></a>Thm: Entity Validation Soundness:
 Entities valid against a partial schema stay valid after linking.
 ```
-link P C = .ok T → P.validateEntities S = .ok () → T.validateEntities S = .ok ()
+P.WellFormed → C.WellFormed → link P C = .ok T →
+P.validateEntities S = .ok () → T.validateEntities S = .ok ()
 ```
 
-- <a id="request-validation-soundness"></a>Thm: Request Validation Soundness: 
+- <a id="request-validation-soundness"></a>Thm: Request Validation Soundness:
 Requests valid against a partial schema stay valid after linking.
 ```
-link P C = .ok T → P.validateRequest r  = .ok () → T.validateRequest r = .ok ()
+P.WellFormed → C.WellFormed → link P C = .ok T →
+P.validateRequest r = .ok () → T.validateRequest r = .ok ()
 ```
 
-- <a id="entity-validation-completeness"></a>Thm: Entity Validation Completeness: 
+- <a id="entity-validation-completeness"></a>Thm: Entity Validation Completeness:
 Entities valid against every complete schema that links a partial schema are valid against that partial schema.
 ```
-(∀ C T, link P C = .ok T → (T.toSchema?).isSome → T.validateEntities S = .ok ()) →
+P.WellFormed →
+(∀ C T, C.WellFormed → link P C = .ok T →
+  (T.asSchema?).isSome → T.validateEntities S = .ok ()) →
 P.validateEntities S = .ok ()
 ```
 
-- <a id="request-validation-completeness"></a>Thm: Request Validation Completeness: 
+- <a id="request-validation-completeness"></a>Thm: Request Validation Completeness:
 Requests valid against every complete schema that links a partial schema are valid against that partial schema.
 ```
-(∀ C T, link P C = .ok T → (T.toSchema?).isSome → T.validateRequest r = .ok ()) →
+P.WellFormed →
+(∀ C T, C.WellFormed → link P C = .ok T →
+  (T.asSchema?).isSome → T.validateRequest r = .ok ()) →
 P.validateRequest r = .ok ()
 ```
-- Corollary: Agreement with Complete Validation: 
-When linking gives a complete schema, partial validation implies validation against the complete, linked schema.
-```
-link P C = .ok T → T.toSchema? = some s →
-P.validateEntities S = .ok () → validateEntities s (S.withActionsOf s) = .ok ()
 
-link P C = .ok T → T.toSchema? = some s →
-P.validateRequest r = .ok () → validateRequest s r = .ok ()
+- Complete-Validation Agreement:
+At a completion, request validation agrees exactly. Entity validation implies complete validation after adding the canonical entity for every action.
 ```
+P.WellFormed → C.WellFormed → link P C = .ok T →
+T.asSchema? = some s → T.validateRequest r = validateRequest s r
+
+P.WellFormed → C.WellFormed → link P C = .ok T →
+T.asSchema? = some s → T.validateEntities S = .ok () →
+validateEntities s (S.withActionsOf s) = .ok ()
+```
+`S.withActionsOf s` adds `actionSchemaEntryToEntityData` for every action in `s`.
 
 ### Sanity rules
-These check that `link` implements the [RFC's linking rules](https://github.com/cedar-policy/rfcs/blob/rfc-validating-entities/text/0116-entity-validation-schema-fragments.md#detailed-design); they are not semantic results.
-- Linker Completeness: 
-The linker succeeds exactly on the pairs of partial schemas that satisfy the [RFC's linking rules](https://github.com/cedar-policy/rfcs/blob/rfc-validating-entities/text/0116-entity-validation-schema-fragments.md#detailed-design).
-```
-(∃ T, link P C = .ok T) ↔ Linkable P C
-```
-- Definitions Replace Externals: 
-A definition replaces every external declaration of its name (RFC, ["Detailed design"](https://github.com/cedar-policy/rfcs/blob/rfc-validating-entities/text/0116-entity-validation-schema-fragments.md#detailed-design)).
-```
-link P C = .ok T → C.ets.find? n = some (.defined e) → T.ets.find? n = some (.defined e)
-```
+These characterize the closed-ancestor linker; they are not semantic results.
 
-- Declarations Are Preserved: 
-The result declares exactly the names that P or C declares.
-```
-link P C = .ok T → (T.declares n ↔ P.declares n ∨ C.declares n)
-```
-- Repeated Externals Combine: 
-An entity type that both schemas declare as external gets the union of the declared parents; an action keeps its declared parents, which must agree (RFC, ["Detailed design"](https://github.com/cedar-policy/rfcs/blob/rfc-validating-entities/text/0116-entity-validation-schema-fragments.md#detailed-design) and ["External actions"](https://github.com/cedar-policy/rfcs/blob/rfc-validating-entities/text/0116-entity-validation-schema-fragments.md#external-actions)).
-```
-link P C = .ok T → P.ets.find? n = some (.external p₁) → C.ets.find? n = some (.external p₂) →
-T.ets.find? n = some (.external (p₁ ∪ p₂))
-link P C = .ok T → P.acts.find? a = some (.external p) → C.acts.find? a = some (.external p) →
-T.acts.find? a = some (.external p)
-```
-- Completeness Is Detected: 
-The result is complete exactly when every external of P or C is defined by P or C.
+- Definitions Are Preserved:
+Every entity or action definition from either input appears unchanged in the result.
 ```
 link P C = .ok T →
-((T.toSchema?).isSome ↔ ∀ n, P.isExternal n ∨ C.isExternal n → P.defines n ∨ C.defines n)
+  (∀ n e, P.ets.find? n = some (.defined e) → T.ets.find? n = some (.defined e)) ∧
+  (∀ n e, C.ets.find? n = some (.defined e) → T.ets.find? n = some (.defined e)) ∧
+  (∀ a e, P.acts.find? a = some (.defined e) → T.acts.find? a = some (.defined e)) ∧
+  (∀ a e, C.acts.find? a = some (.defined e) → T.acts.find? a = some (.defined e))
 ```
-- Completed Schemas Are Well-Formed: 
-A complete schema produced from a well-formed partial schema passes today's well-formedness check, so the existing theorems apply to it.
+
+- Declarations Are Preserved:
+The result declares exactly the entity types and action UIDs declared by either input.
 ```
-T.WellFormed → T.toSchema? = some s → s.validateWellFormed = .ok ()
+link P C = .ok T →
+(T.ets.contains n ↔ P.ets.contains n ∨ C.ets.contains n)
+
+link P C = .ok T →
+(T.acts.contains a ↔ P.acts.contains a ∨ C.acts.contains a)
 ```
-- Complete Schemas Round-Trip: 
-Converting a schema to a partial schema and back gives the same schema, as long as its ancestor sets are transitively closed.
+
+- Completeness Is Detected:
+A partial schema converts exactly when it contains no external entry.
 ```
-s.AncestorsClosed → (↑s : PartialSchema).toSchema? = some s
+P.asSchema?.isSome ↔ P.isComplete
+```
+
+- Completed Schemas Are Well-Formed:
+A complete link passes the existing schema well-formedness check.
+```
+P.WellFormed → C.WellFormed → link P C = .ok T →
+T.asSchema? = some s → s.validateWellFormed = .ok ()
+```
+
+- Complete-Schema Bridge:
+Conversion round-trips, and the validation view agrees with the complete schema.
+```
+(Schema.toPartialSchema s).asSchema? = some s
+
+(Schema.toPartialSchema s).validationView = s
+
+P.asSchema? = some s → P.validationView = s
 ```
 
 ## Major Design decisions and Alternatives

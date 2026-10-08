@@ -137,6 +137,12 @@ theorem validationView_find?_acts (schema : PartialSchema) (uid : EntityUID) :
       (schema.acts.find? uid).map PartialActionSchemaEntry.validationView := by
   simp [PartialSchema.validationView, Map.find?_mapOnValues]
 
+/-- The validation view keeps an action's ancestors. -/
+theorem PartialActionSchemaEntry.validationView_ancestors
+    (entry : PartialActionSchemaEntry) :
+    entry.validationView.ancestors = entry.ancestors := by
+  cases entry <;> rfl
+
 /-- A completed partial schema agrees with its validation view. -/
 theorem validationView_eq_of_asSchema?
     {ps : PartialSchema} {schema : Schema}
