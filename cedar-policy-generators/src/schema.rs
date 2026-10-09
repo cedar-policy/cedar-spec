@@ -1176,18 +1176,15 @@ impl Schema {
                     ))
                 })
                 .collect::<Result<Vec<_>>>()?;
-        // fill in member-relationships. WLOG we only make edges from entities
-        // earlier in the entity_types list to entities later in the list; this
-        // ensures we get a DAG
-        for i in 0..entity_types.len() {
-            let (_, ref mut entity_type) = entity_types[i];
+        // fill in member-relationships. This is the entity-type hierarchy, so cycles are allowed.
+        for (_, entity_type) in &mut entity_types {
             match entity_type.kind {
                 EntityTypeKind::Standard(StandardEntityType {
                     ref mut member_of_types,
                     ..
                 }) => {
-                    for name in &entity_type_ids[(i + 1)..] {
-                        if u.ratio::<u8>(1, 2)? {
+                    for name in &entity_type_ids {
+                        if u.ratio::<u8>(1, 16)? {
                             let etype = ast::InternalName::from(ast::Name::from(name.clone()));
                             member_of_types.push(etype);
                         }
