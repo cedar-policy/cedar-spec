@@ -494,6 +494,42 @@ public theorem forall₂_trans_ish {xs : List α} {ys : List β} {zs : List γ} 
       · exact h hhd₁ hhd₂
       · exact ih htl₂
 
+/-- In key-preserving related lists, an entry found for a key has a related entry found for it. -/
+public theorem forall₂_find?_some {α β} [DecidableEq α]
+  {r : α × β → α × β → Prop} {xs ys : List (α × β)} {k : α} {x : α × β}
+  (hkeys : ∀ x y, r x y → y.fst = x.fst)
+  (hrel : List.Forall₂ r xs ys)
+  (hfind : xs.find? (·.fst == k) = some x) :
+  ∃ y, ys.find? (·.fst == k) = some y ∧ r x y
+:= by
+  induction hrel with
+  | nil => simp at hfind
+  | @cons x₀ y₀ _ _ hr _ ih =>
+    simp only [List.find?] at hfind ⊢
+    rw [hkeys _ _ hr]
+    split at hfind
+    · simp only [Option.some.injEq] at hfind
+      subst x
+      exact ⟨y₀, rfl, hr⟩
+    · exact ih hfind
+
+/-- In key-preserving related lists, a key absent from one list is absent from the other. -/
+public theorem forall₂_find?_none {α β} [DecidableEq α]
+  {r : α × β → α × β → Prop} {xs ys : List (α × β)} {k : α}
+  (hkeys : ∀ x y, r x y → y.fst = x.fst)
+  (hrel : List.Forall₂ r xs ys)
+  (hfind : xs.find? (·.fst == k) = none) :
+  ys.find? (·.fst == k) = none
+:= by
+  induction hrel with
+  | nil => rfl
+  | @cons x₀ y₀ _ _ hr _ ih =>
+    simp only [List.find?] at hfind ⊢
+    rw [hkeys _ _ hr]
+    split at hfind
+    · contradiction
+    · exact ih hfind
+
 /-! ### mapM, mapM', mapM₁, and mapM₂ -/
 
 public theorem mapM_some {xs : List α} :
@@ -504,6 +540,23 @@ public theorem mapM_some {xs : List α} :
   induction xs
   case nil => simp only [mapM_nil, Option.pure_def]
   case cons hd tl ih => simp [ih]
+
+/-- `mapM` succeeds exactly when every application succeeds. -/
+public theorem mapM_isSome {xs : List α} {f : α → Option β} :
+    (xs.mapM f).isSome = xs.all (fun value => (f value).isSome) := by
+  induction xs with
+  | nil => rfl
+  | cons value rest ih =>
+    cases hv : f value with
+    | none => simp [List.mapM_cons, hv]
+    | some v =>
+      cases hr : rest.mapM f with
+      | none =>
+        simp [List.mapM_cons, hv, hr] at ih ⊢
+        exact ih
+      | some values =>
+        simp [List.mapM_cons, hv, hr] at ih ⊢
+        exact ih
 
 -- not public: you should be able to use the higher-level lemmas below
 theorem mapM_pmap_subtype [Monad m] [LawfulMonad m]

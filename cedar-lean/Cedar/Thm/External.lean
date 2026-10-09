@@ -14,14 +14,8 @@
  limitations under the License.
 -/
 
-module
-
-public import Cedar.Thm.Data.Applicative
-public import Cedar.Thm.Data.Option
-public import Cedar.Thm.Data.Control
-public import Cedar.Thm.Data.List
-public import Cedar.Thm.Data.LT
-public import Cedar.Thm.Data.Map
-public import Cedar.Thm.Data.Set
-public import Cedar.Thm.Data.MapUnion
-public import Cedar.Thm.Data.Relation
+-- These files contain theorems about partial schemas, which may declare external entity types and
+-- actions, about linking them, and about validating requests and entities against them.
+import Cedar.Thm.External.PartialSchema
+import Cedar.Thm.External.Linker
+import Cedar.Thm.External.PartialValidation

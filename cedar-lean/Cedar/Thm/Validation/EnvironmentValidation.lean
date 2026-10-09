@@ -545,4 +545,294 @@ theorem environment_some_mem_environments {schema : Schema}
           context := ase.context}))
     simp [Set.toList, Set.mem_elts_iff_mem_set, ← Set.contains_prop_bool_equiv, hr, hp]
 
+/-! ### Completeness: well-formed environments pass the executable checks -/
+
+theorem entity_type_validate_well_formed_is_complete
+  {env : TypeEnv} {ety : EntityType}
+  (hwf : EntityType.WellFormed env ety) :
+  EntityType.validateWellFormed env ety = .ok ()
+:= by
+  unfold EntityType.validateWellFormed
+  rcases hwf with hets | ⟨uid, hacts, rfl⟩
+  · simp [hets]
+  · obtain ⟨entry, hfind⟩ := Option.isSome_iff_exists.mp hacts
+    split
+    · rfl
+    · rw [ite_eq_left
+        (List.any_eq_true.mpr ⟨(uid, entry), Map.find?_mem_toList hfind, by simp⟩)]
+
+mutual
+
+theorem validate_attrs_well_formed_is_complete
+  {env : TypeEnv} {rty : List (Attr × QualifiedType)}
+  (hwf : ∀ attr qty, (attr, qty) ∈ rty → QualifiedType.WellFormed env qty) :
+  validateAttrsWellFormed env rty = .ok ()
+:= by
+  cases rty with
+  | nil => simp [validateAttrsWellFormed]
+  | cons hd tl =>
+    have htl : validateAttrsWellFormed env tl = .ok () :=
+      validate_attrs_well_formed_is_complete fun a q hmem => hwf a q (List.mem_cons_of_mem _ hmem)
+    have hhd := hwf hd.fst hd.snd List.mem_cons_self
+    unfold validateAttrsWellFormed
+    cases h : hd.snd with
+    | optional ty =>
+      rw [h] at hhd
+      cases hhd with
+      | optional_wf hty =>
+        simp [QualifiedType.validateWellFormed, type_validate_well_formed_is_complete hty, htl]
+    | required ty =>
+      rw [h] at hhd
+      cases hhd with
+      | required_wf hty =>
+        simp [QualifiedType.validateWellFormed, type_validate_well_formed_is_complete hty, htl]
+termination_by sizeOf rty
+decreasing_by
+  all_goals simp_wf
+  all_goals subst_vars
+  all_goals
+    cases hd
+    simp_all [List.cons.sizeOf_spec, Prod.mk.sizeOf_spec]
+    omega
+
+theorem type_validate_well_formed_is_complete
+  {env : TypeEnv} {ty : CedarType}
+  (hwf : CedarType.WellFormed env ty) :
+  ty.validateWellFormed env = .ok ()
+:= by
+  cases hwf with
+  | bool_wf | int_wf | string_wf | ext_wf => simp [CedarType.validateWellFormed]
+  | entity_wf h =>
+    simp only [CedarType.validateWellFormed]
+    exact entity_type_validate_well_formed_is_complete h
+  | set_wf h =>
+    simp only [CedarType.validateWellFormed]
+    exact type_validate_well_formed_is_complete h
+  | @record_wf rty hmap hattrs =>
+    have hattrs' : validateAttrsWellFormed env rty.toList = .ok () :=
+      validate_attrs_well_formed_is_complete fun attr qty hmem =>
+        hattrs attr qty ((Map.in_list_iff_find?_some hmap).mp hmem)
+    simp only [CedarType.validateWellFormed]
+    simp [Map.wellFormed_correct.mpr hmap, hattrs']
+termination_by sizeOf ty
+decreasing_by
+  all_goals simp_wf
+  all_goals
+    have := Map.sizeOf_lt_of_toList rty
+    omega
+end
+
+theorem type_validate_lifted_is_complete
+  {ty : CedarType}
+  (hlifted : CedarType.IsLifted ty) :
+  ty.validateLifted = .ok ()
+:= by
+  cases hlifted with
+  | bool_lifted | int_lifted | string_lifted | entity_lifted | ext_lifted =>
+    simp [CedarType.validateLifted]
+  | set_lifted h =>
+    simp only [CedarType.validateLifted]
+    exact type_validate_lifted_is_complete h
+  | @record_lifted rty h =>
+    simp only [CedarType.validateLifted]
+    apply List.all_ok_implies_forM_ok
+    intro ⟨(attr, qty), hmem⟩ _
+    have hqty := h attr qty hmem
+    cases qty with
+    | optional ty =>
+      cases hqty with
+      | optional_lifted h => exact type_validate_lifted_is_complete h
+    | required ty =>
+      cases hqty with
+      | required_lifted h => exact type_validate_lifted_is_complete h
+termination_by sizeOf ty
+decreasing_by
+  all_goals simp_wf
+  all_goals
+    have := List.sizeOf_lt_of_mem hmem
+    cases rty
+    simp at this ⊢
+    omega
+
+theorem standard_schema_entry_validate_well_formed_is_complete
+  {env : TypeEnv} {entry : StandardSchemaEntry}
+  (hwf : StandardSchemaEntry.WellFormed env entry) :
+  entry.validateWellFormed env = .ok ()
+:= by
+  obtain ⟨hancestors, hstandard, hattrs, hlifted, htags⟩ := hwf
+  simp only [StandardSchemaEntry.validateWellFormed, Set.wellFormed_correct.mpr hancestors,
+    ↓reduceIte, Except.bind_ok]
+  rw [List.all_ok_implies_forM_ok _ _ ?ancestors]
+  case ancestors =>
+    intro ety hmem
+    obtain ⟨entry', hfind, hstd⟩ := hstandard ety ((Set.mem_elts_iff_mem_set _ _).mp hmem)
+    simp [hfind, hstd]
+  simp only [Except.bind_ok, type_validate_well_formed_is_complete hattrs,
+    type_validate_lifted_is_complete hlifted]
+  cases htag : entry.tags with
+  | none => rfl
+  | some ty =>
+    obtain ⟨hwf, hlifted⟩ := htags ty htag
+    simp [type_validate_well_formed_is_complete hwf, type_validate_lifted_is_complete hlifted]
+
+theorem entity_schema_entry_validate_well_formed_is_complete
+  {env : TypeEnv} {entry : EntitySchemaEntry}
+  (hwf : EntitySchemaEntry.WellFormed env entry) :
+  entry.validateWellFormed env = .ok ()
+:= by
+  cases entry with
+  | standard entry => exact standard_schema_entry_validate_well_formed_is_complete hwf
+  | enum es =>
+    obtain ⟨hwf, hnonempty⟩ := hwf
+    simp [EntitySchemaEntry.validateWellFormed, Set.wellFormed_correct.mpr hwf, hnonempty]
+
+theorem entity_schema_validate_well_formed_is_complete
+  {env : TypeEnv} {ets : EntitySchema}
+  (hwf : EntitySchema.WellFormed env ets) :
+  ets.validateWellFormed env = .ok ()
+:= by
+  obtain ⟨hmap, hentries⟩ := hwf
+  simp only [EntitySchema.validateWellFormed, Map.wellFormed_correct.mpr hmap, ↓reduceIte,
+    Except.bind_ok]
+  apply List.all_ok_implies_forM_ok
+  intro ⟨ety, entry⟩ hmem
+  exact entity_schema_entry_validate_well_formed_is_complete
+    (hentries ety entry ((Map.in_list_iff_find?_some hmap).mp hmem))
+
+theorem action_schema_entry_validate_well_formed_is_complete
+  {env : TypeEnv} {entry : ActionSchemaEntry}
+  (hwf : ActionSchemaEntry.WellFormed env entry) :
+  entry.validateWellFormed env = .ok ()
+:= by
+  obtain ⟨hprincipals, hresources, hancestors, hprincipal_tys, hresource_tys, hancestor_acts,
+    hcontext, hlifted⟩ := hwf
+  simp only [ActionSchemaEntry.validateWellFormed, Set.wellFormed_correct.mpr hprincipals,
+    Set.wellFormed_correct.mpr hresources, Set.wellFormed_correct.mpr hancestors, ↓reduceIte,
+    Except.bind_ok]
+  rw [List.all_ok_implies_forM_ok _ _ ?principals, List.all_ok_implies_forM_ok _ _ ?resources,
+    List.all_ok_implies_forM_ok _ _ ?ancestors]
+  case principals =>
+    intro ety hmem
+    exact entity_type_validate_well_formed_is_complete
+      (hprincipal_tys ety (List.contains_iff_mem.mpr hmem))
+  case resources =>
+    intro ety hmem
+    exact entity_type_validate_well_formed_is_complete
+      (hresource_tys ety (List.contains_iff_mem.mpr hmem))
+  case ancestors =>
+    intro uid hmem
+    simp [hancestor_acts uid ((Set.mem_elts_iff_mem_set _ _).mp hmem)]
+  simp only [Except.bind_ok, type_validate_well_formed_is_complete hcontext,
+    type_validate_lifted_is_complete hlifted]
+
+theorem action_schema_validate_acyclic_action_hierarchy_is_complete
+  {acts : ActionSchema}
+  (hmap : Map.WellFormed acts)
+  (hacyclic : ActionSchema.AcyclicActionHierarchy acts) :
+  acts.validateAcyclicActionHierarchy = .ok ()
+:= by
+  unfold ActionSchema.validateAcyclicActionHierarchy
+  apply List.all_ok_implies_forM_ok
+  intro ⟨uid, entry⟩ hmem
+  have := hacyclic uid entry ((Map.in_list_iff_find?_some hmap).mp hmem)
+  simp [Set.contains_prop_bool_equiv, this]
+
+theorem action_schema_validate_transitive_action_hierarchy_is_complete
+  {acts : ActionSchema}
+  (hmap : Map.WellFormed acts)
+  (htransitive : ActionSchema.TransitiveActionHierarchy acts) :
+  acts.validateTransitiveActionHierarchy = .ok ()
+:= by
+  unfold ActionSchema.validateTransitiveActionHierarchy
+  apply List.all_ok_implies_forM_ok
+  intro ⟨uid₁, entry₁⟩ hmem₁
+  apply List.all_ok_implies_forM_ok
+  intro ⟨uid₂, entry₂⟩ hmem₂
+  have hsub := htransitive uid₁ entry₁ uid₂ entry₂
+    ((Map.in_list_iff_find?_some hmap).mp hmem₁) ((Map.in_list_iff_find?_some hmap).mp hmem₂)
+  by_cases hanc : uid₂ ∈ entry₁.ancestors
+  · have hsub : entry₂.ancestors.subset entry₁.ancestors = true := hsub hanc
+    simp [Set.contains_prop_bool_equiv, hanc, hsub]
+  · simp [Set.contains_prop_bool_equiv, hanc]
+
+theorem action_schema_validate_well_formed_is_complete
+  {env : TypeEnv} {acts : ActionSchema}
+  (hwf : ActionSchema.WellFormed env acts) :
+  acts.validateWellFormed env = .ok ()
+:= by
+  obtain ⟨hmap, hentries, hdisjoint, hacyclic, htransitive⟩ := hwf
+  simp only [ActionSchema.validateWellFormed, Map.wellFormed_correct.mpr hmap, ↓reduceIte,
+    Except.bind_ok]
+  rw [List.all_ok_implies_forM_ok _ _ ?entries]
+  case entries =>
+    intro ⟨uid, entry⟩ hmem
+    have hfind := (Map.in_list_iff_find?_some hmap).mp hmem
+    have hnot := hdisjoint uid (by simp [ActionSchema.contains, hfind])
+    simp [hnot, action_schema_entry_validate_well_formed_is_complete (hentries uid entry hfind)]
+  simp only [Except.bind_ok,
+    action_schema_validate_acyclic_action_hierarchy_is_complete hmap hacyclic,
+    action_schema_validate_transitive_action_hierarchy_is_complete hmap htransitive]
+
+theorem request_type_validate_well_formed_is_complete
+  {env : TypeEnv} {reqty : RequestType}
+  (hwf : RequestType.WellFormed env reqty) :
+  reqty.validateWellFormed env = .ok ()
+:= by
+  obtain ⟨entry, hfind, hprincipal, hresource, hcontext⟩ := hwf
+  simp [RequestType.validateWellFormed, hfind, Set.contains_prop_bool_equiv, hprincipal,
+    hresource, hcontext]
+
+theorem env_validate_well_formed_is_complete
+  {env : TypeEnv}
+  (hwf : TypeEnv.WellFormed env) :
+  env.validateWellFormed = .ok ()
+:= by
+  obtain ⟨hets, hacts, hreqty⟩ := hwf
+  simp [TypeEnv.validateWellFormed, entity_schema_validate_well_formed_is_complete hets,
+    action_schema_validate_well_formed_is_complete hacts,
+    request_type_validate_well_formed_is_complete hreqty]
+
+/--
+Every environment of a schema has the schema's maps and the request type of
+one of its actions.
+-/
+theorem mem_environments {schema : Schema} {env : TypeEnv}
+  (h : env ∈ schema.environments) :
+  env.ets = schema.ets ∧ env.acts = schema.acts ∧
+  ∃ entry, (env.reqty.action, entry) ∈ schema.acts.toList ∧
+    env.reqty.principal ∈ entry.appliesToPrincipal ∧
+    env.reqty.resource ∈ entry.appliesToResource ∧
+    env.reqty.context = entry.context
+:= by
+  simp only [Schema.environments, List.mem_map, List.mem_flatMap] at h
+  obtain ⟨reqty, ⟨⟨uid, entry⟩, hmem, hreqty⟩, rfl⟩ := h
+  have hreqty : reqty ∈
+      (entry.appliesToPrincipal.toList.product entry.appliesToResource.toList |>.map
+        (λ (principal, resource) =>
+          { principal, action := uid, resource, context := entry.context })) :=
+    hreqty
+  simp only [List.mem_map, Prod.exists, List.pair_mem_product] at hreqty
+  obtain ⟨principal, resource, ⟨hp, hr⟩, rfl⟩ := hreqty
+  exact ⟨rfl, rfl, entry, hmem, (Set.mem_elts_iff_mem_set _ _).mp hp,
+    (Set.mem_elts_iff_mem_set _ _).mp hr, rfl⟩
+
+/--
+A schema passes the well-formedness check when its maps are well-formed in each
+of its environments.
+-/
+theorem schema_validate_well_formed_is_complete
+  {schema : Schema}
+  (hwf : ∀ env ∈ schema.environments, env.ets.WellFormed env ∧ env.acts.WellFormed env) :
+  schema.validateWellFormed = .ok ()
+:= by
+  apply List.all_ok_implies_forM_ok
+  intro env henv
+  obtain ⟨hets, hacts⟩ := hwf env henv
+  obtain ⟨-, hacts_eq, entry, hmem, hprincipal, hresource, hcontext⟩ := mem_environments henv
+  have hmap : Map.WellFormed schema.acts := hacts_eq ▸ hacts.1
+  refine env_validate_well_formed_is_complete ⟨hets, hacts, entry, ?_, hprincipal, hresource,
+    hcontext⟩
+  rw [hacts_eq]
+  exact (Map.in_list_iff_find?_some hmap).mp hmem
+
 end Cedar.Thm
