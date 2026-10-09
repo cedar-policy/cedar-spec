@@ -26,7 +26,6 @@ use cedar_policy_core::ast::{self, EntityType};
 use cedar_policy_core::extensions;
 use indexmap::IndexMap;
 use smol_str::{SmolStr, ToSmolStr};
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::ops::{Deref, DerefMut};
@@ -68,44 +67,6 @@ fn mutate_str(u: &mut Unstructured<'_>, s: &str) -> Result<String> {
         }
     }
     Ok(res.into_iter().collect())
-}
-
-/// Pool of "unknowns"
-#[derive(Debug, Clone, Default)]
-pub struct UnknownPool {
-    unknowns: RefCell<IndexMap<String, (Type, ast::Value)>>,
-}
-
-impl UnknownPool {
-    /// Given the name of an unknown, get its `Type`, or `None` if it's not in
-    /// the pool
-    pub fn get_type(&self, unk: impl AsRef<str>) -> Option<Type> {
-        self.unknowns
-            .borrow()
-            .get(unk.as_ref())
-            .map(|(t, _)| t)
-            .cloned()
-    }
-
-    /// Iterate over the unknowns in the pool, getting the name of the unknown
-    /// and its `Type`
-    pub fn unknowns(self) -> impl Iterator<Item = (String, Type)> {
-        self.unknowns.take().into_iter().map(|(k, (t, _))| (k, t))
-    }
-
-    /// Iterate over the unknowns in the pool, getting the name of the unknown
-    /// and its `Value`
-    pub fn mapping(self) -> impl Iterator<Item = (String, ast::Value)> {
-        self.unknowns.take().into_iter().map(|(k, (_, v))| (k, v))
-    }
-
-    /// Create a new unknown with the given `Type` and `Value`. Returns the new
-    /// name as a `String`
-    pub fn alloc(&self, t: Type, v: ast::Value) -> String {
-        let this = format!("{}", self.unknowns.borrow().len());
-        self.unknowns.borrow_mut().insert(this.clone(), (t, v));
-        this
-    }
 }
 
 /// Pool of integer and string constants
