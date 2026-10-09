@@ -100,10 +100,9 @@ end
 def StandardSchemaEntry.WellFormed (env : TypeEnv) (entry : StandardSchemaEntry) : Prop :=
   -- Well-formed as `Map`/`Set`s
   entry.ancestors.WellFormed ∧
-  -- Each ancestor entity type must be a well-formed,
-  -- non-action, non-enum entity type
+  -- Each ancestor must be a declared, non-action entity type
   (∀ anc ∈ entry.ancestors,
-    ∃ entry, env.ets.find? anc = some entry ∧ entry.isStandard) ∧
+    ∃ entry, env.ets.find? anc = some entry) ∧
   -- The attribute types are well-formed
   (CedarType.record entry.attrs).WellFormed env ∧
   (CedarType.record entry.attrs).IsLifted ∧
@@ -436,7 +435,7 @@ theorem wf_env_implies_wf_ancestor
   | standard entry =>
     simp only [EntitySchemaEntry.WellFormed] at hwf_entry
     have := hwf_entry.2.1
-    have ⟨_, hanc_entry, _⟩ := this anc hanc
+    have ⟨_, hanc_entry⟩ := this anc hanc
     apply Or.inl
     simp only [EntitySchema.contains, hanc_entry, Option.isSome]
   | enum es =>
@@ -494,12 +493,12 @@ theorem wf_env_implies_transitive_action_hierarchy
   have ⟨_, _, _, _, h⟩ := hwf_acts
   exact h
 
-theorem wf_env_implies_ancestors_of_standard_ety_is_standard
+theorem wf_env_implies_ancestors_of_standard_ety_exist
   {env : TypeEnv} {ety : EntityType} {entry : StandardSchemaEntry}
   (hwf : env.WellFormed)
   (hfind : env.ets.find? ety = some (.standard entry)) :
   ∀ anc ∈ entry.ancestors,
-    ∃ entry, env.ets.find? anc = some entry ∧ entry.isStandard
+    ∃ entry, env.ets.find? anc = some entry
 := by
   have ⟨hwf_ets, _⟩ := hwf
   have hwf_entry := hwf_ets.2 ety (.standard entry) hfind

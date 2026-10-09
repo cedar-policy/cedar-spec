@@ -114,12 +114,10 @@ public def StandardSchemaEntry.validateWellFormed (env : TypeEnv) (entry : Stand
   do
     if entry.ancestors.wellFormed then .ok ()
     else .error (.typeError s!"ancestors set is not well-formed")
-    -- Every ancestor is a valid entity type (and non-enum)
+    -- Every ancestor is a valid entity type
     entry.ancestors.toList.forM λ ety => do
       match env.ets.find? ety with
-      | some entry =>
-        if entry.isStandard then .ok ()
-        else .error (.typeError s!"ancestor entity type {ety} is not a standard entity")
+      | some _ => .ok ()
       | none => .error (.typeError s!"ancestor entity type {ety} does not exist")
     -- Attribute types should be well-formed
     (CedarType.record entry.attrs).validateWellFormed env
