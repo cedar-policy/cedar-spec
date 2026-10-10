@@ -58,6 +58,7 @@ private def readCtxType : RecordType := Map.make [
 
 private def typeEnvRead := Photoflash.env Photoflash.readPhoto readCtxType
 private def εnvRead := SymEnv.ofTypeEnv typeEnvRead
+private def csRead := CompiledSchema.compile typeEnvRead.schema
 
 /-
 permit (principal, action, resource)
@@ -152,7 +153,7 @@ instance : ToString Finding where
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
 private def testVerifyNeverErrors? (expected : Finding) (p : Policy) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] neverErrors? {p.id}"
-  let cp := CompiledPolicy.compile p typeEnvRead |> IO.ofExcept
+  let cp := CompiledPolicy.compile p csRead typeEnvRead.reqty |> IO.ofExcept
   match expected with
   | .cex => [
       testVerifyCex (desc ++ " (unoptimized)") (neverErrors? p εnvRead)
@@ -168,7 +169,7 @@ private def testVerifyNeverErrors? (expected : Finding) (p : Policy) : List (Tes
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
 private def testVerifyAlwaysMatches? (expected : Finding) (p : Policy) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] alwaysMatches? {p.id}"
-  let cp := CompiledPolicy.compile p typeEnvRead |> IO.ofExcept
+  let cp := CompiledPolicy.compile p csRead typeEnvRead.reqty |> IO.ofExcept
   match expected with
   | .cex => [
       testVerifyCex (desc ++ " (unoptimized)") (alwaysMatches? p εnvRead)
@@ -184,7 +185,7 @@ private def testVerifyAlwaysMatches? (expected : Finding) (p : Policy) : List (T
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
 private def testVerifyNeverMatches? (expected : Finding) (p : Policy) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] neverMatches? {p.id}"
-  let cp := CompiledPolicy.compile p typeEnvRead |> IO.ofExcept
+  let cp := CompiledPolicy.compile p csRead typeEnvRead.reqty |> IO.ofExcept
   match expected with
   | .cex => [
       testVerifyCex (desc ++ " (unoptimized)") (neverMatches? p εnvRead)
@@ -200,8 +201,8 @@ private def testVerifyNeverMatches? (expected : Finding) (p : Policy) : List (Te
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
 private def testVerifyMatchesEquivalent? (expected : Finding) (p₁ p₂ : Policy) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] matchesEquivalent? {p₁.id} {p₂.id}"
-  let cp₁ := CompiledPolicy.compile p₁ typeEnvRead |> IO.ofExcept
-  let cp₂ := CompiledPolicy.compile p₂ typeEnvRead |> IO.ofExcept
+  let cp₁ := CompiledPolicy.compile p₁ csRead typeEnvRead.reqty |> IO.ofExcept
+  let cp₂ := CompiledPolicy.compile p₂ csRead typeEnvRead.reqty |> IO.ofExcept
   match expected with
   | .cex => [
     testVerifyCex (desc ++ " (unoptimized)") (matchesEquivalent? p₁ p₂ εnvRead)
@@ -223,8 +224,8 @@ private def testVerifyMatchesEquivalent? (expected : Finding) (p₁ p₂ : Polic
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
 private def testVerifyMatchesImplies? (expected : Finding) (p₁ p₂ : Policy) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] matchesImplies? {p₁.id} {p₂.id}"
-  let cp₁ := CompiledPolicy.compile p₁ typeEnvRead |> IO.ofExcept
-  let cp₂ := CompiledPolicy.compile p₂ typeEnvRead |> IO.ofExcept
+  let cp₁ := CompiledPolicy.compile p₁ csRead typeEnvRead.reqty |> IO.ofExcept
+  let cp₂ := CompiledPolicy.compile p₂ csRead typeEnvRead.reqty |> IO.ofExcept
   match expected with
   | .cex => [
     testVerifyCex (desc ++ " (unoptimized)") (matchesImplies? p₁ p₂ εnvRead)
@@ -246,8 +247,8 @@ private def testVerifyMatchesImplies? (expected : Finding) (p₁ p₂ : Policy) 
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
 private def testVerifyMatchesDisjoint? (expected : Finding) (p₁ p₂ : Policy) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] matchesDisjoint? {p₁.id} {p₂.id}"
-  let cp₁ := CompiledPolicy.compile p₁ typeEnvRead |> IO.ofExcept
-  let cp₂ := CompiledPolicy.compile p₂ typeEnvRead |> IO.ofExcept
+  let cp₁ := CompiledPolicy.compile p₁ csRead typeEnvRead.reqty |> IO.ofExcept
+  let cp₂ := CompiledPolicy.compile p₂ csRead typeEnvRead.reqty |> IO.ofExcept
   match expected with
   | .cex => [
     testVerifyCex (desc ++ " (unoptimized)") (matchesDisjoint? p₁ p₂ εnvRead)
@@ -272,8 +273,8 @@ private def authorize (ps : Policies) (env : Env) : Bool :=
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
 private def testVerifyImplies? (expected : Finding) (ps₁ ps₂ : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] implies? [{ps₁.map Policy.id}] [{ps₂.map Policy.id}]"
-  let cpset₁ := CompiledPolicySet.compile ps₁ typeEnvRead |> IO.ofExcept
-  let cpset₂ := CompiledPolicySet.compile ps₂ typeEnvRead |> IO.ofExcept
+  let cpset₁ := CompiledPolicySet.compile ps₁ csRead typeEnvRead.reqty |> IO.ofExcept
+  let cpset₂ := CompiledPolicySet.compile ps₂ csRead typeEnvRead.reqty |> IO.ofExcept
   match expected with
   | .cex => [
       testVerifyCex (desc ++ " (unoptimized)") (implies? ps₁ ps₂ εnvRead)
@@ -289,7 +290,7 @@ private def testVerifyImplies? (expected : Finding) (ps₁ ps₂ : Policies) : L
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/
 private def testVerifyAlwaysAllows? (expected : Finding) (ps : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] alwaysAllows? [{ps.map Policy.id}]"
-  let cpset := CompiledPolicySet.compile ps typeEnvRead |> IO.ofExcept
+  let cpset := CompiledPolicySet.compile ps csRead typeEnvRead.reqty |> IO.ofExcept
   match expected with
   | .cex => [
       testVerifyCex (desc ++ " (unoptimized)") (alwaysAllows? ps εnvRead)
@@ -304,7 +305,7 @@ private def testVerifyAlwaysAllows? (expected : Finding) (ps : Policies) : List 
 
 private def testVerifyAlwaysDenies? (expected : Finding) (ps : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] alwaysDenies? [{ps.map Policy.id}]"
-  let cpset := CompiledPolicySet.compile ps typeEnvRead |> IO.ofExcept
+  let cpset := CompiledPolicySet.compile ps csRead typeEnvRead.reqty |> IO.ofExcept
   match expected with
   | .cex => [
       testVerifyCex (desc ++ " (unoptimized)") (alwaysDenies? ps εnvRead)
@@ -319,8 +320,8 @@ private def testVerifyAlwaysDenies? (expected : Finding) (ps : Policies) : List 
 
 private def testVerifyEquivalent? (expected : Finding) (ps₁ ps₂ : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] equivalent? [{ps₁.map Policy.id}] [{ps₂.map Policy.id}]"
-  let cpset₁ := CompiledPolicySet.compile ps₁ typeEnvRead |> IO.ofExcept
-  let cpset₂ := CompiledPolicySet.compile ps₂ typeEnvRead |> IO.ofExcept
+  let cpset₁ := CompiledPolicySet.compile ps₁ csRead typeEnvRead.reqty |> IO.ofExcept
+  let cpset₂ := CompiledPolicySet.compile ps₂ csRead typeEnvRead.reqty |> IO.ofExcept
   match expected with
   | .cex => [
       testVerifyCex (desc ++ " (unoptimized)") (equivalent? ps₁ ps₂ εnvRead)
@@ -335,8 +336,8 @@ private def testVerifyEquivalent? (expected : Finding) (ps₁ ps₂ : Policies) 
 
 private def testVerifyDisjoint? (expected : Finding) (ps₁ ps₂ : Policies) : List (TestCase SolverM) :=
   let desc := s!"[{expected}] disjoint? [{ps₁.map Policy.id}] [{ps₂.map Policy.id}]"
-  let cpset₁ := CompiledPolicySet.compile ps₁ typeEnvRead |> IO.ofExcept
-  let cpset₂ := CompiledPolicySet.compile ps₂ typeEnvRead |> IO.ofExcept
+  let cpset₁ := CompiledPolicySet.compile ps₁ csRead typeEnvRead.reqty |> IO.ofExcept
+  let cpset₂ := CompiledPolicySet.compile ps₂ csRead typeEnvRead.reqty |> IO.ofExcept
   match expected with
   | .cex => [
       testVerifyCex (desc ++ " (unoptimized)") (disjoint? ps₁ ps₂ εnvRead)

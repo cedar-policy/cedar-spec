@@ -182,7 +182,7 @@ def parseCheckPolicyReq (schema : Schema) (req : ByteArray) : Except String Comp
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
     | some env => .ok env
   let _ ← env.validateWellFormed |>.mapError (s!"failed to validate environment (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
-  let cp ← CompiledPolicy.compile policy env |>.mapError (s!"failed to compile policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
+  let cp ← CompiledPolicy.compile policy (CompiledSchema.compile schema) env.reqty |>.mapError (s!"failed to compile policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
   return cp
 
 /--
@@ -202,7 +202,7 @@ def parseCheckPoliciesReq (schema : Schema) (req : ByteArray) : Except String Co
   let env ← match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
     | some env => .ok env
-  CompiledPolicySet.compile policySet env |>.mapError (s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
+  CompiledPolicySet.compile policySet (CompiledSchema.compile schema) env.reqty |>.mapError (s!"failed to validate policy for requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
 
 /--
   `req`: binary protobuf for an `CheckPolicySetRequest`
@@ -222,8 +222,9 @@ def parseComparePolicySetsReq (schema : Schema) (req : ByteArray) : Except Strin
   let env ← match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
     | some env => .ok env
-  let cpSrcPolicySet ← CompiledPolicySet.compile srcPolicySet env |>.mapError (s!"failed to validate src policies for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
-  let cpTgtPolicySet ← CompiledPolicySet.compile tgtPolicySet env |>.mapError (s!"failed to validate tgt policies for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
+  let cs := CompiledSchema.compile schema
+  let cpSrcPolicySet ← CompiledPolicySet.compile srcPolicySet cs env.reqty |>.mapError (s!"failed to validate src policies for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
+  let cpTgtPolicySet ← CompiledPolicySet.compile tgtPolicySet cs env.reqty |>.mapError (s!"failed to validate tgt policies for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
   return (cpSrcPolicySet, cpTgtPolicySet)
 
 /--
@@ -239,8 +240,9 @@ def parseComparePoliciesReq (schema : Schema) (req : ByteArray) : Except String 
   let env ← match schema.environment? request.principal request.resource request.action with
     | none => .error s!"failed to get environment from requestEnv (PrincipalType: {request.principal}, ActionName: {request.action}, ResourceType: {request.resource})"
     | some env => .ok env
-  let cp₁ ← CompiledPolicy.compile p₁ env |>.mapError (s!"failed to validate first policy for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
-  let cp₂ ← CompiledPolicy.compile p₂ env |>.mapError (s!"failed to validate first policy for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
+  let cs := CompiledSchema.compile schema
+  let cp₁ ← CompiledPolicy.compile p₁ cs env.reqty |>.mapError (s!"failed to validate first policy for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
+  let cp₂ ← CompiledPolicy.compile p₂ cs env.reqty |>.mapError (s!"failed to validate first policy for requestEnv (PrincipalType : {request.principal}, ActionName: {request.action}, ResourceType: {request.resource}): {·}")
   return (cp₁, cp₂)
 
 /--
