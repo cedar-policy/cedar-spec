@@ -507,6 +507,33 @@ theorem classify_filter {α ε} (f : α → Except ε TypedExpr) (keep : α → 
       exact hk (f x) ⟨x, hx, rfl⟩
   simp only [classify, hany, hall]
 
+/-- Dropping results that are `false` changes nothing. -/
+theorem classify_filter_ff {α ε} (f : α → Except ε TypedExpr) (keep : α → Bool) (xs : List α)
+  (h : ∀ x ∈ xs, keep x = false → isFF (f x) = true) :
+  classify ((xs.filter keep).map f) = classify (xs.map f) := by
+  have hany : ((xs.filter keep).map f).any isErr = (xs.map f).any isErr := by
+    apply Bool.eq_iff_iff.mpr
+    simp only [List.any_eq_true, List.mem_map, List.mem_filter]
+    constructor
+    · rintro ⟨r, ⟨x, ⟨hx, _⟩, rfl⟩, he⟩
+      exact ⟨f x, ⟨x, hx, rfl⟩, he⟩
+    · rintro ⟨r, ⟨x, hx, rfl⟩, he⟩
+      cases hk : keep x
+      · have hf := h x hx hk
+        cases hfx : f x <;> simp [hfx, isFF, isErr] at hf he
+      · exact ⟨f x, ⟨x, ⟨hx, hk⟩, rfl⟩, he⟩
+  have hall : ((xs.filter keep).map f).all isFF = (xs.map f).all isFF := by
+    apply Bool.eq_iff_iff.mpr
+    simp only [List.all_eq_true, List.mem_map, List.mem_filter]
+    constructor
+    · rintro hk r ⟨x, hx, rfl⟩
+      cases hkx : keep x
+      · exact h x hx hkx
+      · exact hk (f x) ⟨x, ⟨hx, hkx⟩, rfl⟩
+    · rintro hk r ⟨x, ⟨hx, _⟩, rfl⟩
+      exact hk (f x) ⟨x, hx, rfl⟩
+  simp only [classify, hany, hall]
+
 theorem mem_allCombos {schema : Schema} {tys : List EntityType} {env : TypeEnv} {pT rT : EntityType} :
   (env, pT, rT) ∈ allCombos schema tys ↔ env ∈ schema.environments ∧ pT ∈ tys ∧ rT ∈ tys := by
   simp only [allCombos, List.mem_flatMap, List.mem_map, Prod.mk.injEq]
@@ -586,6 +613,43 @@ theorem one_link_exact (t : Template) (id : PolicyID) (rep : EntityType → Enti
   (hrep : RepValid schema tys rep) (htys : TysCover schema tys) (hlits : LitsValid schema t) :
   templateOutcome oneLinkKeep t id rep schema tys = templateOutcome (λ _ => true) t id rep schema tys :=
   template_filter_exact _ _ _ _ _ _ hrep htys hlits (λ env _ => by simp [oneLinkKeep])
+
+/--
+One link per environment, further restricted to environments whose scope can
+admit that link (`admitsAll` from `EnvFilter`), is exact. A filter that keeps
+more environments than `admitsAll` requires is exact too. This is the check the
+Rust validator runs.
+-/
+theorem one_link_admitted_exact (keepEnv : TypeEnv → Bool) (t : Template) (id : PolicyID)
+  (rep : EntityType → EntityUID) (schema : Schema) (tys : List EntityType)
+  (hrep : RepValid schema tys rep) (htys : TysCover schema tys) (hlits : LitsValid schema t)
+  (hce : ∀ env ∈ schema.environments,
+    checkEntities schema (t.inst id (rep env.reqty.principal) (rep env.reqty.resource)).toExpr = .ok ())
+  (hkeepEnv : ∀ env ∈ schema.environments,
+    admitsAll (t.inst id (rep env.reqty.principal) (rep env.reqty.resource)) env = true → keepEnv env = true) :
+  templateOutcome (λ x => oneLinkKeep x && keepEnv x.1) t id rep schema tys =
+  templateOutcome (λ _ => true) t id rep schema tys := by
+  rw [← one_link_exact t id rep schema tys hrep htys hlits]
+  unfold templateOutcome
+  have hfilter : (allCombos schema tys).filter (λ x => oneLinkKeep x && keepEnv x.1) =
+      ((allCombos schema tys).filter oneLinkKeep).filter (λ x => keepEnv x.1) := by
+    rw [List.filter_filter]
+    congr 1
+    funext x
+    exact Bool.and_comm _ _
+  rw [hfilter]
+  apply classify_filter_ff
+  rintro ⟨env, pT, rT⟩ hx hk
+  obtain ⟨hx, hol⟩ := List.mem_filter.mp hx
+  obtain ⟨henv, _, _⟩ := mem_allCombos.mp hx
+  simp only [oneLinkKeep, Bool.and_eq_true, beq_iff_eq] at hol
+  obtain ⟨rfl, rfl⟩ := hol
+  have hadm : admitsAll (t.inst id (rep env.reqty.principal) (rep env.reqty.resource)) env = false := by
+    cases ha : admitsAll (t.inst id (rep env.reqty.principal) (rep env.reqty.resource)) env
+    · rfl
+    · simp [hkeepEnv env henv ha] at hk
+  obtain ⟨tx, htx, hff⟩ := typecheck_unadmitted_is_false (hce env henv) henv hadm
+  simp [comboResult, htx, isFF, hff]
 
 /--
 Under any exact filter, the template has a type error exactly when some
