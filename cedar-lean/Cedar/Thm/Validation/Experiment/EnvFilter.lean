@@ -210,7 +210,7 @@ theorem typeOf_lits_set {env : TypeEnv} {c : Capabilities} {u : EntityUID} {us :
     exact mapM_typeOf_lits _ hv
   simp only [typeOf, hm, Except.bind_ok]
   have hf := foldl_lub_entity u.ty us hty
-  simp [Function.comp_def, TypedExpr.typeOf] at *
+  simp [TypedExpr.typeOf] at *
   simp [typeOfSet, ok, TypedExpr.typeOf, Function.comp_def, hf]
 
 theorem substituteAction_lits_set (a : EntityUID) (ls : List EntityUID) :
@@ -248,7 +248,7 @@ theorem action_in_any_ff {schema : Schema} {env : TypeEnv} {u : EntityUID} {us :
     induction ls with
     | nil => rfl
     | cons x xs ih => simp [List.mapM_cons, entityUID?, ih]
-  simp only [typeOfBinaryApp, hst, typeOfInₛ, actionUID?, entityUID?, hca, hids]
+  simp only [typeOfBinaryApp, hst, typeOfInₛ, actionUID?, entityUID?, hids]
   refine ⟨_, _, rfl, ?_⟩
   have hca' : (do let uid ← some env.reqty.action; if env.acts.contains uid = true then some uid else none) =
       some env.reqty.action := by simp [hca]
