@@ -25,47 +25,6 @@ use indexmap::{IndexMap, IndexSet};
 use nonempty::NonEmpty;
 use smol_str::SmolStr;
 
-/// EntityUIDs with the mappings to their indices in the container.
-/// This is used to generate an entity that is lexicographically smaller/greater than the input entity.
-#[derive(Debug, Clone)]
-struct EntityUIDs {
-    pub indices: IndexMap<EntityUID, usize>,
-    pub uids: Vec<EntityUID>,
-}
-
-impl From<Vec<EntityUID>> for EntityUIDs {
-    fn from(value: Vec<EntityUID>) -> Self {
-        Self {
-            indices: (0..value.len())
-                .map(|idx| (value[idx].clone(), idx))
-                .collect(),
-            uids: value,
-        }
-    }
-}
-
-impl FromIterator<EntityUID> for EntityUIDs {
-    fn from_iter<T: IntoIterator<Item = EntityUID>>(iter: T) -> Self {
-        let uids: Vec<EntityUID> = iter.into_iter().collect();
-        uids.into()
-    }
-}
-
-impl AsRef<[EntityUID]> for EntityUIDs {
-    fn as_ref(&self) -> &[EntityUID] {
-        &self.uids
-    }
-}
-
-impl EntityUIDs {
-    // Get a slice of `EntityUID`s whose indices are greater than `uid`'s
-    // INVARIANT: `uid` is in `indices`
-    fn get_slice_after_uid(&self, uid: &EntityUID) -> &[EntityUID] {
-        let idx = self.indices[uid];
-        &self.uids[idx + 1..]
-    }
-}
-
 /// Contains data about an entity hierarchy
 #[derive(Debug, Clone)]
 pub struct Hierarchy {
@@ -75,11 +34,16 @@ pub struct Hierarchy {
     /// HashMap.
     /// The reason we have this separately is that is allows us to do
     /// arbitrary_uid() fast.
+    ///
+    /// The order of this pool of UIDs is arbitrary. An entity may only have
+    /// ancestors that come after itself in the order.
     uids: Vec<EntityUID>,
+    /// Position of each UID in `uids`
+    entity_idxs: IndexMap<EntityUID, usize>,
     /// Map of entity typename to UID, for all UIDs in the hierarchy.
     /// We keep this in sync with the `entities` HashMap too.
     /// This is to make arbitrary_uid_with_type() fast.
-    uids_by_type: IndexMap<ast::EntityType, EntityUIDs>,
+    uids_by_type: IndexMap<ast::EntityType, Vec<EntityUID>>,
     /// Vec of all entity types used by entities in the hierarchy, again kept in
     /// sync with the `entities` HashMap. Makes `arbitrary_entity_type()` fast.
     entity_types: Vec<ast::EntityType>,
@@ -89,25 +53,40 @@ impl Hierarchy {
     /// Create a new `Hierarchy` from the given UIDs, sorted by type (in a
     /// `HashMap` of entity typename to UID). The entities will have no
     /// attributes or parents.
-    pub fn from_uids_by_type(uids_by_type: IndexMap<ast::EntityType, IndexSet<EntityUID>>) -> Self {
-        let uids: Vec<EntityUID> = uids_by_type
+    pub fn from_uids_by_type(
+        uids_by_type: IndexMap<ast::EntityType, IndexSet<EntityUID>>,
+        u: &mut Unstructured<'_>,
+    ) -> Result<Self> {
+        let mut uids: Vec<EntityUID> = uids_by_type
             .values()
             .flat_map(|uids_inner| uids_inner.iter().cloned())
             .collect();
+        // Shuffle the pool, so that entities aren't grouped by type, allowing an edge from an entity
+        // to one with type that would be lower in the ordering.
+        for i in 0..uids.len() {
+            let j = i + u.choose_index(uids.len() - i)?;
+            uids.swap(i, j);
+        }
+        let entity_idxs: IndexMap<EntityUID, usize> = uids.iter().cloned().zip(0..).collect();
         let uids_by_type: IndexMap<_, _> = uids_by_type
             .into_iter()
-            .map(|(n, uids)| (n, EntityUIDs::from_iter(uids)))
+            .map(|(n, uids)| {
+                let mut uids: Vec<EntityUID> = uids.into_iter().collect();
+                uids.sort_by_key(|uid| entity_idxs[uid]);
+                (n, uids)
+            })
             .collect();
         let entity_types: Vec<_> = uids_by_type.keys().cloned().collect();
-        Self {
+        Ok(Self {
             entities: uids
                 .iter()
                 .map(|uid| (uid.clone(), Entity::with_uid(uid.clone())))
                 .collect(),
             uids,
+            entity_idxs,
             uids_by_type,
             entity_types,
-        }
+        })
     }
 
     /// Generate an arbitrary uid based on the hierarchy (or, with small
@@ -255,27 +234,21 @@ impl Hierarchy {
         Self {
             entities: new_entities,
             uids: self.uids,
+            entity_idxs: self.entity_idxs,
             uids_by_type: self.uids_by_type,
             entity_types: self.entity_types,
         }
     }
 
     /// Iterate over the UIDs having the given typename
-    /// Also ensure that the returned UIDs is lexicographically larger than the input `EntityUID` if its type is the same as the given typename
-    pub fn uids_for_type(
-        &self,
-        dst_ty: &ast::EntityType,
-        entity: &EntityUID,
-    ) -> Box<dyn Iterator<Item = &EntityUID> + '_> {
+    ///
+    /// Only UIDs that come after `entity` in the (arbitrarily ordered) list of UIDs are returned to
+    /// avoid producing cyclic hierarchies.
+    pub fn uids_for_type(&self, dst_ty: &ast::EntityType, entity: &EntityUID) -> &[EntityUID] {
+        let idx = self.entity_idxs[entity];
         match self.uids_by_type.get(dst_ty) {
-            Some(v) => {
-                if entity.entity_type().to_string() == dst_ty.to_string() {
-                    Box::new(v.get_slice_after_uid(entity).iter())
-                } else {
-                    Box::new(v.as_ref().iter())
-                }
-            }
-            None => Box::new(std::iter::empty()),
+            Some(uids) => &uids[uids.partition_point(|uid| self.entity_idxs[uid] <= idx)..],
+            None => &[],
         }
     }
 }
@@ -312,12 +285,18 @@ impl From<Entities> for Hierarchy {
             uids.push(e.uid().clone());
         }
         let entity_types: Vec<_> = uids_by_type.keys().cloned().collect();
+        let entity_idxs: IndexMap<EntityUID, usize> = uids.iter().cloned().zip(0..).collect();
         Hierarchy {
-            uids,
             uids_by_type: uids_by_type
                 .into_iter()
-                .map(|(k, v)| (k, EntityUIDs::from_iter(v.into_iter().cloned())))
+                .map(|(k, v)| {
+                    let mut uids: Vec<EntityUID> = v.into_iter().cloned().collect();
+                    uids.sort_by_key(|uid| entity_idxs[uid]);
+                    (k, uids)
+                })
                 .collect(),
+            uids,
+            entity_idxs,
             entities: entities.into_iter().map(|e| (e.uid().clone(), e)).collect(),
             entity_types,
         }
@@ -480,7 +459,7 @@ impl HierarchyGenerator<'_, '_> {
                 Ok((name, uids))
             })
             .collect::<Result<IndexMap<ast::EntityType, IndexSet<ast::EntityUID>>>>()?;
-        let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
+        let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type, self.u)?;
         // now create an entity hierarchy composed of those entity UIDs
         let entities = hierarchy_no_attrs
             .entities()
@@ -492,11 +471,8 @@ impl HierarchyGenerator<'_, '_> {
                 match &self.mode {
                     HierarchyGeneratorMode::SchemaBased { schema } => {
                         for ty in schema.allowed_parent_typenames(name).unwrap() {
-                            for possible_parent_uid in
-                            // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph
-                            // It should be very unlikely where loops involving multiple entity types occur in the schemas
-                            hierarchy_no_attrs.uids_for_type(&ty, uid)
-                            {
+                            // `uids_for_type` prevent cycles
+                            for possible_parent_uid in hierarchy_no_attrs.uids_for_type(&ty, uid) {
                                 if self.u.ratio::<u8>(1, 2)? {
                                     parents.insert(possible_parent_uid.clone());
                                 }
