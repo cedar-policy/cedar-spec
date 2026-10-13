@@ -1,3 +1,19 @@
+/-
+ Copyright Cedar Contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
 import Cedar.Validation
 import Cedar.Thm.Data
 
@@ -19,7 +35,7 @@ cheap filters that read only the policy's scope and the schema's hierarchies:
 typechecker short-circuiting `&&` on a left side typed `false`.
 -/
 
-namespace Cedar.Thm.Experiment
+namespace Cedar.Thm.Pruning
 
 open Cedar.Data
 open Cedar.Spec
@@ -555,7 +571,7 @@ theorem weaker_filter_exact (keep : TypeEnv → Bool) (policy : Policy) (schema 
       | false => exact typecheck_unadmitted_is_false hce henv ha
       | true => simp [hkeep env ha] at hk)
 
-/-- The action filter alone (the earlier `ActionFilter` result). -/
+/-- The action filter alone is exact. -/
 theorem action_filter_exact (policy : Policy) (schema : Schema) :
   typecheckPolicyWithFilteredEnvironments typecheckPolicy (admits policy) policy schema =
   typecheckPolicyWithEnvironments typecheckPolicy policy schema :=
@@ -571,4 +587,4 @@ theorem resource_filter_exact (policy : Policy) (schema : Schema) :
   typecheckPolicyWithEnvironments typecheckPolicy policy schema :=
   weaker_filter_exact _ _ _ (λ env h => by simp [admitsAll] at h; exact h.2)
 
-end Cedar.Thm.Experiment
+end Cedar.Thm.Pruning

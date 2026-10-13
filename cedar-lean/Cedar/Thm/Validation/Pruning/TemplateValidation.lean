@@ -1,6 +1,22 @@
+/-
+ Copyright Cedar Contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
 import Cedar.Validation
 import Cedar.Thm.Data
-import Cedar.Thm.Validation.Experiment.EnvFilter
+import Cedar.Thm.Validation.Pruning.EnvFilter
 
 /-!
 Template validation, and the exactness of pruning its slot candidates.
@@ -24,8 +40,8 @@ Results:
 * `template_filter_exact`: any set of combinations that keeps, for every
   environment, the combination whose slot types are that environment's own
   principal and resource types classifies the template exactly like the full
-  set. Rust's `possible_slot_links` (`rust_candidates_exact`) and the one-link
-  change, which keeps only that combination (`one_link_exact`), are both
+  set. Rust's `possible_slot_links` (`rust_candidates_exact`) and one-link
+  pruning, which keeps only that combination (`one_link_exact`), are both
   instances.
 * `template_type_error_iff`: the template has a type error exactly when some
   link with valid entities of candidate types has a type error in some
@@ -36,7 +52,7 @@ The classification counts errors rather than reporting the first one, so it
 does not depend on the order in which combinations are checked.
 -/
 
-namespace Cedar.Thm.Experiment
+namespace Cedar.Thm.Pruning
 
 open Cedar.Data
 open Cedar.Spec
@@ -805,4 +821,4 @@ theorem linked_policy_validates (keep : Combo → Bool) (t : Template) (id : Pol
   simp only [typecheckPolicyWithEnvironments, hce, Except.mapError, hys]
   by_cases ha : allFalse ys = true <;> simp [ha, bind, Except.bind]
 
-end Cedar.Thm.Experiment
+end Cedar.Thm.Pruning
