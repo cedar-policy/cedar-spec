@@ -31,8 +31,8 @@ theorem extractOpt?_eqv_extract? {cpsets : List CompiledPolicies} {I : Interpret
   (∀ cpset ∈ cpsets, cpset.εnv = εnv) →
   -- the `CompiledPolicies` at least have to be constructed with `CompiledPolicy.compile` or `CompiledPolicySet.compile`, even though we don't care about the original uncompiled policies
   (∀ cpset ∈ cpsets, match cpset with
-    | .policy cp => ∃ p Γ, CompiledPolicy.compile p Γ = .ok cp
-    | .pset cpset => ∃ ps Γ, CompiledPolicySet.compile ps Γ = .ok cpset
+    | .policy cp => ∃ p s reqty, CompiledPolicy.compile p s reqty = .ok cp
+    | .pset cpset => ∃ ps s reqty, CompiledPolicySet.compile ps s reqty = .ok cpset
   ) →
   extractOpt? cpsets I = SymEnv.extract? ((cpsets.flatMap CompiledPolicies.allPolicies).map Policy.toExpr) I εnv
 := by
@@ -49,7 +49,7 @@ theorem extractOpt?_eqv_extract? {cpsets : List CompiledPolicies} {I : Interpret
   all_goals {
     subst εnv
     first | rename CompiledPolicy => cp | rename CompiledPolicySet => cps
-    replace ⟨⟨p, Γ, hcompile⟩, hcompile'⟩ := hcompile ; try rename Policies => ps
+    replace ⟨⟨p, s, reqty, hcompile⟩, hcompile'⟩ := hcompile ; try rename Policies => ps
     rw [List.mapUnion_cons]
     · simp only [CompiledPolicies.footprint]
       first
@@ -69,7 +69,7 @@ theorem extractOpt?_eqv_extract? {cpsets : List CompiledPolicies} {I : Interpret
           specialize hcompile' cps hcps
           split at hcompile'
           · rename_i cps cp
-            replace ⟨p', Γ', hcompile'⟩ := hcompile'
+            replace ⟨p', s', reqty', hcompile'⟩ := hcompile'
             have hfoot := cp_compile_produces_the_right_footprint hcompile'
             simp [CompiledPolicies.footprint, hfoot] at ht
             exists cp.policy
@@ -78,7 +78,7 @@ theorem extractOpt?_eqv_extract? {cpsets : List CompiledPolicies} {I : Interpret
             exists .policy cp
             simp [hcps, CompiledPolicies.allPolicies]
           · rename_i cps cpset
-            replace ⟨ps', Γ', hcompile'⟩ := hcompile'
+            replace ⟨ps', s', reqty', hcompile'⟩ := hcompile'
             have hfoot := cpset_compile_produces_the_right_footprint hcompile'
             simp only [footprints, List.mapUnion_map] at hfoot
             rw [Data.Set.eq_means_eqv] at hfoot
@@ -101,14 +101,14 @@ theorem extractOpt?_eqv_extract? {cpsets : List CompiledPolicies} {I : Interpret
           · rename_i cps cp
             simp only [CompiledPolicies.allPolicies, List.mem_cons, List.not_mem_nil,
               or_false] at hp ; subst p
-            replace ⟨p', Γ', hcompile'⟩ := hcompile'
+            replace ⟨p', s', reqty', hcompile'⟩ := hcompile'
             have hfoot := cp_compile_produces_the_right_footprint hcompile'
             simp only [hcps, CompiledPolicies.footprint, hfoot, true_and]
             specialize hεnv (.policy cp) hcps ; simp only at hεnv ; rw [← hεnv] at ht
             exact ht
           · rename_i cps cpset
             simp only [CompiledPolicies.allPolicies] at hp
-            replace ⟨ps', Γ', hcompile'⟩ := hcompile'
+            replace ⟨ps', s', reqty', hcompile'⟩ := hcompile'
             have hfoot := cpset_compile_produces_the_right_footprint hcompile'
             simp only [hcps, CompiledPolicies.footprint, hfoot, footprints, true_and]
             specialize hεnv (.pset cpset) hcps ; simp only at hεnv ; rw [← hεnv] at ht
@@ -125,9 +125,9 @@ theorem extractOpt?_eqv_extract? {cpsets : List CompiledPolicies} {I : Interpret
         specialize hcompile' cps hcps
         split at hcompile'
         · rename_i cps cp
-          replace ⟨p, Γ, hcompile'⟩ := hcompile'
+          replace ⟨p, s, reqty, hcompile'⟩ := hcompile'
           simp [CompiledPolicies.footprint, cp_compile_produces_the_right_footprint hcompile', footprint_wf]
         · rename_i cps cps
-          replace ⟨ps, Γ, hcompile'⟩ := hcompile'
+          replace ⟨ps, s, reqty, hcompile'⟩ := hcompile'
           simp [CompiledPolicies.footprint, cpset_compile_produces_the_right_footprint hcompile', footprints_wf]
   }

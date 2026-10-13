@@ -21,6 +21,7 @@ public import Cedar.Spec
 public import Cedar.SymCC
 public import Cedar.SymCCOpt.Authorizer
 public import Cedar.SymCCOpt.Compiler
+public import Cedar.SymCCOpt.CompiledSchema
 public import Cedar.Validation.Validator
 
 @[expose] public section -- TODO: make the public interface more granular/intentional, instead of having everything public and exposed
@@ -63,9 +64,10 @@ This function calls the Cedar typechecker to obtain a policy `p'` that is
 semantically equivalent to `p` and well-typed with respect to `Γ`.
 Then, it runs the symbolic compiler to produce a compiled policy.
 -/
-def CompiledPolicy.compile (p : Policy) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicy := do
+def CompiledPolicy.compile (p : Policy) (s : CompiledSchema) (reqty : Validation.RequestType) : Except CompiledPolicyError CompiledPolicy := do
+  let Γ := s.typeEnv reqty
   let policy ← wellTypedPolicy p Γ |>.mapError .validationError
-  let εnv := SymEnv.ofEnv Γ
+  let εnv := s.symEnv reqty
   let { term, footprint } ← Opt.compile policy.toExpr εnv |>.mapError .symCCError
   let acyclicity := footprint.map (SymCC.acyclicity · εnv.entities)
   .ok { term, εnv, policy, footprint, acyclicity }
@@ -94,9 +96,10 @@ This function calls the Cedar typechecker on each `p ∈ ps` to obtain a policy 
 that is semantically equivalent to `p` and well-typed with respect to `Γ`.
 Then, it runs the symbolic compiler to produce a compiled policy.
 -/
-def CompiledPolicySet.compile (ps : Policies) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicySet := do
+def CompiledPolicySet.compile (ps : Policies) (s : CompiledSchema) (reqty : Validation.RequestType) : Except CompiledPolicyError CompiledPolicySet := do
+  let Γ := s.typeEnv reqty
   let policies ← wellTypedPolicies ps Γ |>.mapError .validationError
-  let εnv := SymEnv.ofEnv Γ
+  let εnv := s.symEnv reqty
   let { term, footprint } ← Opt.isAuthorized policies εnv |>.mapError .symCCError
   let acyclicity := footprint.map (SymCC.acyclicity · εnv.entities)
   .ok { term, εnv, policies, footprint, acyclicity }
