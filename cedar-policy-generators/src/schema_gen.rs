@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use crate::{
     abac::{
         self, ABACPolicy, ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType,
-        StaticABACPolicy, UnknownPool,
+        StaticABACPolicy,
     },
     err::{while_doing, Error, Result},
     expr::ExprGenerator,
@@ -326,7 +326,6 @@ pub struct ValidatorSchema<'a> {
     attributes_by_type: IndexMap<abac::Type, Vec<(ast::EntityType, SmolStr)>>,
     settings: &'a ABACSettings,
     constant_pool: ConstantPool,
-    unknown_pool: UnknownPool,
     ext_funcs: AvailableExtensionFunctions,
 }
 
@@ -354,7 +353,6 @@ impl<'a> ValidatorSchema<'a> {
             attributes_by_type,
             settings,
             constant_pool: u.arbitrary()?,
-            unknown_pool: UnknownPool::default(),
             ext_funcs: AvailableExtensionFunctions::create(settings),
         })
     }
@@ -513,7 +511,6 @@ impl SchemaGen for ValidatorSchema<'_> {
             schema: self,
             settings: self.settings,
             constant_pool: &self.constant_pool,
-            unknown_pool: &self.unknown_pool,
             ext_funcs: &self.ext_funcs,
             hierarchy,
         }
