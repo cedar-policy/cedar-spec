@@ -558,11 +558,11 @@ impl Bindings {
         }
     }
 
-    // Replace types with common type references.
-    // We only replace smaller types in composite types like sets and records
-    // to avoid circularity.
-    // This function is a no-op for other types.
-    fn rewrite_type(
+    /// Replace the subterms of `ty` with common type references, leaving `ty` itself alone.
+    ///
+    /// This function (instead of `rewrite_type`) is called from `to_common_types` to avoid
+    /// producing cycles in common type definitions.
+    fn rewrite_type_subterms(
         &self,
         u: &mut Unstructured<'_>,
         ty: &json_schema::Type<ast::InternalName>,
@@ -576,15 +576,7 @@ impl Bindings {
                 loc,
             } => Ok(json_schema::Type::Type {
                 ty: json_schema::TypeVariant::Set {
-                    element: Box::new(if let Some(ids) = self.bindings.get(element) {
-                        json_schema::Type::CommonTypeRef {
-                            type_name: ast::Name::unqualified_name(u.choose(ids)?.clone().into())
-                                .into(),
-                            loc: element.loc().cloned(),
-                        }
-                    } else {
-                        self.rewrite_type(u, element)?
-                    }),
+                    element: Box::new(self.rewrite_type(u, element)?),
                 },
                 loc: loc.clone(),
             }),
@@ -635,10 +627,10 @@ impl Bindings {
             }) => Ok(json_schema::EntityType {
                 kind: EntityTypeKind::Standard(StandardEntityType {
                     member_of_types: member_of_types.clone(),
-                    shape: json_schema::AttributesOrContext(self.rewrite_record_type(u, &shape.0)?),
+                    shape: json_schema::AttributesOrContext(self.rewrite_type(u, &shape.0)?),
                     tags: tags
                         .as_ref()
-                        .map(|tags| self.rewrite_type(u, &tags))
+                        .map(|tags| self.rewrite_type(u, tags))
                         .transpose()?,
                 }),
                 annotations: et.annotations.clone(),
@@ -647,8 +639,11 @@ impl Bindings {
         }
     }
 
-    /// Replace attribute types in a record type with common types
-    fn rewrite_record_type(
+    /// Replace `ty`, or its subterms, with common type references.
+    ///
+    /// If `ty` itself is bound to a common type, replace it with a reference to this type
+    /// otherwise recurse into its subterms with [`Self::rewrite_type_subterms`].
+    fn rewrite_type(
         &self,
         u: &mut Unstructured<'_>,
         ty: &json_schema::Type<ast::InternalName>,
@@ -659,7 +654,7 @@ impl Bindings {
                 loc: None,
             }
         } else {
-            self.rewrite_type(u, ty)?
+            self.rewrite_type_subterms(u, ty)?
         };
         Ok(new_ty)
     }
@@ -671,7 +666,7 @@ impl Bindings {
     // type id_1 = id_2;
     // type id_2 = id_3;
     // ...
-    // type id_n = rewrite_type(ty)
+    // type id_n = rewrite_type_subterms(ty)
     // ```
     fn to_common_types(
         &self,
@@ -680,7 +675,10 @@ impl Bindings {
         let mut common_types = BTreeMap::new();
         for (ty, ids) in &self.bindings {
             if ids.len() == 1 {
-                common_types.insert(ids.first().unwrap().clone(), self.rewrite_type(u, ty)?);
+                common_types.insert(
+                    ids.first().unwrap().clone(),
+                    self.rewrite_type_subterms(u, ty)?,
+                );
             } else if ids.len() > 1 {
                 // ids[0] -> ids[1] -> ... -> ids[n]
                 for i in 0..(ids.len() - 1) {
@@ -693,7 +691,10 @@ impl Bindings {
                         },
                     );
                 }
-                common_types.insert(ids[ids.len() - 1].clone(), self.rewrite_type(u, ty)?);
+                common_types.insert(
+                    ids[ids.len() - 1].clone(),
+                    self.rewrite_type_subterms(u, ty)?,
+                );
             }
         }
         Ok(common_types)
@@ -891,7 +892,7 @@ impl Schema {
                                     resource_types: applies.resource_types.clone(),
                                     principal_types: applies.principal_types.clone(),
                                     context: json_schema::AttributesOrContext(
-                                        bindings.rewrite_record_type(u, &applies.context.0)?,
+                                        bindings.rewrite_type(u, &applies.context.0)?,
                                     ),
                                 }),
                                 None => None,
