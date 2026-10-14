@@ -1184,7 +1184,11 @@ impl Schema {
                     ..
                 }) => {
                     for name in &entity_type_ids {
-                        if u.ratio::<u8>(1, 16)? {
+                        // Ratio is `1 / (n + 6)` so that total numbers of edges scales linearly
+                        // with number of entity types rather than the number of possible edges (n^2).
+                        // The `+ 6` is an arbitrary bias to further reduce the total number of
+                        // edges present after TC computation.
+                        if u.ratio::<usize>(1, entity_type_ids.len() + 6)? {
                             let etype = ast::InternalName::from(ast::Name::from(name.clone()));
                             member_of_types.push(etype);
                         }
