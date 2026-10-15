@@ -49,6 +49,13 @@ message RequestValidationRequest {
     cedar_policy_core.Request request = 2;
 }
 
+message PartialSchemaLinkRequest {
+    cedar_policy_validator.Schema first = 1;
+    cedar_policy_validator.Schema second = 2;
+    // Absent when linking is expected to fail.
+    cedar_policy_validator.Schema linked = 3;
+}
+
 message ValidationRequest {
     cedar_policy_validator.Schema schema = 1;
     cedar_policy_core.PolicySet policies = 2;

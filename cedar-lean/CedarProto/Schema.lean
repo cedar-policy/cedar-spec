@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 import Cedar.Spec
+import Cedar.Validation.PartialRequestEntityValidator
 import Protobuf.Message
 import Protobuf.String
 
@@ -97,29 +98,44 @@ private def attrsToCedarType (attrs : Proto.Map String (Qualified ProtoType)) : 
     .ok (k, v)
   .ok $ mapOfArray attrs
 
-def toSchema (schema : Schema) : Except String Validation.Schema := do
+/-- Decode definitions and `external` declarations. -/
+def toPartialSchema (schema : Schema) : Except String Validation.PartialSchema := do
   let descendantMap := Std.HashMap.emptyWithCapacity.insertMany $ schema.ets.map λ decl => (decl.name.toName, Std.HashSet.ofArray $ decl.descendants.map Spec.Proto.Name.toName)
   let ancestorMap := descendantsToAncestors descendantMap
   let ets ← schema.ets.mapM λ decl => do
     let name := decl.name.toName
-    let ese : EntitySchemaEntry ←
-      if decl.enums.isEmpty then .ok $ .standard {
-        ancestors := setOfHashSet (ancestorMap.getD name (Std.HashSet.emptyWithCapacity 0))
+    let ancestors := setOfHashSet (ancestorMap.getD name (Std.HashSet.emptyWithCapacity 0))
+    let pese : PartialEntitySchemaEntry ←
+      if decl.external then .ok $ .external ancestors
+      else if decl.enums.isEmpty then .ok $ .defined $ .standard {
+        ancestors
         attrs := ← attrsToCedarType decl.attrs
         tags := ← option_transpose $ decl.tags.map ProtoType.toCedarType
       }
-      else .ok $ .enum $ setOfArray decl.enums
-    .ok (name, ese)
+      else .ok $ .defined $ .enum $ setOfArray decl.enums
+    .ok (name, pese)
   let descendantMap := Std.HashMap.emptyWithCapacity.insertMany $ schema.acts.map λ decl => (decl.name, Std.HashSet.ofArray decl.descendants)
   let ancestorMap := descendantsToAncestors descendantMap
   let acts ← schema.acts.mapM λ decl => do
-    .ok (decl.name, {
-      appliesToPrincipal := setOfArray $ decl.principalTypes.map Spec.Proto.Name.toName
-      appliesToResource := setOfArray $ decl.resourceTypes.map Spec.Proto.Name.toName
-      ancestors := setOfHashSet (ancestorMap.getD decl.name (Std.HashSet.emptyWithCapacity 0))
-      context := ← attrsToCedarType decl.context
-    })
+    let ancestors := setOfHashSet (ancestorMap.getD decl.name (Std.HashSet.emptyWithCapacity 0))
+    let pase : PartialActionSchemaEntry ←
+      if decl.external then .ok $ .external ancestors
+      else .ok $ .defined {
+        appliesToPrincipal := setOfArray $ decl.principalTypes.map Spec.Proto.Name.toName
+        appliesToResource := setOfArray $ decl.resourceTypes.map Spec.Proto.Name.toName
+        ancestors
+        context := ← attrsToCedarType decl.context
+      }
+    .ok (decl.name, pase)
   .ok { ets := mapOfArray ets, acts := mapOfArray acts }
+
+/-- Errors on any `external` declaration (RFC 116): every caller of this
+requires a complete schema. -/
+def toSchema (schema : Schema) : Except String Validation.Schema := do
+  let ps ← toPartialSchema schema
+  match ps.asSchema? with
+  | some s => .ok s
+  | none   => .error "schema declares entity types or actions `external` (RFC 116), but a complete schema is required here"
 
 end Cedar.Validation.Proto.Schema
 
@@ -131,7 +147,7 @@ namespace Cedar.Validation.Schema
 --   ets : EntitySchema
 --   acts : ActionSchema
 
-private def mergeMaps {α β} [LT α] [DecidableLT α] [BEq α] (x1 x2 : Data.Map α β) : Data.Map α β :=
+def mergeMaps {α β} [LT α] [DecidableLT α] [BEq α] (x1 x2 : Data.Map α β) : Data.Map α β :=
   match x1.toList, x2.toList with
   | [], _      => x2
   | _, []      => x1
@@ -148,3 +164,19 @@ deriving instance Inhabited for Schema
 instance : Field Schema := Field.fromInterFieldFallible Proto.Schema.toSchema merge
 
 end Cedar.Validation.Schema
+
+namespace Cedar.Validation.PartialSchema
+
+-- Same format as `Schema`, but keeps `external` declarations
+
+@[inline]
+def merge (x1 x2 : PartialSchema) : PartialSchema :=
+  {
+    ets  := Schema.mergeMaps x1.ets x2.ets
+    acts := Schema.mergeMaps x1.acts x2.acts
+  }
+
+deriving instance Inhabited for PartialSchema
+instance : Field PartialSchema := Field.fromInterFieldFallible Proto.Schema.toPartialSchema merge
+
+end Cedar.Validation.PartialSchema

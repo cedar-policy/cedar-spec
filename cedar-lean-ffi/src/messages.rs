@@ -230,6 +230,17 @@ impl proto::RequestValidationRequest {
     }
 }
 
+/// Serialize a schema linking request (RFC 116)
+impl proto::PartialSchemaLinkRequest {
+    pub(crate) fn new(first: &Schema, second: &Schema, linked: Option<&Schema>) -> Self {
+        Self {
+            first: Some(cedar_policy::proto::models::Schema::from(first)),
+            second: Some(cedar_policy::proto::models::Schema::from(second)),
+            linked: linked.map(cedar_policy::proto::models::Schema::from),
+        }
+    }
+}
+
 pub mod tpe {
     use cedar_policy::{
         Entities, EntityUid, PartialEntities, PartialEntityUid, PartialRequest, PolicySet, Request,

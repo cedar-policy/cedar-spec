@@ -267,6 +267,14 @@ impl<N: Clone + PartialEq + Debug + Display + TypeName + Ord> Equiv for json_sch
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         Equiv::equiv(&lhs.annotations, &rhs.annotations)
             .map_err(|e| format!("mismatch in entity annotations: {e}"))?;
+        // `kind` alone cannot tell an `external` declaration (RFC 116) from a
+        // definition with an empty shape.
+        if lhs.external != rhs.external {
+            return Err(format!(
+                "only one side is declared `external`: {} and {}",
+                lhs.external, rhs.external
+            ));
+        }
         match (&lhs.kind, &rhs.kind) {
             (EntityTypeKind::Enum { choices: c1 }, EntityTypeKind::Enum { choices: c2 }) => {
                 if c1 != c2 {
@@ -322,6 +330,9 @@ impl Equiv for cedar_policy_core::validator::ValidatorEntityType {
                         rhs.tag_type()
                     ));
                 }
+            }
+            (ValidatorEntityTypeKind::External, ValidatorEntityTypeKind::External) => {
+                Equiv::equiv(&lhs.descendants, &rhs.descendants)?;
             }
             (k1, k2) => {
                 return Err(format!("different entity type kind: {:?} and {:?}", k1, k2));
@@ -547,6 +558,14 @@ impl<N: PartialEq + Debug + Display + Clone + TypeName + Ord> Equiv for json_sch
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         Equiv::equiv(&lhs.annotations, &rhs.annotations)
             .map_err(|e| format!("mismatch in action annotations: {e}"))?;
+        // The `appliesTo` arm below accepts `None` for a definition too, so it
+        // cannot tell an `external` declaration (RFC 116) from one.
+        if lhs.external != rhs.external {
+            return Err(format!(
+                "only one side is declared `external`: {} and {}",
+                lhs.external, rhs.external
+            ));
+        }
         if lhs.attributes != rhs.attributes
             && !(lhs.attributes.as_ref().is_none_or(HashMap::is_empty)
                 && rhs.attributes.as_ref().is_none_or(HashMap::is_empty))
@@ -627,6 +646,19 @@ fn either_empty<N>(spec: &json_schema::ApplySpec<N>) -> bool {
     spec.principal_types.is_empty() || spec.resource_types.is_empty()
 }
 
+/// `action_entities` excludes `external` actions (RFC 116), which are the only
+/// ones without a context type, so every lookup made here has one.
+fn context_type_of<'a>(
+    schema: &'a cedar_policy_core::validator::ValidatorSchema,
+    action: &cedar_policy_core::ast::EntityUID,
+) -> &'a cedar_policy_core::validator::types::Type {
+    schema
+        .get_action_id(action)
+        .expect("action should be in the schema")
+        .context_type()
+        .expect("a non-`external` action has a context type")
+}
+
 impl Equiv for cedar_policy_core::validator::ValidatorSchema {
     fn equiv(lhs: &Self, rhs: &Self) -> Result<(), String> {
         Equiv::equiv(
@@ -642,15 +674,29 @@ impl Equiv for cedar_policy_core::validator::ValidatorSchema {
             &lhs.action_entities()
                 .unwrap()
                 .iter()
-                .map(|e| lhs.get_action_id(e.uid()).unwrap().context_type())
+                .map(|e| context_type_of(lhs, e.uid()))
                 .collect::<HashSet<_>>(),
             &rhs.action_entities()
                 .unwrap()
                 .iter()
-                .map(|e| rhs.get_action_id(e.uid()).unwrap().context_type())
+                .map(|e| context_type_of(rhs, e.uid()))
                 .collect::<HashSet<_>>(),
         )
         .map_err(|e| format!("contexts are not equivalent: {e}"))?;
+        // `action_entities` omits `external` actions (RFC 116), so compare the
+        // declared actions separately to catch one side losing a declaration.
+        let declared = |s: &Self| {
+            s.action_ids()
+                .map(|a| (a.name().clone(), a.is_external()))
+                .collect::<BTreeMap<_, _>>()
+        };
+        if declared(lhs) != declared(rhs) {
+            return Err(format!(
+                "declared actions are not equivalent: {:?} and {:?}",
+                declared(lhs),
+                declared(rhs)
+            ));
+        }
         Ok(())
     }
 }

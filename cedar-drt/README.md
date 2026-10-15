@@ -18,6 +18,9 @@ The table below lists all available fuzz targets, including which component of t
 | [`validation-drt`](fuzz/fuzz_targets/validation-drt.rs) | Validator | DRT | Diff test validation |
 | [`entity-validation`](fuzz/fuzz_targets/entity-validation.rs) | Entity Validator | DRT | Diff test entity validation |
 | [`request-validation`](fuzz/fuzz_targets/request-validation.rs) | Request Validator | DRT | Diff test request validation |
+| [`partial-schema-validation-drt`](fuzz/fuzz_targets/partial-schema-validation-drt.rs) | Entity and Request Validator (RFC 116) | DRT | Diff test entity and request validation against a schema that declares some entity types and actions `external` |
+| [`partial-schema-link-drt`](fuzz/fuzz_targets/partial-schema-link-drt.rs) | Schema linker (RFC 116) | DRT | Diff test successful and rejected links between generated partial schemas |
+| [`partial-schema-link-order-independence-pbt`](fuzz/fuzz_targets/partial-schema-link-order-independence-pbt.rs) | Schema linker (RFC 116) | PBT | Test that linking is independent of the order of its inputs, on schemas parsed from arbitrary JSON |
 | [`tpe-is-authorized-drt`](fuzz/fuzz_targets/tpe-is-authorized-drt.rs) | TPE (partial authorization) | DRT | Diff test Rust and Lean TPE is_authorized API: decisions, policy categorizations, and residual expressions |
 | [`tpe-residual-reauthorize-drt`](fuzz/fuzz_targets/tpe-residual-reauthorize-drt.rs) | TPE (reauthorization of arbitrary residuals) | DRT | Diff test concrete evaluation of a generated residual. The model walks the residual directly; Rust projects it to an `Expr` and evaluates that, so this compares the two routes `reauthorize` and `Residual.evaluate` take |
 | [`partial-entity-validation-drt`](fuzz/fuzz_targets/partial-entity-validation-drt.rs) | TPE (partial entity validator) | DRT | Diff test whether partial entities are valid for a schema |

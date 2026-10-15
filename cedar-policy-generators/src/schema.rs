@@ -628,6 +628,7 @@ impl Bindings {
     ) -> Result<json_schema::EntityType<ast::InternalName>> {
         match &et.kind {
             EntityTypeKind::Enum { .. } => Ok(et.clone()),
+            EntityTypeKind::Standard(_) if et.external => Ok(et.clone()),
             EntityTypeKind::Standard(StandardEntityType {
                 member_of_types,
                 shape,
@@ -638,6 +639,7 @@ impl Bindings {
                     shape: json_schema::AttributesOrContext(self.rewrite_record_type(u, &shape.0)?),
                     tags: tags.clone(),
                 }),
+                external: false,
                 annotations: et.annotations.clone(),
                 loc: et.loc.clone(),
             }),
@@ -875,6 +877,7 @@ impl Schema {
                             annotations: ty.annotations.clone(),
                             attributes: ty.attributes.to_owned(),
                             member_of: ty.member_of.clone(),
+                            external: ty.external,
                             applies_to: match &ty.applies_to {
                                 Some(applies) => Some(json_schema::ApplySpec {
                                     resource_types: applies.resource_types.clone(),
@@ -1159,6 +1162,8 @@ impl Schema {
                                 )
                              })
                             ),
+                            // Schema is used for policy validation, so we do not produce `external`
+                            external: false,
                             annotations: u.arbitrary()?,
                             loc: None,
                         },
@@ -1250,6 +1255,8 @@ impl Schema {
                 Ok((
                     name.clone(),
                     json_schema::ActionType {
+                        // Schema is used for policy validation, so we do not produce `external`
+                        external: false,
                         applies_to: {
                             let mut picked_resource_types =
                                 pick_entity_types(&mut resource_types, u)?;
@@ -1831,6 +1838,7 @@ fn downgrade_entitytype_to_raw(
                 tags: tags.map(downgrade_schematype_to_raw),
             }),
         },
+        external: entitytype.external,
         annotations: entitytype.annotations,
         loc: entitytype.loc,
     }
@@ -1856,6 +1864,7 @@ fn downgrade_action_to_raw(
         member_of: action
             .member_of
             .map(|v| v.into_iter().map(downgrade_aeuid_to_raw).collect()),
+        external: action.external,
         annotations: action.annotations,
         loc: action.loc,
     }
