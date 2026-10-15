@@ -287,3 +287,40 @@ theorem request_and_entities_validate_implies_instance_of_wf_schema (schema : Sc
   simp only [List.forM_ok_implies_all_ok schema.environments TypeEnv.validateWellFormed h₀ env h₁]
   assumption
   simp only [List.forM_ok_implies_all_ok schema.environments (entitiesMatchEnvironment · entities) h₂ env h₁]
+
+/-- Every entity type is among its own `ancestorTypes`. -/
+theorem mem_ancestorTypes_self {schema : Schema} {ety : EntityType} :
+  ety ∈ schema.ancestorTypes ety
+:= by simp [Schema.ancestorTypes, Set.mem_union, Set.mem_singleton]
+
+theorem instance_of_wf_schema_not_ancestor_type_implies_not_ancestor :
+  InstanceOfWellFormedSchema schema req entities →
+  ancestor.ty ∉ schema.ancestorTypes e.ty →
+  (entities.ancestorsOrEmpty e).contains ancestor = false
+:= by
+  intros hwf hnin
+  have ⟨env, henv, hewf, hirty, ⟨hes, hacts⟩⟩ := hwf ; clear hwf
+  unfold Entities.ancestorsOrEmpty
+  cases hed : Map.find? entities e <;> simp only
+  · simp only [Set.not_contains_prop_bool_equiv, Set.not_mem_empty, not_false_eq_true]
+  · rename_i ed
+    have hets : env.ets = schema.ets := env_in_schema_ets_eq henv
+    have hacts : env.acts = schema.acts := env_in_schema_acts_eq henv
+    specialize hes e ed hed
+    suffices hnin' : ancestor ∉ ed.ancestors from by
+      simpa [Set.not_contains_prop_bool_equiv] using hnin'
+    simp only [Schema.ancestorTypes, Set.mem_union, not_or] at hnin
+    cases hes
+    · rename_i hes ; have ⟨e_schema, hes₁, _, _, hes₂, _⟩ := hes ; clear hes
+      grind
+    · rename_i hes ; have ⟨_, _, _, ha₁, ha₂⟩ := hes ; clear hes
+      have ⟨hnin₁, hnin₂⟩ := hnin ; clear hnin
+      split at hnin₂
+      · rename_i hf
+        rw [←hets] at hf
+        exfalso ; exact wf_env_disjoint_ets_acts hewf hf ha₁
+      · rename_i ase _ hf
+        have : ase ∈ (Map.filter (λ act x => act.ty == e.ty) env.acts).values :=
+          Map.mem_filter_if_find? (by simp only [BEq.rfl]) ha₁
+        simp only [List.mem_mapUnion_iff_mem_exists, Set.mem_map] at hnin₂
+        grind
