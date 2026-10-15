@@ -364,3 +364,32 @@ pub fn schema_json_to_cedar_roundtrips(src: serde_json::Value) {
         }
     }
 }
+
+/// Reversing the inputs does not change whether linking succeeds or its result.
+pub fn schema_link_is_order_independent(docs: Vec<serde_json::Value>) {
+    let schemas = docs
+        .into_iter()
+        .filter_map(|doc| {
+            let fragment = cedar_policy::SchemaFragment::from_json_value(doc).ok()?;
+            Schema::from_schema_fragments([fragment]).ok()
+        })
+        .collect::<Vec<_>>();
+    if schemas.len() < 2 {
+        return;
+    }
+
+    let forwards = Schema::schema_link(schemas.iter().cloned());
+    let backwards = Schema::schema_link(schemas.iter().rev().cloned());
+    match (&forwards, &backwards) {
+        (Ok(forwards), Ok(backwards)) => crate::schemas::schemas_are_equivalent(
+            forwards,
+            backwards,
+            "Schema linked in reverse order",
+        ),
+        (Err(_), Err(_)) => (),
+        _ => panic!(
+            "linking changed success when inputs were reversed\n\
+             forwards: {forwards:?}\nbackwards: {backwards:?}\nschemas: {schemas:#?}"
+        ),
+    }
+}

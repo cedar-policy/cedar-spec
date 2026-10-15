@@ -36,6 +36,7 @@ structure ActionDecl where
   context : Proto.Map String (Qualified ProtoType)
   principalTypes : Repeated Spec.Proto.Name
   resourceTypes : Repeated Spec.Proto.Name
+  external : Bool := false
 deriving Repr, Inhabited
 
 namespace ActionDecl
@@ -48,6 +49,7 @@ instance : Message ActionDecl := {
     | 4 => parseFieldElement t context (update context)
     | 5 => parseFieldElement t principalTypes (update principalTypes)
     | 6 => parseFieldElement t resourceTypes (update resourceTypes)
+    | 7 => parseFieldElement t external (update external)
     | _ => let _ ← t.wireType.skip ; pure ignore
 
   merge x y := {
@@ -56,6 +58,7 @@ instance : Message ActionDecl := {
     context        := Field.merge x.context        y.context
     principalTypes := Field.merge x.principalTypes y.principalTypes
     resourceTypes  := Field.merge x.resourceTypes  y.resourceTypes
+    external       := Field.merge x.external       y.external
   }
 }
 
