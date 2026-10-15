@@ -35,6 +35,7 @@ structure EntityDecl where
   attrs : Proto.Map String (Qualified ProtoType)
   tags : Option ProtoType
   enums : Repeated String
+  external : Bool := false
 deriving Repr, Inhabited
 
 namespace EntityDecl
@@ -47,6 +48,7 @@ instance : Message EntityDecl := {
     | 3 => parseFieldElement t attrs (update attrs)
     | 5 => parseFieldElement t tags (update tags)
     | 6 => parseFieldElement t enums (update enums)
+    | 7 => parseFieldElement t external (update external)
     | _ => let _ ← t.wireType.skip ; pure ignore
 
   merge x y := {
@@ -55,6 +57,7 @@ instance : Message EntityDecl := {
     attrs       := Field.merge x.attrs       y.attrs
     tags        := Field.merge x.tags        y.tags
     enums       := Field.merge x.enums       y.enums
+    external    := Field.merge x.external    y.external
   }
 }
 

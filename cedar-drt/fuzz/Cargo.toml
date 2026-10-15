@@ -702,3 +702,21 @@ name = "partial-request-consistency-drt"
 path = "fuzz_targets/partial-request-consistency-drt.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "partial-schema-validation-drt"
+path = "fuzz_targets/partial-schema-validation-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "partial-schema-link-drt"
+path = "fuzz_targets/partial-schema-link-drt.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "partial-schema-link-order-independence-pbt"
+path = "fuzz_targets/partial-schema-link-order-independence-pbt.rs"
+test = false
+doc = false

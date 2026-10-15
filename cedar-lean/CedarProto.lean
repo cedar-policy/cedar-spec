@@ -26,6 +26,7 @@ import CedarProto.EntityValidationRequest
 import CedarProto.EvaluationRequest
 import CedarProto.Expr
 import CedarProto.Name
+import CedarProto.PartialSchemaLinkRequest
 import CedarProto.Policy
 import CedarProto.PolicySet
 import CedarProto.PrincipalOrResourceConstraint

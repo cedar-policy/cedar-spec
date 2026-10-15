@@ -230,6 +230,9 @@ unsafe extern "C" {
     fn checkEvaluate(req: *mut lean_object) -> *mut lean_object;
     fn validateEntities(req: *mut lean_object) -> *mut lean_object;
     fn validateRequest(req: *mut lean_object) -> *mut lean_object;
+    fn validateEntitiesPartialSchema(req: *mut lean_object) -> *mut lean_object;
+    fn validateRequestPartialSchema(req: *mut lean_object) -> *mut lean_object;
+    fn linkPartialSchemas(req: *mut lean_object) -> *mut lean_object;
 
     fn runCheckAsserts(schema: *mut lean_object, asserts: *mut lean_object) -> *mut lean_object;
     fn printCheckAsserts(schema: *mut lean_object, asserts: *mut lean_object) -> *mut lean_object;
@@ -1231,6 +1234,89 @@ impl CedarLeanFfi {
         Ok(self.validate_request_timed(schema, request)?.take_result())
     }
 
+    /// Validate entities against a possibly incomplete schema in Lean.
+    pub fn validate_entities_partial_schema_timed(
+        &self,
+        schema: &Schema,
+        entities: &Entities,
+    ) -> Result<TimedResult<ValidationResponse>, FfiError> {
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                validateEntitiesPartialSchema,
+                &proto::EntityValidationRequest::new(schema, entities),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res)),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
+    }
+    pub fn validate_entities_partial_schema(
+        &self,
+        schema: &Schema,
+        entities: &Entities,
+    ) -> Result<ValidationResponse, FfiError> {
+        Ok(self
+            .validate_entities_partial_schema_timed(schema, entities)?
+            .take_result())
+    }
+
+    /// Validate a request against a possibly incomplete schema in Lean.
+    pub fn validate_request_partial_schema_timed(
+        &self,
+        schema: &Schema,
+        request: &Request,
+    ) -> Result<TimedResult<ValidationResponse>, FfiError> {
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                validateRequestPartialSchema,
+                &proto::RequestValidationRequest::new(schema, request),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res)),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
+    }
+    pub fn validate_request_partial_schema(
+        &self,
+        schema: &Schema,
+        request: &Request,
+    ) -> Result<ValidationResponse, FfiError> {
+        Ok(self
+            .validate_request_partial_schema_timed(schema, request)?
+            .take_result())
+    }
+
+    /// Compare Lean's partial-schema link with `linked` (`None` means rejected).
+    pub fn link_partial_schemas_timed(
+        &self,
+        first: &Schema,
+        second: &Schema,
+        linked: Option<&Schema>,
+    ) -> Result<TimedResult<ValidationResponse>, FfiError> {
+        let response = unsafe {
+            call_lean_ffi_takes_protobuf(
+                linkPartialSchemas,
+                &proto::PartialSchemaLinkRequest::new(first, second, linked),
+            )
+        };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(res) => Ok(TimedResult::from_def(res)),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
+    }
+    pub fn link_partial_schemas(
+        &self,
+        first: &Schema,
+        second: &Schema,
+        linked: Option<&Schema>,
+    ) -> Result<ValidationResponse, FfiError> {
+        Ok(self
+            .link_partial_schemas_timed(first, second, linked)?
+            .take_result())
+    }
+
     /// Calls the lean backend to perform batched authorization
     pub fn batched_authorization_timed(
         &self,
@@ -2050,6 +2136,101 @@ mod test {
             .validate_request(&schema, &req)
             .expect("Lean call unexpectedly failed for validate_request");
         assert_eq!(res, ValidationResponse::Ok(()));
+    }
+
+    fn partial_schema() -> Schema {
+        Schema::from_str(
+            r#"
+            entity User;
+            external entity Photo in [Album];
+            entity Album;
+            external action audit;
+            action view appliesTo {
+                principal: [User],
+                resource: [Album],
+                context: { n1: String }
+            };
+            "#,
+        )
+        .expect("failed to parse partial schema")
+    }
+
+    #[test]
+    fn test_validate_entities_partial_schema() {
+        let schema = partial_schema();
+        let ffi = CedarLeanFfi::new();
+
+        let album = Entity::with_uid(EntityUid::from_str("Album::\"a\"").unwrap());
+        let audit = Entity::with_uid(EntityUid::from_str("Action::\"audit\"").unwrap());
+        let entities = Entities::from_entities(vec![album, audit], None)
+            .expect("Failed to construct entities");
+        assert_eq!(
+            ffi.validate_entities_partial_schema(&schema, &entities)
+                .expect("Lean call unexpectedly failed"),
+            ValidationResponse::Ok(())
+        );
+
+        let photo = Entity::with_uid(EntityUid::from_str("Photo::\"p\"").unwrap());
+        let entities =
+            Entities::from_entities(vec![photo], None).expect("Failed to construct entities");
+        assert!(matches!(
+            ffi.validate_entities_partial_schema(&schema, &entities)
+                .expect("Lean call unexpectedly failed"),
+            ValidationResponse::Error(_)
+        ));
+    }
+
+    #[test]
+    fn test_validate_request_partial_schema() {
+        let schema = partial_schema();
+        let ffi = CedarLeanFfi::new();
+
+        assert_eq!(
+            ffi.validate_request_partial_schema(
+                &schema,
+                &request("User::\"alice\"", "Action::\"view\"", "Album::\"a\"")
+            )
+            .expect("Lean call unexpectedly failed"),
+            ValidationResponse::Ok(())
+        );
+
+        assert!(matches!(
+            ffi.validate_request_partial_schema(
+                &schema,
+                &request("User::\"alice\"", "Action::\"audit\"", "Album::\"a\"")
+            )
+            .expect("Lean call unexpectedly failed"),
+            ValidationResponse::Error(_)
+        ));
+    }
+
+    #[test]
+    fn test_link_partial_schemas() {
+        let ffi = CedarLeanFfi::new();
+        let parse = |src: &str| Schema::from_str(src).expect("failed to parse schema");
+
+        let first = parse("entity User; external entity Album; external action view;");
+        let second = parse(
+            r#"external entity User;
+               entity Album;
+               action view appliesTo { principal: [User], resource: [Album] };"#,
+        );
+        let linked = parse(
+            r#"entity User;
+               entity Album;
+               action view appliesTo { principal: [User], resource: [Album] };"#,
+        );
+        assert_eq!(
+            ffi.link_partial_schemas(&first, &second, Some(&linked))
+                .expect("Lean call unexpectedly failed"),
+            ValidationResponse::Ok(())
+        );
+
+        assert!(matches!(
+            ffi.link_partial_schemas(&first, &second, None)
+                .expect("Lean call unexpectedly failed"),
+            ValidationResponse::Error(_)
+        ));
     }
 
     #[test]
