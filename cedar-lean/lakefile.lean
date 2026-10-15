@@ -22,9 +22,6 @@ require "leanprover" / "doc-gen4" @ git "v4.34.0"
 
 require "leanprover-community" / "batteries" @ git "v4.34.0"
 
-require subverso from git
-  "https://github.com/leanprover/subverso" @ "3a75ede05278806fd3249bb0c97a6fb5777a4f7d"
-
 package Cedar
 
 @[default_target]

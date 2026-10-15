@@ -38,47 +38,33 @@ namespace String
     ============================================================================================== -/
 
 /-- `Digit⁺`: a non-empty string all of whose characters are decimal digits. -/
--- ANCHOR: IsDigits
 public def IsDigits (s : String) : Prop :=
   0 < s.length ∧ ∀ c ∈ s.toList, c.isDigit = true
--- ANCHOR_END: IsDigits
 
 /-- `Digit{n}`: a run of exactly `n` decimal digits. The fixed-width refinement of `IsDigits`,
     used wherever a grammar pins a field's width (the datetime grammar's `YYYY`, `MM`, `SSS`, …). -/
--- ANCHOR: IsFixedDigits
 public def IsFixedDigits (n : Nat) (s : String) : Prop :=
   IsDigits s ∧ s.length = n
--- ANCHOR_END: IsFixedDigits
 
 /-- `Digit{1,n}`: between one and `n` decimal digits. `IsDigits` supplies the lower bound and the
     length constraint the upper (the decimal grammar's `Fraction ::= Digit{1,4}`). -/
--- ANCHOR: IsAtMostNDigits
 public def IsAtMostNDigits (n : Nat) (s : String) : Prop :=
   IsDigits s ∧ s.length ≤ n
--- ANCHOR_END: IsAtMostNDigits
 
 /-- `['-']`: an optional leading minus sign, either present or absent. Shared by the numeric
     grammars that admit a signed literal (decimal's `Sign`, duration's leading `'-'`). -/
--- ANCHOR: IsWfSign
 public def IsWfSign (s : String) : Prop :=
   s = "-" ∨ s = ""
--- ANCHOR_END: IsWfSign
 
 /-- Natural-number value of a captured decimal digit string, defaulting to `0` when parsing fails.
     On a field satisfying `IsDigits`, the default is never taken. -/
--- ANCHOR: natOf
 public def natOf (s : String) : Nat := (toNat?' s).getD 0
--- ANCHOR_END: natOf
 
 /-- Length of a captured string as an integer, for use in grammar value formulas. -/
--- ANCHOR: lenOf
 public def lenOf (s : String) : Int := s.length
--- ANCHOR_END: lenOf
 
 /-- Sign denoted by a captured optional-minus field. -/
--- ANCHOR: signOf
 public def signOf (s : String) : Int := if s.startsWith "-" then -1 else 1
--- ANCHOR_END: signOf
 
 /-- A digit string contains no `'_'`, so `toInt?'`/`toNat?'` (which reject `'_'`) do not
     short-circuit on it. -/

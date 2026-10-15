@@ -46,19 +46,15 @@ over the field values; `daysInMonth` and `isLeapYear` transcribe the two auxilia
 day constraint depends on. -/
 
 /-- The grammar's `isLeapYear(y) = (4 | y) ∧ (¬(100 | y) ∨ (400 | y))`, as a decidable `Bool`. -/
--- ANCHOR: isLeapYear
 public def isLeapYear (y : Nat) : Bool :=
   y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)
--- ANCHOR_END: isLeapYear
 
 /-- The grammar's `daysInMonth(y, m)`: 30 for April/June/September/November, 28 or 29 for
     February depending on the leap year, and 31 otherwise. -/
--- ANCHOR: daysInMonth
 public def daysInMonth (y m : Nat) : Nat :=
   if m == 4 || m == 6 || m == 9 || m == 11 then 30
   else if m == 2 then (if isLeapYear y then 29 else 28)
   else 31
--- ANCHOR_END: daysInMonth
 
 /-! ## Components
 
@@ -67,209 +63,155 @@ predicate pins the field widths (`Digit{n}`) and a `constraintsWf` predicate imp
 bounds from the grammar's `Constraints` block. -/
 
 /-- The grammar's `Date ::= YYYY '-' MM '-' DD`. -/
--- ANCHOR: DateComponents
 public structure DateComponents where
   year : String
   month : String
   day : String
--- ANCHOR_END: DateComponents
 
 /-- `YYYY` is `Digit{4}`; `MM` and `DD` are `Digit{2}`. -/
--- ANCHOR: DateComponents.syntaxWf
 public def DateComponents.syntaxWf (d : DateComponents) : Prop :=
   IsFixedDigits 4 d.year ∧
   IsFixedDigits 2 d.month ∧
   IsFixedDigits 2 d.day
--- ANCHOR_END: DateComponents.syntaxWf
 
 /-- The month/day bounds: `01 ≤ MM ≤ 12` and `01 ≤ DD ≤ daysInMonth(YYYY, MM)`. -/
--- ANCHOR: DateComponents.constraintsWf
 public def DateComponents.constraintsWf (d : DateComponents) : Prop :=
   let mm := natOf d.month
   1 ≤ mm ∧ mm ≤ 12 ∧
   1 ≤ natOf d.day ∧ natOf d.day ≤ daysInMonth (natOf d.year) mm
--- ANCHOR_END: DateComponents.constraintsWf
 
 /-- Render a date as `YYYY '-' MM '-' DD`. -/
--- ANCHOR: DateComponents.asString
 public def DateComponents.asString (d : DateComponents) : String :=
   d.year ++ "-" ++ d.month ++ "-" ++ d.day
--- ANCHOR_END: DateComponents.asString
 
 /-- The grammar's `Time ::= hh ':' mm ':' ss`. -/
--- ANCHOR: TimeComponents
 public structure TimeComponents where
   hours : String
   minutes : String
   seconds : String
--- ANCHOR_END: TimeComponents
 
 /-- `hh`, `mm`, and `ss` are each `Digit{2}`. -/
--- ANCHOR: TimeComponents.syntaxWf
 public def TimeComponents.syntaxWf (t : TimeComponents) : Prop :=
   IsFixedDigits 2 t.hours ∧
   IsFixedDigits 2 t.minutes ∧
   IsFixedDigits 2 t.seconds
--- ANCHOR_END: TimeComponents.syntaxWf
 
 /-- The time bounds: `00 ≤ hh ≤ 23`, `00 ≤ mm ≤ 59`, `00 ≤ ss ≤ 59`. -/
--- ANCHOR: TimeComponents.constraintsWf
 public def TimeComponents.constraintsWf (t : TimeComponents) : Prop :=
   natOf t.hours ≤ 23 ∧
   natOf t.minutes ≤ 59 ∧
   natOf t.seconds ≤ 59
--- ANCHOR_END: TimeComponents.constraintsWf
 
 /-- Render a time as `hh ':' mm ':' ss`. -/
--- ANCHOR: TimeComponents.asString
 public def TimeComponents.asString (t : TimeComponents) : String :=
   t.hours ++ ":" ++ t.minutes ++ ":" ++ t.seconds
--- ANCHOR_END: TimeComponents.asString
 
 /-- The grammar's `Offset ::= ('+' | '-') hh mm`. `negative` records the sign character;
     `hours` and `mm` reuse the `hh`/`mm` nonterminals of `Time`. -/
--- ANCHOR: OffsetComponents
 public structure OffsetComponents where
   negative : Bool
   hours : String
   minutes : String
--- ANCHOR_END: OffsetComponents
 
 /-- The offset's `hh` and `mm` are each `Digit{2}`, matching the `Time` nonterminals. -/
--- ANCHOR: OffsetComponents.syntaxWf
 public def OffsetComponents.syntaxWf (o : OffsetComponents) : Prop :=
   IsFixedDigits 2 o.hours ∧
   IsFixedDigits 2 o.minutes
--- ANCHOR_END: OffsetComponents.syntaxWf
 
 /-- Because the offset reuses the `hh`/`mm` nonterminals, it inherits their bounds:
     `00 ≤ hh ≤ 23` and `00 ≤ mm ≤ 59`. -/
--- ANCHOR: OffsetComponents.constraintsWf
 public def OffsetComponents.constraintsWf (o : OffsetComponents) : Prop :=
   natOf o.hours ≤ 23 ∧
   natOf o.minutes ≤ 59
--- ANCHOR_END: OffsetComponents.constraintsWf
 
 /-- Render an offset as `('+' | '-') hh mm`. -/
--- ANCHOR: OffsetComponents.asString
 public def OffsetComponents.asString (o : OffsetComponents) : String :=
   (if o.negative then "-" else "+") ++ o.hours ++ o.minutes
--- ANCHOR_END: OffsetComponents.asString
 
 /-- The zone designator that terminates a datetime with a time: either the UTC marker `'Z'`
     (`Date 'T' Time 'Z'` / `Date 'T' Time '.' SSS 'Z'`) or an explicit `Offset`. -/
--- ANCHOR: Zone
 public inductive Zone where
   | utc
   | offset (o : OffsetComponents)
--- ANCHOR_END: Zone
 
 /-- A UTC marker imposes nothing; an offset must have well-formed digit fields. -/
--- ANCHOR: Zone.syntaxWf
 public def Zone.syntaxWf : Zone → Prop
   | .utc => True
   | .offset o => o.syntaxWf
--- ANCHOR_END: Zone.syntaxWf
 
 /-- A UTC marker imposes nothing; an offset must satisfy the `hh`/`mm` bounds. -/
--- ANCHOR: Zone.constraintsWf
 public def Zone.constraintsWf : Zone → Prop
   | .utc => True
   | .offset o => o.constraintsWf
--- ANCHOR_END: Zone.constraintsWf
 
 /-- Render the zone: `'Z'` for UTC, otherwise the offset's `('+' | '-') hh mm`. -/
--- ANCHOR: Zone.asString
 public def Zone.asString : Zone → String
   | .utc => "Z"
   | .offset o => o.asString
--- ANCHOR_END: Zone.asString
 
 /-- The time-bearing tail of a datetime: a `Time`, an optional fractional-seconds field `SSS`
     (`'.' SSS`), and a `Zone`. Absent `SSS` (`none`) corresponds to the forms without a
     `'.' SSS`; `some` corresponds to the `'.' SSS` forms. -/
--- ANCHOR: TimePart
 public structure TimePart where
   time : TimeComponents
   millis : Option String
   zone : Zone
--- ANCHOR_END: TimePart
 
 /-- Lift `IsFixedDigits 3` (the grammar's `SSS ::= Digit{3}`) to the optional field:
     an absent `SSS` is trivially valid. -/
--- ANCHOR: IsWfOptionalMillis
 public def IsWfOptionalMillis : Option String → Prop
   | none => True
   | some millis => IsFixedDigits 3 millis
--- ANCHOR_END: IsWfOptionalMillis
 
 /-- The time, the optional `SSS`, and the zone are each well-formed. -/
--- ANCHOR: TimePart.syntaxWf
 public def TimePart.syntaxWf (tp : TimePart) : Prop :=
   tp.time.syntaxWf ∧
   IsWfOptionalMillis tp.millis ∧
   tp.zone.syntaxWf
--- ANCHOR_END: TimePart.syntaxWf
 
 /-- The time and zone satisfy their numeric bounds. `SSS` is unconstrained (`000`–`999` are all
     valid), so it contributes no numeric constraint. -/
--- ANCHOR: TimePart.constraintsWf
 public def TimePart.constraintsWf (tp : TimePart) : Prop :=
   tp.time.constraintsWf ∧ tp.zone.constraintsWf
--- ANCHOR_END: TimePart.constraintsWf
 
 /-- Render the tail: `'T' Time ['.' SSS] Zone`, so `some sss` inserts `'.' sss`. -/
--- ANCHOR: TimePart.asString
 public def TimePart.asString (tp : TimePart) : String :=
   "T" ++ tp.time.asString ++
     (match tp.millis with | none => "" | some sss => "." ++ sss) ++
     tp.zone.asString
--- ANCHOR_END: TimePart.asString
 
 /-- A datetime is a `Date` optionally followed by a time-bearing tail. `none` is the date-only
     form `Date`; `some tp` covers the four `Date 'T' Time …` forms, with the presence of `SSS`
     and the choice of `Zone` selecting among them. -/
--- ANCHOR: DatetimeComponents
 public structure DatetimeComponents where
   date : DateComponents
   time : Option TimePart
--- ANCHOR_END: DatetimeComponents
 
 /-- Every present component has well-formed digit fields. -/
--- ANCHOR: DatetimeComponents.syntaxWf
 public def DatetimeComponents.syntaxWf (c : DatetimeComponents) : Prop :=
   c.date.syntaxWf ∧ (match c.time with | none => True | some tp => tp.syntaxWf)
--- ANCHOR_END: DatetimeComponents.syntaxWf
 
 /-- Every present component satisfies its numeric bounds. -/
--- ANCHOR: DatetimeComponents.constraintsWf
 public def DatetimeComponents.constraintsWf (c : DatetimeComponents) : Prop :=
   c.date.constraintsWf ∧ (match c.time with | none => True | some tp => tp.constraintsWf)
--- ANCHOR_END: DatetimeComponents.constraintsWf
 
 /-- Canonical string representation: the date, followed by the time-bearing tail when present.
     Phrasing well-formedness existentially over `asString` (below) bakes the grammar's structure
     in for free — the separators, the fixed field order, and the choice among the five top-level
     forms all follow from the shape of the witnessing record. -/
--- ANCHOR: DatetimeComponents.asString
 public def DatetimeComponents.asString (c : DatetimeComponents) : String :=
   c.date.asString ++ (match c.time with | none => "" | some tp => tp.asString)
--- ANCHOR_END: DatetimeComponents.asString
 
 /-- The datetime grammar production witnessed by a syntactically and numerically valid component
     record and its rendering. -/
--- ANCHOR: DatetimeProduction
 public def DatetimeProduction (str : String) (components : DatetimeComponents) : Prop :=
   components.syntaxWf ∧
   components.constraintsWf ∧
   str = components.asString
--- ANCHOR_END: DatetimeProduction
 
 /-- A datetime string is well-formed exactly when it has a valid grammar production. -/
--- ANCHOR: IsWfDatetime
 public def IsWfDatetime (str : String) : Prop :=
   ∃ components : DatetimeComponents, DatetimeProduction str components
--- ANCHOR_END: IsWfDatetime
 
 /-! ## Value relation
 
@@ -281,7 +223,6 @@ trusted grammar specification. -/
 /-- Day count of a date since the Unix epoch (1970-01-01), via Howard Hinnant's `days_from_civil`
     algorithm. This transcribes `Std.Time.PlainDate.toEpochDay` over raw `Nat` fields, independently
     of the `Std.Time` date type. -/
--- ANCHOR: epochDays
 public def epochDays (year month day : Nat) : Int :=
   let m : Int := month
   let d : Int := day
@@ -291,47 +232,36 @@ public def epochDays (year month day : Nat) : Int :=
   let doy : Int := (153 * (m + (if m > 2 then -3 else 9)) + 2).tdiv 5 + d - 1
   let doe : Int := yoe * 365 + yoe.tdiv 4 - yoe.tdiv 100 + doy
   era * 146097 + doe - 719468
--- ANCHOR_END: epochDays
 
 /-- The offset's signed second count: `± (hh × 3600 + mm × 60)`. Positive offsets (`+hhmm`) are
     east of UTC, so the parser subtracts this to normalize to UTC. -/
--- ANCHOR: OffsetComponents.seconds
 public def OffsetComponents.seconds (o : OffsetComponents) : Int :=
   let mag : Int := natOf o.hours * 3600 + natOf o.minutes * 60
   if o.negative then -mag else mag
--- ANCHOR_END: OffsetComponents.seconds
 
 /-- Signed UTC-normalization seconds contributed by a zone: `0` for the `'Z'` marker, and the
     offset's second count otherwise. -/
--- ANCHOR: Zone.offsetSeconds
 public def Zone.offsetSeconds : Zone → Int
   | .utc => 0
   | .offset o => o.seconds
--- ANCHOR_END: Zone.offsetSeconds
 
 /-- Milliseconds-since-epoch value of a well-formed date's midnight UTC. -/
--- ANCHOR: DateComponents.toMillis
 public def DateComponents.toMillis (d : DateComponents) : Int :=
   epochDays (natOf d.year) (natOf d.month) (natOf d.day) * 86400000
--- ANCHOR_END: DateComponents.toMillis
 
 /-- Milliseconds-since-epoch value of a datetime's time-bearing tail relative to its date's
     midnight: the wall-clock time in milliseconds, less the zone offset (converting to UTC),
     plus the optional fractional-seconds field. -/
--- ANCHOR: TimePart.toMillis
 public def TimePart.toMillis (tp : TimePart) : Int :=
   let wallSeconds : Int :=
     natOf tp.time.hours * 3600 + natOf tp.time.minutes * 60 + natOf tp.time.seconds
   let millis : Int := match tp.millis with | none => 0 | some sss => natOf sss
   (wallSeconds - tp.zone.offsetSeconds) * 1000 + millis
--- ANCHOR_END: TimePart.toMillis
 
 /-- Milliseconds-since-epoch value of a whole datetime: the date's midnight plus the time-bearing
     tail's contribution (`0` for the date-only form). -/
--- ANCHOR: DatetimeComponents.toMillis
 public def DatetimeComponents.toMillis (c : DatetimeComponents) : Int :=
   c.date.toMillis + (match c.time with | none => 0 | some tp => tp.toMillis)
--- ANCHOR_END: DatetimeComponents.toMillis
 
 /-- `v` is the value of the datetime literal `str`: `str` is the rendering of syntactically and
     numerically well-formed datetime components, and `v` is their epoch-millisecond denotation.
@@ -339,12 +269,10 @@ public def DatetimeComponents.toMillis (c : DatetimeComponents) : Int :=
     The existential supplies the grammar decomposition directly, so this relation does not
     re-parse the string. It is total on well-formed syntax (`wf_iff_exists_value`) and
     single-valued (`isDatetimeValue_unique`). -/
--- ANCHOR: IsDatetimeValue
 public def IsDatetimeValue (str : String) (v : Int) : Prop :=
   ∃ components : DatetimeComponents,
     DatetimeProduction str components ∧
     v = components.toMillis
--- ANCHOR_END: IsDatetimeValue
 
 /-! ## Canonical serialization
 

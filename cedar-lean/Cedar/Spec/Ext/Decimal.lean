@@ -45,7 +45,6 @@ namespace Decimal
 public def decimal? (i : Int) : Option Decimal :=
   Int64.ofInt? i
 
--- ANCHOR: parse
 public def parse (str : String) : Option Decimal :=
   match str.splitToList (· = '.') with
   | ["-", _] => .none -- String.toInt? "-" == some 0
@@ -62,9 +61,7 @@ public def parse (str : String) : Option Decimal :=
       | _, _ => .none
     else .none
   | _ => .none
--- ANCHOR_END: parse
 
--- ANCHOR: ToString
 public instance : ToString Decimal where
   toString (d : Decimal) : String :=
     let neg   := if d < 0 then "-" else ""
@@ -78,7 +75,6 @@ public instance : ToString Decimal where
       else if right < 1000 then s!".0{right}"
       else s!".{right}"
     s!"{neg}{left}{right}"
--- ANCHOR_END: ToString
 
 public abbrev decimal := parse
 

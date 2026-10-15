@@ -44,34 +44,26 @@ live in `Cedar.Thm.Data.String`. -/
 
 /-- The grammar's `Natural ::= Digit⁺`: the unsigned natural-number production. An `abbrev` for
     the shared `IsDigits` predicate, so every `IsDigits` lemma applies without unfolding. -/
--- ANCHOR: IsNatural
 public abbrev IsNatural (s : String) : Prop := IsDigits s
--- ANCHOR_END: IsNatural
 
 /-- The grammar's `Fraction ::= Digit{1,4}`: 1 to `DECIMAL_DIGITS` digits, an instance of the
     shared bounded-digits predicate. -/
--- ANCHOR: IsWfFrac
 public def IsWfFrac (s : String) : Prop :=
   IsAtMostNDigits DECIMAL_DIGITS s
--- ANCHOR_END: IsWfFrac
 
 /-- A decimal grammar production: `s` is the rendering of well-formed `Sign`, `Natural`, and
     `Fraction` fields, concatenated around the literal decimal point. -/
--- ANCHOR: DecimalProduction
 public def DecimalProduction (s sign natural fraction : String) : Prop :=
   s = sign ++ natural ++ "." ++ fraction ∧
   IsWfSign sign ∧
   IsNatural natural ∧
   IsWfFrac fraction
--- ANCHOR_END: DecimalProduction
 
 /-- Well-formed decimal syntax: `s` is the rendering of a well-formed `Sign ::= ['-']`,
     `Natural ::= Digit⁺`, `'.'`, and `Fraction ::= Digit{1,4}`, concatenated in that order.
     This is the direct grammar transcription; it does not compute a value or invoke a parser. -/
--- ANCHOR: IsWfDecimal
 public def IsWfDecimal (s : String) : Prop :=
   ∃ sign natural fraction, DecimalProduction s sign natural fraction
--- ANCHOR_END: IsWfDecimal
 
 /-- The grammar's value function, applied to an already-decomposed literal:
 
@@ -79,12 +71,10 @@ public def IsWfDecimal (s : String) : Prop :=
 
     `IsWfFrac fraction` bounds `lenOf fraction ≤ DECIMAL_DIGITS`, so converting the second
     exponent to `Nat` does not clamp a negative value on a well-formed field. -/
--- ANCHOR: value
 public def value (sign natural fraction : String) : Int :=
   signOf sign *
     ((natOf natural : Int) * Int.pow 10 DECIMAL_DIGITS
      + (natOf fraction : Int) * Int.pow 10 ((DECIMAL_DIGITS : Int) - lenOf fraction).toNat)
--- ANCHOR_END: value
 
 /-- `v` is the value of the decimal literal `s`: `s` is the rendering of a well-formed
     `Sign ::= ['-']`, `Natural ::= Digit⁺`, `'.'`, and `Fraction ::= Digit{1,4}`, concatenated in
@@ -93,12 +83,10 @@ public def value (sign natural fraction : String) : Int :=
     The existential supplies the split, so no string surgery (`front`/`drop`/`splitToList`) and no
     `Option` appear here. The relation is single-valued (`isDecimalValue_unique`), and a string is
     well-formed exactly when it has some value (`wf_iff_exists_value`). -/
--- ANCHOR: IsDecimalValue
 public def IsDecimalValue (s : String) (v : Int) : Prop :=
   ∃ sign natural fraction,
     DecimalProduction s sign natural fraction ∧
     v = value sign natural fraction
--- ANCHOR_END: IsDecimalValue
 
 /-- Canonical-form normalizer: parse the string and re-serialize.
     Returns `none` for malformed or out-of-range inputs. -/

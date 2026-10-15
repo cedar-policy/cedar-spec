@@ -146,7 +146,6 @@ private def parsePrefixNat (str : String) (digits : Nat) (size : Nat) : Option (
     if n ≤ size then .some (Fin.ofNat (size+1) n) else .none
   else .none
 
--- ANCHOR: parseNumV4
 private def parseNumV4 (str : String) : Option (BitVec 8) :=
   let len := str.length
   if 0 < len && len ≤ 3 && (str.startsWith "0" → str = "0")
@@ -154,7 +153,6 @@ private def parseNumV4 (str : String) : Option (BitVec 8) :=
     let n ← toNat?' str
     if n ≤ 0xff then .some n else .none
   else .none
--- ANCHOR_END: parseNumV4
 
 private def parseSegsV4 (str : String) : Option IPv4Addr :=
   match str.splitToList (· = '.') with
@@ -203,7 +201,6 @@ private def parseNumSegsV6 (str : String) : Option (List (BitVec 16)) :=
   then .some []
   else (str.splitToList (· = ':')).mapM parseNumV6
 
--- ANCHOR: parseSegsV6
 private def parseSegsV6 (str : String) : Option IPv6Addr := do
   let segs ←
     match str.splitOn "::" with
@@ -220,7 +217,6 @@ private def parseSegsV6 (str : String) : Option IPv6Addr := do
   | [a₀, a₁, a₂, a₃, a₄, a₅, a₆, a₇] =>
     .some (IPv6Addr.mk a₀ a₁ a₂ a₃ a₄ a₅ a₆ a₇)
   | _ => .none
--- ANCHOR_END: parseSegsV6
 
 private def parseIPv6Net (str : String) : Option IPNet :=
   match str.splitToList (· = '/') with
@@ -234,11 +230,9 @@ private def parseIPv6Net (str : String) : Option IPNet :=
     .some (IPNet.V6 ⟨v6, pre⟩)
   | _ => .none
 
--- ANCHOR: parse
 private def parse (str : String) : Option IPNet :=
   let ip := parseIPv4Net str
   if ip.isSome then ip else parseIPv6Net str
--- ANCHOR_END: parse
 
 public def ip (str : String) : Option IPNet := parse str
 
