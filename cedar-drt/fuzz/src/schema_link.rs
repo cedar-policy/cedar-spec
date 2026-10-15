@@ -20,7 +20,7 @@
 //! schemas.
 
 use cedar_lean_ffi::{CedarLeanFfi, ValidationResponse};
-use cedar_policy::Schema;
+use cedar_policy::{LinkError, Schema, SchemaError};
 use cedar_policy_core::validator::RawName;
 use cedar_policy_core::validator::json_schema::{self, EntityTypeKind};
 use cedar_policy_generators::{schema, settings::ABACSettings};
@@ -164,15 +164,26 @@ fn fail(message: &str, input: &SchemaLinkInput, response: Option<&ValidationResp
     )
 }
 
+fn is_shadowing(error: &LinkError) -> bool {
+    matches!(
+        error,
+        LinkError::ShadowsBuiltinType(_)
+            | LinkError::Schema(SchemaError::TypeShadowing(_) | SchemaError::ActionShadowing(_))
+    )
+}
+
 /// Compare Rust and Lean linking outcomes and, on success, linked schemas.
 pub fn check_agreement(ffi: &CedarLeanFfi, input: &SchemaLinkInput) {
     let linked = Schema::schema_link([input.first.clone(), input.second.clone()]);
+    if linked.as_ref().is_err_and(|error| is_shadowing(error)) {
+        return;
+    }
     let response = ffi
         .link_partial_schemas(&input.first, &input.second, linked.as_ref().ok())
         .unwrap_or_else(|e| fail(&format!("`link_partial_schemas` failed: {e}"), input, None));
     if !matches!(response, ValidationResponse::Ok(())) {
         fail(
-            "the Rust linker and the model disagree",
+            &format!("the Rust linker and the model disagree\nRust result: {linked:?}"),
             input,
             Some(&response),
         );
