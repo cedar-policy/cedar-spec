@@ -28,7 +28,7 @@ open Proto
 namespace Cedar.Validation.Proto
 
 structure EntityValidationRequest where
-  schema : Validation.Schema
+  schema : Validation.PartialSchema
   entities : Cedar.Spec.Entities
 deriving Repr, Inhabited
 

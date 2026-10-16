@@ -19,6 +19,8 @@ import UnitTest.CedarProto
 import UnitTest.Datetime
 import UnitTest.Decimal
 import UnitTest.IPAddr
+import UnitTest.Linker
+import UnitTest.PartialSchema
 import UnitTest.Proto
 import UnitTest.Wildcard
 import UnitTest.TPE
@@ -31,6 +33,8 @@ def tests :=
   Datetime.tests ++
   Decimal.tests ++
   IPAddr.tests ++
+  Linker.tests ++
+  PartialSchema.tests ++
   Wildcard.tests ++
   Proto.tests ++
   CedarProto.tests ++

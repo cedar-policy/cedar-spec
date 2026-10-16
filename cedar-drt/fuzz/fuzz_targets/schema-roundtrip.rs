@@ -15,7 +15,9 @@
  */
 
 #![no_main]
-use cedar_drt_inner::{fuzz_target, schemas::equivalence_check};
+use cedar_drt_inner::{
+    fuzz_target, partial_schema::declare_some_external, schemas::equivalence_check,
+};
 
 use cedar_policy_core::validator::json_schema;
 use cedar_policy_core::{ast, extensions::Extensions};
@@ -49,7 +51,8 @@ impl<'a> Arbitrary<'a> for Input {
         let namespace = arb_schema.schema.0;
         let name = arb_schema.namespace;
 
-        let schema = json_schema::Fragment(BTreeMap::from([(name, namespace)]));
+        let mut schema = json_schema::Fragment(BTreeMap::from([(name, namespace)]));
+        declare_some_external(&mut schema, u)?;
 
         Ok(Self { schema })
     }

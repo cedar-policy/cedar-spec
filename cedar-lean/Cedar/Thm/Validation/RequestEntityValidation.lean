@@ -287,3 +287,203 @@ theorem request_and_entities_validate_implies_instance_of_wf_schema (schema : Sc
   simp only [List.forM_ok_implies_all_ok schema.environments TypeEnv.validateWellFormed h₀ env h₁]
   assumption
   simp only [List.forM_ok_implies_all_ok schema.environments (entitiesMatchEnvironment · entities) h₂ env h₁]
+
+----- How validation depends on the schema -----
+
+/-- `instanceOfType` depends on its schema only through `instanceOfEntityType`. -/
+theorem instanceOfType_mono {s₁ s₂ : Schema}
+  (hmono : ∀ e ety, instanceOfEntityType e ety s₁ = true →
+    instanceOfEntityType e ety s₂ = true)
+  (v : Value) (ty : CedarType) (h : instanceOfType v ty s₁ = true) :
+  instanceOfType v ty s₂ = true
+:= by
+  suffices hsize : ∀ n (v : Value) (ty : CedarType), sizeOf v < n →
+      instanceOfType v ty s₁ = true → instanceOfType v ty s₂ = true from
+    hsize (sizeOf v + 1) v ty (Nat.lt_succ_self _) h
+  intro n
+  induction n with
+  | zero => intro _ _ hlt; omega
+  | succ n ih =>
+    intro v ty hlt h
+    cases v with
+    | prim p =>
+      cases p with
+      | entityUID e =>
+        cases ty
+        case entity ety =>
+          unfold instanceOfType at h ⊢
+          exact hmono e ety h
+        all_goals unfold instanceOfType at h ⊢; exact h
+      | _ => cases ty <;> (unfold instanceOfType at h ⊢; exact h)
+    | set s =>
+      cases ty
+      case set ty =>
+        unfold instanceOfType at h ⊢
+        rw [Set.all₁_eq_all (f := (instanceOfType · ty s₁))] at h
+        rw [Set.all₁_eq_all (f := (instanceOfType · ty s₂))]
+        rw [Set.all_eq_true] at h ⊢
+        intro x hx
+        apply ih x ty _ (h x hx)
+        have := Set.sizeOf_lt_of_mem hx
+        simp only [Value.set.sizeOf_spec] at hlt
+        omega
+      all_goals unfold instanceOfType at h ⊢; exact h
+    | record r =>
+      cases ty
+      case record rty =>
+        unfold instanceOfType at h ⊢
+        simp only [Bool.and_eq_true] at h ⊢
+        obtain ⟨⟨hkeys, hvals⟩, hreq⟩ := h
+        refine ⟨⟨hkeys, ?_⟩, hreq⟩
+        rw [List.all_eq_true] at hvals ⊢
+        intro ⟨⟨k, v⟩, hv⟩ hmem
+        have hval := hvals ⟨⟨k, v⟩, hv⟩ hmem
+        simp only at hval ⊢
+        cases hq : rty.find? k with
+        | none => rfl
+        | some qty =>
+          simp only [hq] at hval
+          apply ih v qty.getType _ hval
+          have hmem' : (k, v) ∈ r.1 := List.mem_attach₂ hmem
+          have hlt' := Map.sizeOf_lt_of_value hmem'
+          simp only [Value.record.sizeOf_spec] at hlt
+          omega
+      all_goals unfold instanceOfType at h ⊢; exact h
+    | ext _ => cases ty <;> (unfold instanceOfType at h ⊢; exact h)
+
+/-- A record valid against a record type has only attributes of that type. -/
+theorem instanceOfType_record_contains {r : Map Attr Value} {rty : RecordType} {schema : Schema}
+  {a : Attr}
+  (h : instanceOfType (.record r) (.record rty) schema = true)
+  (ha : r.contains a = true) :
+  rty.contains a = true
+:= by
+  unfold instanceOfType at h
+  simp only [Bool.and_eq_true, List.all_eq_true] at h
+  obtain ⟨v, hfind⟩ := Map.contains_iff_some_find?.mp ha
+  exact h.1.1 (a, v) (Map.find?_mem_toList hfind)
+
+/-- A record valid against a record type has each required attribute of that type. -/
+theorem instanceOfType_record_required {r : Map Attr Value} {rty : RecordType} {schema : Schema}
+  {a : Attr} {ty : CedarType}
+  (h : instanceOfType (.record r) (.record rty) schema = true)
+  (hrequired : rty.find? a = some (.required ty)) :
+  r.contains a = true
+:= by
+  unfold instanceOfType at h
+  simp only [Bool.and_eq_true, List.all_eq_true] at h
+  have hpresent := h.2 (a, .required ty) (Map.find?_mem_toList hrequired)
+  simpa [requiredAttributePresent, hrequired, Qualified.isRequired] using hpresent
+
+-- The facts below unfold the nested definitions generated for `instanceOfSchema`.
+
+/-- Entity-entry validation depends on its schema only through `instanceOfEntityType`. -/
+theorem instanceOfEntitySchemaEntry_mono {env₁ env₂ : TypeEnv}
+  {uid : EntityUID} {data : EntityData} {entry : EntitySchemaEntry}
+  (h : instanceOfSchema.instanceOfEntitySchemaEntry env₁ uid data entry = .ok ())
+  (hmono : ∀ e ety, instanceOfEntityType e ety env₁.schema = true →
+    instanceOfEntityType e ety env₂.schema = true) :
+  instanceOfSchema.instanceOfEntitySchemaEntry env₂ uid data entry = .ok ()
+:= by
+  simp only [instanceOfSchema.instanceOfEntitySchemaEntry] at h ⊢
+  split at h <;> try contradiction
+  rename_i heid
+  split at h <;> try contradiction
+  rename_i hattrs
+  split at h <;> try contradiction
+  rename_i hancestors
+  split at h <;> try contradiction
+  rename_i htags
+  have hattrs' := instanceOfType_mono hmono _ _ hattrs
+  have hancestors' : data.ancestors.all (fun ancestor =>
+      entry.ancestors.contains ancestor.ty &&
+      instanceOfEntityType ancestor ancestor.ty env₂.schema) = true := by
+    rw [Set.all_eq_true] at hancestors ⊢
+    intro ancestor hmem
+    have hancestor := hancestors ancestor hmem
+    simp only [Bool.and_eq_true] at hancestor ⊢
+    exact ⟨hancestor.1, hmono _ _ hancestor.2⟩
+  have htags' : instanceOfSchema.instanceOfEntityTags env₂ data entry = true := by
+    simp only [instanceOfSchema.instanceOfEntityTags] at htags ⊢
+    cases htty : entry.tags? with
+    | none => simpa [htty] using htags
+    | some tty =>
+      simp only [htty, List.all_eq_true] at htags ⊢
+      exact fun value hvalue => instanceOfType_mono hmono _ _ (htags value hvalue)
+  simp [heid, hattrs', hancestors', htags']
+
+/-- Action-entry validation depends on its schema only through the action's ancestors. -/
+theorem instanceOfActionSchemaEntry_mono {env₁ env₂ : TypeEnv}
+  {uid : EntityUID} {data : EntityData}
+  (h : instanceOfSchema.instanceOfActionSchemaEntry env₁ uid data = .ok ())
+  (hacts : ∀ entry, env₁.acts.find? uid = some entry →
+    ∃ entry', env₂.acts.find? uid = some entry' ∧ entry'.ancestors = entry.ancestors) :
+  instanceOfSchema.instanceOfActionSchemaEntry env₂ uid data = .ok ()
+:= by
+  simp only [instanceOfSchema.instanceOfActionSchemaEntry] at h ⊢
+  split at h <;> try contradiction
+  rename_i hattrs
+  split at h <;> try contradiction
+  rename_i htags
+  split at h
+  · rename_i entry hentry
+    split at h <;> try contradiction
+    rename_i hancestors
+    obtain ⟨_, hentry', heq⟩ := hacts entry hentry
+    simp only [beq_iff_eq] at hancestors
+    simp [hattrs, htags, hentry', heq, hancestors]
+  · contradiction
+
+/-- A valid action entity is an action of the schema. -/
+theorem instanceOfActionSchemaEntry_find? {env : TypeEnv}
+  {uid : EntityUID} {data : EntityData}
+  (h : instanceOfSchema.instanceOfActionSchemaEntry env uid data = .ok ()) :
+  ∃ entry, env.acts.find? uid = some entry
+:= by
+  simp only [instanceOfSchema.instanceOfActionSchemaEntry] at h
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  split at h
+  · rename_i entry hentry
+    exact ⟨entry, hentry⟩
+  · contradiction
+
+/-- Validating an entity depends on the environment only through its entity and action schemas. -/
+theorem instanceOfSchemaEntry_eq {env₁ env₂ : TypeEnv}
+  (hets : env₁.ets = env₂.ets) (hacts : env₁.acts = env₂.acts) :
+  instanceOfSchema.instanceOfSchemaEntry env₁ =
+    instanceOfSchema.instanceOfSchemaEntry env₂
+:= by
+  obtain ⟨ets, acts, _⟩ := env₁
+  obtain ⟨_, _, _⟩ := env₂
+  dsimp only at hets hacts
+  subst hets hacts
+  rfl
+
+/-- A valid entity of a type the schema declares has attributes of that type. -/
+theorem instanceOfSchemaEntry_attrs {env : TypeEnv} {uid : EntityUID}
+  {data : EntityData} {entry : EntitySchemaEntry}
+  (h : instanceOfSchema.instanceOfSchemaEntry env uid data = .ok ())
+  (hfind : env.ets.find? uid.ty = some entry) :
+  instanceOfType data.attrs (.record entry.attrs) env.schema = true
+:= by
+  simp only [instanceOfSchema.instanceOfSchemaEntry, hfind,
+    instanceOfSchema.instanceOfEntitySchemaEntry] at h
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  assumption
+
+/-- In a well-formed environment, the entity of each action is valid. -/
+theorem instanceOfSchemaEntry_actionEntity {env : TypeEnv} {uid : EntityUID}
+  {entry : ActionSchemaEntry} (hwf : env.WellFormed) (hmem : (uid, entry) ∈ env.acts.toList) :
+  instanceOfSchema.instanceOfSchemaEntry env uid (actionSchemaEntryToEntityData entry) =
+    .ok ()
+:= by
+  have hfind := (Map.in_list_iff_find?_some (wf_env_implies_wf_acts_map hwf)).mp hmem
+  -- An action's type is not an entity type.
+  have hets : env.ets.find? uid.ty = none := by
+    cases h : env.ets.find? uid.ty with
+    | none => rfl
+    | some _ => exact (wf_env_disjoint_ets_acts hwf h hfind).elim
+  simp [instanceOfSchema.instanceOfSchemaEntry, instanceOfSchema.instanceOfActionSchemaEntry,
+    actionSchemaEntryToEntityData, hets, hfind]
