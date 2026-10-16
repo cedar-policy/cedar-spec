@@ -61,28 +61,11 @@ theorem sound_bound_analysis_produces_sound_slices (ba : BoundAnalysis) (request
   IsSoundBoundAnalysis ba →
   IsSoundPolicySlice request entities (ba.slice request entities policies) policies
 := by
-  unfold IsSoundBoundAnalysis
-  unfold IsSoundPolicySlice
   intro h₁
   unfold BoundAnalysis.slice
-  apply And.intro
-  case left =>
-    intro p _
-    simp_all only [List.mem_filter]
-  case right =>
-    intro policy
-    specialize h₁ policy
-    intro h₂ h₃
-    rw [List.mem_filter] at h₃
-    simp only [h₂, true_and, Bool.not_eq_true] at h₃
-    by_contra h₄
-    simp only [Bool.not_eq_true, not_and, Bool.not_eq_false] at h₄
-    unfold IsSoundPolicyBound at h₁
-    specialize h₁ request entities
-    have ⟨h₅, h₆⟩ := h₁; clear h₁
-    simp only [h₃, Bool.false_eq_true, imp_false, Bool.not_eq_true] at h₅ h₆
-    specialize h₄ h₅
-    simp only [h₄, Bool.true_eq_false] at h₆
+  exact sound_filter_produces_sound_slice policies
+    (fun policy => (h₁ policy request entities).left)
+    (fun policy => (h₁ policy request entities).right)
 
 /--
 Scope-based bounds are sound.
@@ -143,5 +126,147 @@ theorem isAuthorized_eq_for_scope_based_policy_slice (request : Request) (entiti
   apply isAuthorized_eq_for_sound_policy_slice
   apply sound_bound_analysis_produces_sound_slices
   exact scope_analysis_is_sound
+
+/-!
+## Action-based slicing
+
+The request action is known exactly, so action scopes admit a more precise
+slice than the `inₑ`-based `PolicyBound` above: `isPolicyRelevantForAction` decides the
+action scope constraint outright (`action_scope_eval_eq_isPolicyRelevantForAction`).
+Concretely, `action == Action::"other"` is irrelevant unless the request action
+*is* `Action::"other"`, whereas `action in Action::"other"` is relevant exactly
+when `Action::"other"` is the request action or one of its ancestors.
+-/
+
+/--
+The action scope analysis is monotone in its membership test: weakening the
+test can only make more policies relevant. This is what lets an analysis with
+incomplete ancestor information — such as the TPE slicer in
+`Cedar.Thm.TPE.PolicySlice` — reuse the exact analysis's soundness proof
+instead of redoing the case analysis over `ActionScope`.
+-/
+theorem isPolicyRelevantForActionBy_mono {f g : EntityUID → EntityUID → Bool} {action : EntityUID} {policy : Policy} :
+  (∀ uid₁ uid₂, f uid₁ uid₂ = false → g uid₁ uid₂ = false) →
+  isPolicyRelevantForActionBy f action policy = false →
+  isPolicyRelevantForActionBy g action policy = false
+:= by
+  intro h_mono h_irr
+  cases h₀ : policy.actionScope
+  case actionInAny uids =>
+    simp only [h₀, isPolicyRelevantForActionBy, List.any_eq_false, Bool.not_eq_true] at h_irr ⊢
+    exact fun uid h_mem => h_mono _ _ (h_irr uid h_mem)
+  case actionScope scope =>
+    cases scope <;>
+      simp only [h₀, isPolicyRelevantForActionBy] at h_irr ⊢
+    case any => exact absurd h_irr (by simp)
+    case eq uid => exact h_irr
+    case mem uid => exact h_mono _ _ h_irr
+    case is ety => exact h_irr
+    case isMem ety uid =>
+      simp only [Bool.and_eq_false_iff] at h_irr ⊢
+      exact h_irr.imp id (h_mono _ _)
+
+/--
+Action-based slicing is sound.
+-/
+theorem action_slice_is_sound (request : Request) (entities : Entities) (policies : Policies) :
+  IsSoundPolicySlice request entities (actionSlice request entities policies) policies
+:= by
+  unfold actionSlice
+  exact sound_filter_produces_sound_slice policies
+    (fun _ h => satisfied_implies_policy_relevant_for_action h)
+    (fun _ h => error_implies_policy_relevant_for_action (if_hasError_then_exists_error h).choose_spec)
+
+/--
+Action-based slicing soundness: `isAuthorized` produces the same result for an
+action-based slice of a collection of policies as it does for the original
+policies.
+-/
+theorem isAuthorized_eq_for_action_based_policy_slice (request : Request) (entities : Entities) (policies : Policies) :
+  isAuthorized request entities (actionSlice request entities policies) =
+  isAuthorized request entities policies
+:= by
+  apply isAuthorized_eq_for_sound_policy_slice
+  exact action_slice_is_sound request entities policies
+
+/-!
+### Consequences for the concrete action scope forms
+
+The two cases called out above, stated directly in terms of membership in the
+action-based slice.
+-/
+
+/--
+`action == uid` is irrelevant unless the request action *is* `uid`. In
+particular, being a descendent of `uid` does not make the policy relevant.
+-/
+theorem mem_action_slice_iff_eq_of_action_eq {policy : Policy} {request : Request} {entities : Entities} {policies : Policies} {uid : EntityUID} :
+  policy ∈ policies →
+  policy.actionScope = .actionScope (.eq uid) →
+  (policy ∈ actionSlice request entities policies ↔ request.action = uid)
+:= by
+  intro h₀ h₁
+  simp only [actionSlice, List.mem_filter, h₀, h₁, isPolicyRelevantForAction, isPolicyRelevantForActionBy, beq_iff_eq, true_and]
+
+/--
+`action in uid` is relevant exactly when `uid` is the request action or one of
+its ancestors.
+-/
+theorem mem_action_slice_iff_inₑ_of_action_in {policy : Policy} {request : Request} {entities : Entities} {policies : Policies} {uid : EntityUID} :
+  policy ∈ policies →
+  policy.actionScope = .actionScope (.mem uid) →
+  (policy ∈ actionSlice request entities policies ↔ inₑ request.action uid entities = true)
+:= by
+  intro h₀ h₁
+  simp only [actionSlice, List.mem_filter, h₀, h₁, isPolicyRelevantForAction, isPolicyRelevantForActionBy, true_and]
+
+/-!
+## The combined slicing algorithm
+
+`scopeSlice` is a single filter that applies both the principal/resource bound
+analysis and the action scope analysis. It is exactly the composition of the
+two slices above, and is therefore sound.
+-/
+
+/--
+`scopeSlice` is the composition of the bound-based and action-based slices.
+-/
+theorem scopeSlice_eq_actionSlice_boundSlice (request : Request) (entities : Entities) (policies : Policies) :
+  scopeSlice request entities policies =
+  actionSlice request entities (BoundAnalysis.slice scopeAnalysis request entities policies)
+:= by
+  simp only [scopeSlice, actionSlice, BoundAnalysis.slice, List.filter_filter]
+  congr 1
+  funext policy
+  exact Bool.and_comm _ _
+
+/--
+The combined slice is sound.
+-/
+theorem scope_slice_is_sound (request : Request) (entities : Entities) (policies : Policies) :
+  IsSoundPolicySlice request entities (scopeSlice request entities policies) policies
+:= by
+  unfold scopeSlice
+  apply sound_filter_produces_sound_slice policies <;>
+  intro policy h <;>
+  simp only [Bool.and_eq_true]
+  case _ =>
+    exact ⟨(scope_bound_is_sound policy request entities).left h,
+            satisfied_implies_policy_relevant_for_action h⟩
+  case _ =>
+    exact ⟨(scope_bound_is_sound policy request entities).right h,
+            error_implies_policy_relevant_for_action (if_hasError_then_exists_error h).choose_spec⟩
+
+/--
+Combined slicing soundness: `isAuthorized` produces the same result for the
+full scope-based slice of a collection of policies as it does for the original
+policies.
+-/
+theorem isAuthorized_eq_for_scope_slice (request : Request) (entities : Entities) (policies : Policies) :
+  isAuthorized request entities (scopeSlice request entities policies) =
+  isAuthorized request entities policies
+:= by
+  apply isAuthorized_eq_for_sound_policy_slice
+  exact scope_slice_is_sound request entities policies
 
 end Cedar.Thm

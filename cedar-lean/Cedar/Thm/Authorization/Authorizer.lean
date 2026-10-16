@@ -14,6 +14,7 @@
  limitations under the License.
 -/
 
+import Cedar.Slice.PolicySlice -- isPolicyRelevantForAction
 import Cedar.Spec
 import Cedar.Thm.Authorization.Evaluator
 import Cedar.Thm.Data
@@ -25,7 +26,7 @@ This file contains useful lemmas about the `Authorizer` functions.
 
 namespace Cedar.Thm
 
-open Cedar.Spec Cedar.Data
+open Cedar.Spec Cedar.Slice Cedar.Data
 
 theorem determiningPolicies_wf {policies : Policies} {request : Request} {entities : Entities} :
   (isAuthorized request entities policies).determiningPolicies.WellFormed
@@ -293,6 +294,25 @@ theorem mapOrErr_value_asEntityUID_on_uids_produces_set (list : List EntityUID) 
     have h₁ := mapM_asEntityUID_on_set_uids_produces_ok list
     simp [h, Except.isOk, Except.toBool] at h₁
 
+/--
+  Lemma: `action in [...]` evaluates to whether the request action is a
+  descendent of (or equal to) one of the listed entities.
+-/
+theorem action_in_set_of_euids_eval (list : List EntityUID) (request : Request) (entities : Entities) :
+  evaluate
+    (Expr.binaryApp
+      BinaryOp.mem
+      (Expr.var .action)
+      (Expr.set (list.map fun uid => Expr.lit (.entityUID uid))))
+    request
+    entities =
+  .ok (list.any (inₑ request.action · entities))
+:= by
+  simp only [evaluate, apply₂, inₛ, bind_assoc, Except.bind_ok]
+  rw [List.mapM₁_eq_mapM (evaluate · request entities)]
+  simp only [mapM_evaluate_uids_produces_uids, Except.bind_ok,
+    mapOrErr_value_asEntityUID_on_uids_produces_set, Set.any_make]
+
 theorem action_in_set_of_euids_produces_boolean (list : List EntityUID) (request : Request) (entities : Entities) :
   producesBool
     (Expr.binaryApp
@@ -302,18 +322,7 @@ theorem action_in_set_of_euids_produces_boolean (list : List EntityUID) (request
     request
     entities
 := by
-  unfold producesBool
-  split <;> simp only [Bool.false_eq_true]
-  case h_2 _ h₁ =>
-    simp only [evaluate, apply₂, inₛ, bind_assoc, Except.bind_ok, imp_false, Bool.forall_bool] at h₁
-    rw [List.mapM₁_eq_mapM (evaluate · request entities)] at h₁
-    simp only [mapM_evaluate_uids_produces_uids] at h₁
-    simp only [Except.bind_ok, mapOrErr_value_asEntityUID_on_uids_produces_set, Set.any_make,
-      Except.ok.injEq, Value.prim.injEq, Prim.bool.injEq, List.any_eq_false, Bool.not_eq_true,
-      Classical.not_forall, Bool.not_eq_false, List.any_eq_true, not_exists, not_and] at h₁
-    replace ⟨⟨uid, huid, h₁⟩, h₂⟩ := h₁
-    specialize h₂ uid huid
-    simp_all
+  simp [producesBool, action_in_set_of_euids_eval]
 
 /--
   Lemma: evaluating the principalScope of any policy produces a boolean (and does not error)
@@ -333,35 +342,57 @@ theorem principal_scope_produces_boolean (policy : Policy) (request : Request) (
     · trivial
     · split at h <;> simp at h
 
+theorem beq_value_entityUID (uid₁ uid₂ : EntityUID) :
+  ((Value.prim (.entityUID uid₁)) == (Value.prim (.entityUID uid₂))) = (uid₁ == uid₂)
+:= by
+  rw [Bool.eq_iff_iff, beq_iff_eq, beq_iff_eq, Value.prim.injEq, Prim.entityUID.injEq]
+
+/--
+  Lemma: `isPolicyRelevantForAction` decides the action scope. Evaluating the action
+  scope of a policy always succeeds, and returns `true` exactly when the action
+  scope is relevant to the request action.
+
+  Note that this is sharper than the corresponding facts for the principal and
+  resource scopes (`principal_eval_ok_means_principal_in_uid` and
+  `resource_eval_ok_means_resource_in_uid`), which only give an `inₑ`-based
+  *necessary* condition. The request action is known exactly, so the action
+  scope constraint can be decided outright.
+-/
+theorem action_scope_eval_eq_isPolicyRelevantForAction (policy : Policy) (request : Request) (entities : Entities) :
+  evaluate policy.actionScope.toExpr request entities =
+  .ok (isPolicyRelevantForAction policy request entities)
+:= by
+  cases h₀ : policy.actionScope
+  case actionInAny uids =>
+    simp only [h₀, isPolicyRelevantForAction, isPolicyRelevantForActionBy, ActionScope.toExpr, action_in_set_of_euids_eval]
+  case actionScope scope =>
+    cases scope
+    case any =>
+      simp only [h₀, isPolicyRelevantForAction, isPolicyRelevantForActionBy, ActionScope.toExpr, Scope.toExpr, evaluate]
+    case eq uid =>
+      simp only [h₀, isPolicyRelevantForAction, isPolicyRelevantForActionBy, ActionScope.toExpr, Scope.toExpr, Var.eqEntityUID, evaluate,
+        apply₂, Except.bind_ok, beq_value_entityUID]
+    case mem uid =>
+      simp only [h₀, isPolicyRelevantForAction, isPolicyRelevantForActionBy, ActionScope.toExpr, Scope.toExpr, Var.inEntityUID, evaluate,
+        apply₂, Except.bind_ok]
+    case is ety =>
+      simp only [h₀, isPolicyRelevantForAction, isPolicyRelevantForActionBy, ActionScope.toExpr, Scope.toExpr, Var.isEntityType, evaluate,
+        apply₁, Except.bind_ok]
+    case isMem ety uid =>
+      simp only [h₀, isPolicyRelevantForAction, isPolicyRelevantForActionBy, ActionScope.toExpr, Scope.toExpr, Var.isEntityType,
+        Var.inEntityUID, evaluate, apply₁, apply₂, Except.bind_ok, Result.as, Coe.coe,
+        Value.asBool, Bool.not_eq_true']
+      cases (ety == request.action.ty) <;>
+      simp only [Bool.false_and, Bool.true_and, ↓reduceIte, Bool.true_eq_false,
+        pure, Except.pure]
+
 /--
   Lemma: evaluating the actionScope of any policy produces a boolean (and does not error)
 -/
 theorem action_scope_produces_boolean (policy : Policy) (request : Request) (entities : Entities) :
   producesBool policy.actionScope.toExpr request entities
 := by
-  simp only [producesBool, ActionScope.toExpr, Scope.toExpr, Bool.false_eq_true]
-  cases policy.actionScope
-  case actionInAny list =>
-    split
-    case h_1 => trivial
-    case h_2 res h =>
-      simp at h
-      have h₁ := action_in_set_of_euids_produces_boolean list request entities
-      unfold producesBool at h₁
-      split at h₁ <;> rename_i h₂
-      · simp [h₂] at h
-      · simp at h₁
-  case actionScope scope =>
-    simp only [Var.eqEntityUID, Var.inEntityUID, Var.isEntityType]
-    cases scope <;> simp [evaluate, apply₁, apply₂, Result.as]
-    case isMem ety uid =>
-      simp only [Coe.coe, Value.asBool, Except.bind_ok, beq_eq_false_iff_ne,
-        ne_eq, ite_not]
-      generalize (inₑ request.action uid entities) = b₁
-      generalize (ety == request.action.ty) = b₂
-      split <;> rename_i h
-      · trivial
-      · split at h <;> simp at h
+  simp [producesBool, action_scope_eval_eq_isPolicyRelevantForAction]
 
 /--
   Lemma: evaluating the resourceScope of any policy produces a boolean (and does not error)
@@ -406,9 +437,7 @@ theorem principal_scope_does_not_throw (policy : Policy) (request : Request) (en
 theorem action_scope_does_not_throw (policy : Policy) (request : Request) (entities : Entities) (err : Error) :
   ¬ (evaluate policy.actionScope.toExpr request entities = .error err)
 := by
-  by_contra h
-  have h₁ := action_scope_produces_boolean policy request entities
-  simp [producesBool, h] at h₁
+  simp only [action_scope_eval_eq_isPolicyRelevantForAction, reduceCtorEq, not_false_eq_true]
 
 theorem resource_scope_does_not_throw (policy : Policy) (request : Request) (entities : Entities) (err : Error) :
   ¬ (evaluate policy.resourceScope.toExpr request entities = .error err)
@@ -539,5 +568,32 @@ theorem error_implies_resource_scope_in {policy : Policy} {request : Request} {e
   have ⟨_, _, hᵣ⟩ := error_implies_scope_satisfied h₁
   exact resource_eval_ok_means_resource_in_uid hᵣ h₂
 
+
+/--
+  Action analogues of `satisfied_implies_principal_scope` and
+  `error_implies_principal_scope_in`. Because `isPolicyRelevantForAction` *decides* the
+  action scope, these are exact characterizations rather than the `inₑ`-based
+  necessary conditions available for the principal and resource scopes.
+-/
+theorem satisfied_implies_policy_relevant_for_action {policy : Policy} {request : Request} {entities : Entities} :
+  satisfied policy request entities = true →
+  isPolicyRelevantForAction policy request entities = true
+:= by
+  intro h₁
+  simp only [satisfied, Policy.toExpr] at h₁
+  replace h₁ :=
+    and_true_implies_left_true
+      (and_true_implies_right_true (of_decide_eq_true h₁))
+  rw [action_scope_eval_eq_isPolicyRelevantForAction] at h₁
+  simpa using h₁
+
+theorem error_implies_policy_relevant_for_action {policy : Policy} {request : Request} {entities : Entities} {err : Error} :
+  evaluate policy.toExpr request entities = .error err →
+  isPolicyRelevantForAction policy request entities = true
+:= by
+  intro h₁
+  have ⟨_, h₂, _⟩ := error_implies_scope_satisfied h₁
+  rw [action_scope_eval_eq_isPolicyRelevantForAction] at h₂
+  simpa using h₂
 
 end Cedar.Thm

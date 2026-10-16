@@ -51,6 +51,24 @@ theorem sound_slice_transitive :
       exact h_slice₁_sound p h_mem_ps h_mem_slice₁
 
 /--
+Soundness is monotone in the slice: growing a sound slice keeps it sound. A
+conservative over-approximation of a sound slice is therefore also sound, which
+is what lets an analysis with incomplete information (such as the TPE slicers
+in `Cedar.Thm.TPE.PolicySlice`) reuse the soundness proof of the exact analysis
+it approximates.
+-/
+theorem sound_slice_superset {r : Request} {es : Entities} {slice₁ slice₂ ps : Policies} :
+  IsSoundPolicySlice r es slice₁ ps →
+  slice₁ ⊆ slice₂ →
+  slice₂ ⊆ ps →
+  IsSoundPolicySlice r es slice₂ ps
+:= by
+  intro ⟨_, h_sound⟩ h_grow h_sub
+  refine ⟨h_sub, ?_⟩
+  intro p h_mem_ps h_nmem_slice₂
+  exact h_sound p h_mem_ps (fun h => h_nmem_slice₂ (h_grow h))
+
+/--
 Alternate definition of soundness for policy slicing. Rather than showing
 that a policy doesn't evaluate to `true` or error, we can show that it
 does evaluate to `false`.
@@ -79,6 +97,27 @@ theorem is_sound_policy_slice_def_equiv {req : Request} {entities : Entities} {s
   · intro h_sound p h_mem_ps h_nmem_slice
     have h_false := h_sound p h_mem_ps h_nmem_slice
     simp [h_false, satisfied, hasError]
+
+/--
+Slicing by *any* filter that keeps every satisfied policy and every erroring
+policy is sound. This is the common core of the slicing algorithms in
+`Cedar.Thm.PolicySlice`: the bound analysis, the action scope analysis, and
+their combination all instantiate it.
+-/
+theorem sound_filter_produces_sound_slice {f : Policy → Bool} {request : Request} {entities : Entities} (policies : Policies)
+  (h_sat : ∀ policy, satisfied policy request entities → f policy)
+  (h_err : ∀ policy, hasError policy request entities → f policy) :
+  IsSoundPolicySlice request entities (policies.filter f) policies
+:= by
+  constructor
+  · intro policy h
+    exact (List.mem_filter.mp h).left
+  · intro policy h_mem h_nmem
+    rw [List.mem_filter] at h_nmem
+    simp only [h_mem, not_and, true_implies, Bool.not_eq_true] at h_nmem
+    constructor
+    · intro h ; rw [h_sat policy h] at h_nmem ; contradiction
+    · intro h ; rw [h_err policy h] at h_nmem ; contradiction
 
 /--
 A bound is sound for a given policy if the bound is satisfied for every request

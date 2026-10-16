@@ -23,6 +23,7 @@ import Cedar.Thm.TPE.Conversion
 import Cedar.Thm.TPE.Soundness
 import Cedar.Thm.TPE.PreservesTypeOf
 import Cedar.Thm.TPE.Policy
+import Cedar.Thm.TPE.PolicySlice
 import Cedar.Thm.TPE.Authorizer
 import Cedar.Thm.TPE.WellTyped
 import Cedar.Thm.TPE.ErrorFree
@@ -42,6 +43,7 @@ open Cedar.Data
 open Cedar.TPE
 open Cedar.Spec
 open Cedar.Validation
+open Cedar.Slice
 open Cedar.Thm
 
 /-- Main re-authorization soundness theorem: The result of reauthorizing a
@@ -279,5 +281,116 @@ theorem partial_authorize_no_satisfied_forbids_if_allow
   rw [←allowed_iff_explicitly_permitted_and_not_denied] at h₃
   apply Set.superset_empty_subset_empty (partial_authorize_satisfied_forbids_is_sound h₁ h₂)
   simpa [explicitly_forbidden_iff_satisfying_forbid] using h₃.right
+
+/-!
+## Slicing does not impact TPE, and therefore cannot impact re-authorization
+-/
+
+/--
+Main theorem for TPE policy slicing: taking a sound slice, partially evaluating
+*the slice*, and then re-authorizing with a concrete request and entities gives
+exactly the result of concretely authorizing the **full** policy set.
+
+TPE is run only on the slice, so the policies excluded by the slice are never
+typechecked and may well be ill-typed.
+-/
+theorem slice_reauthorize_is_sound
+  {schema : Schema} {req : Request} {es : Entities}
+  {preq : PartialRequest} {pes : PartialEntities} {slice policies : Policies}
+  {response : TPE.Response} :
+  IsSoundPartialPolicySlice schema preq pes slice policies →
+  isValidAndConsistent schema req es preq pes = .ok () →
+  TPE.isAuthorized schema slice preq pes = .ok response →
+  response.reauthorize req es = Spec.isAuthorized req es policies
+:= by
+  intro h_slice hv h_auth
+  rw [reauthorize_is_sound hv h_auth]
+  exact isAuthorized_eq_for_sound_partial_slice h_slice hv
+
+/--
+If partial authorization of a sound slice reaches a decision, concrete
+authorization of the full policy set reaches the same decision.
+-/
+theorem slice_partial_authorize_decision_is_sound
+  {schema : Schema} {req : Request} {es : Entities}
+  {preq : PartialRequest} {pes : PartialEntities} {slice policies : Policies}
+  {response : TPE.Response} {decision : Decision} :
+  IsSoundPartialPolicySlice schema preq pes slice policies →
+  isValidAndConsistent schema req es preq pes = .ok () →
+  TPE.isAuthorized schema slice preq pes = .ok response →
+  response.decision = some decision →
+  (Spec.isAuthorized req es policies).decision = decision
+:= by
+  intro h_slice hv h_auth h_dec
+  have h := partial_authorize_decision_is_sound h_auth hv h_dec
+  rwa [isAuthorized_eq_for_sound_partial_slice h_slice hv] at h
+
+/--
+Composition of the two theorems above: a decision reached by partial
+authorization of a sound slice survives re-authorization.
+-/
+theorem slice_partial_re_authorize_decision_eq
+  {schema : Schema} {req : Request} {es : Entities}
+  {preq : PartialRequest} {pes : PartialEntities} {slice policies : Policies}
+  {response : TPE.Response} {decision : Decision} :
+  IsSoundPartialPolicySlice schema preq pes slice policies →
+  isValidAndConsistent schema req es preq pes = .ok () →
+  TPE.isAuthorized schema slice preq pes = .ok response →
+  response.decision = some decision →
+  (response.reauthorize req es).decision = decision
+:= by
+  intro h_slice hv h_auth h_dec
+  rw [slice_reauthorize_is_sound h_slice hv h_auth]
+  exact slice_partial_authorize_decision_is_sound h_slice hv h_auth h_dec
+
+/--
+Every policy reported as erroring by partial authorization of a sound slice
+errors under concrete authorization of the full policy set.
+-/
+theorem slice_partial_authorize_erroring_policies_is_sound
+  {schema : Schema} {req : Request} {es : Entities}
+  {preq : PartialRequest} {pes : PartialEntities} {slice policies : Policies}
+  {response : TPE.Response} :
+  IsSoundPartialPolicySlice schema preq pes slice policies →
+  isValidAndConsistent schema req es preq pes = .ok () →
+  TPE.isAuthorized schema slice preq pes = .ok response →
+  (response.errorForbids ∪ response.errorPermits) ⊆ (Spec.isAuthorized req es policies).erroringPolicies
+:= by
+  intro h_slice hv h_auth
+  have h := partial_authorize_erroring_policies_is_sound h_auth hv
+  rwa [isAuthorized_eq_for_sound_partial_slice h_slice hv] at h
+
+/--
+The headline theorem instantiated with action-based slicing: slice on the
+request action, partially evaluate and re-authorize the slice, and the result
+agrees with concrete authorization of the full policy set — even though the
+excluded policies were never typechecked.
+-/
+theorem action_slice_reauthorize_is_sound
+  {schema : Schema} {req : Request} {es : Entities}
+  {preq : PartialRequest} {pes : PartialEntities} {policies : Policies}
+  {response : TPE.Response} :
+  isValidAndConsistent schema req es preq pes = .ok () →
+  TPE.isAuthorized schema (partialActionSlice preq pes policies) preq pes = .ok response →
+  response.reauthorize req es = Spec.isAuthorized req es policies
+:= by
+  intro hv h_auth
+  exact slice_reauthorize_is_sound (partial_action_slice_is_sound schema preq pes policies) hv h_auth
+
+/--
+And the corresponding decision-level statement.
+-/
+theorem action_slice_partial_authorize_decision_is_sound
+  {schema : Schema} {req : Request} {es : Entities}
+  {preq : PartialRequest} {pes : PartialEntities} {policies : Policies}
+  {response : TPE.Response} {decision : Decision} :
+  isValidAndConsistent schema req es preq pes = .ok () →
+  TPE.isAuthorized schema (partialActionSlice preq pes policies) preq pes = .ok response →
+  response.decision = some decision →
+  (Spec.isAuthorized req es policies).decision = decision
+:= by
+  intro hv h_auth h_dec
+  exact slice_partial_authorize_decision_is_sound
+    (partial_action_slice_is_sound schema preq pes policies) hv h_auth h_dec
 
 end Cedar.Thm

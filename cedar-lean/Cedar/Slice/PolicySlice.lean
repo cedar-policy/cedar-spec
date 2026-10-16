@@ -70,4 +70,57 @@ def scopeAnalysis (policy : Policy) : PolicyBound :=
     resourceBound  := policy.resourceScope.scope.bound,
   }
 
+/--
+Shared skeleton of the action scope analysis, parameterized by the test used
+for group membership: `inTest uid₁ uid₂` decides whether `uid₁` is equal to, or
+a descendent of, `uid₂`.
+
+Both the concrete analysis (`isPolicyRelevantForAction`) and the partial one
+used for TPE (`Cedar.Slice.isPolicyRelevantForPartialAction`) are instances of
+this. Factoring the match out keeps them in sync by construction: they can
+differ only in the membership test, which is exactly the invariant their
+soundness proofs rely on (see `isPolicyRelevantForActionBy_mono`).
+-/
+def isPolicyRelevantForActionBy (inTest : EntityUID → EntityUID → Bool) (action : EntityUID) (policy : Policy) : Bool :=
+  match policy.actionScope with
+  | .actionScope .any             => true
+  | .actionScope (.eq uid)        => action == uid
+  | .actionScope (.mem uid)       => inTest action uid
+  | .actionScope (.is ety)        => ety == action.ty
+  | .actionScope (.isMem ety uid) => ety == action.ty && inTest action uid
+  | .actionInAny uids             => uids.any (inTest action ·)
+
+/--
+Decides whether a policy is *relevant* to the request action: i.e., whether
+the policy's action scope constraint is satisfied by the request action.
+
+Unlike the principal and resource scopes, the action of a request is known
+exactly, so action scopes can be decided precisely rather than approximated by
+an `inₑ`-based bound (cf. `PolicyBound`). In particular, an `== Action::"other"`
+scope makes the policy irrelevant unless the request action *is*
+`Action::"other"` (being a descendent of it does not suffice), whereas an
+`in Action::"other"` scope makes it relevant exactly when `Action::"other"` is
+the request action or one of its ancestors.
+-/
+def isPolicyRelevantForAction (policy : Policy) (request : Request) (entities : Entities) : Bool :=
+  isPolicyRelevantForActionBy (inₑ · · entities) request.action policy
+
+/--
+Action-based slicing keeps only the policies whose action scope is relevant to
+the request action.
+-/
+def actionSlice (request : Request) (entities : Entities) (policies : Policies) : Policies :=
+  policies.filter (fun policy => isPolicyRelevantForAction policy request entities)
+
+/--
+Full scope-based slicing: a single pass that keeps a policy only if its
+principal and resource bounds are satisfied by the request *and* its action
+scope is relevant to the request action. This combines `BoundAnalysis.slice`
+with `actionSlice` (see `scopeSlice_eq_actionSlice_boundSlice`).
+-/
+def scopeSlice (request : Request) (entities : Entities) (policies : Policies) : Policies :=
+  policies.filter fun policy =>
+    satisfiedBound (scopeAnalysis policy) request entities &&
+    isPolicyRelevantForAction policy request entities
+
 end Cedar.Slice
