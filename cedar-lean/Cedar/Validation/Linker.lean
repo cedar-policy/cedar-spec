@@ -66,17 +66,50 @@ public instance : ToString LinkError where
 ----- Transitive closure -----
 
 /--
+Merge two canonical lists. `Set.union` canonicalizes the concatenation of its
+operands with an insertion sort, costing a quadratic number of comparisons;
+merging two already-sorted lists is linear. `closeAncestorsRound` is the only
+caller and canonicalizes both operands first, so the round is unchanged; see
+`closeAncestorsRound_eq_foldl_union`.
+-/
+public def mergeCanonical {α} [LT α] [DecidableLT α] [DecidableEq α] :
+    List α → List α → List α
+  | [],      ys      => ys
+  | x :: xs, []      => x :: xs
+  | x :: xs, y :: ys =>
+    if x = y then x :: mergeCanonical xs ys
+    else if x < y then x :: mergeCanonical xs (y :: ys)
+    else y :: mergeCanonical (x :: xs) ys
+termination_by xs ys => xs.length + ys.length
+
+/-- One round of closure, which adds the current ancestors of every member. -/
+public def closeAncestorsRound {α} [LT α] [DecidableLT α] [DecidableEq α]
+    (m : Map α (Set α)) : Map α (Set α) :=
+  m.mapOnValues λ s =>
+    Set.mk (Set.foldl
+      (λ acc a => mergeCanonical acc (((m.find? a).getD ∅).elts.canonicalize id))
+      (s.elts.canonicalize id) s)
+
+/--
+At most `n` rounds of closure, stopping as soon as a round changes nothing.
+Each round looks up ancestors in the previous round's map, so reach doubles
+and the closure is reached after logarithmically many rounds; the key count
+`closeAncestors` passes is a far looser bound.
+-/
+public def closeAncestorsIter {α} [LT α] [DecidableLT α] [DecidableEq α] :
+    Nat → Map α (Set α) → Map α (Set α)
+  | 0,     m => m
+  | n + 1, m =>
+    let m' := closeAncestorsRound m
+    if m' = m then m else closeAncestorsIter n m'
+
+/--
 Close each set of parents under the parent relation, so it holds all
-ancestors. Each round adds the current ancestors of every member; the number
-of keys bounds the rounds needed.
+ancestors. The number of keys bounds the rounds needed.
 -/
 public def closeAncestors {α} [LT α] [DecidableLT α] [DecidableEq α]
     (parents : Map α (Set α)) : Map α (Set α) :=
-  go parents.size parents
-where
-  go : Nat → Map α (Set α) → Map α (Set α)
-    | 0,     m => m
-    | n + 1, m => go n (m.mapOnValues λ s => Set.foldl (λ acc a => acc ∪ (m.find? a).getD ∅) s s)
+  closeAncestorsIter parents.size parents
 
 /--
 Close entity ancestors if doing so does not change a defined entity.

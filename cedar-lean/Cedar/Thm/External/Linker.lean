@@ -497,33 +497,161 @@ private theorem linkMaps_entity_external {ets₁ ets₂ out : PartialEntitySchem
       subst h₂
       exact absurd (entity_link_defined (entity_link_comm ety x _ _ hlinked)) (by simp)
 
+-- Facts about `mergeCanonical`, which `closeAncestorsRound` uses in place of `Set.union`.
+
+private theorem mem_mergeCanonical {α} [LT α] [DecidableLT α] [DecidableEq α]
+    (xs ys : List α) (a : α) :
+    a ∈ mergeCanonical xs ys ↔ a ∈ xs ∨ a ∈ ys := by
+  induction xs, ys using mergeCanonical.induct with
+  | case1 ys => simp [mergeCanonical]
+  | case2 x xs => simp [mergeCanonical]
+  | case3 xs y ys ih =>
+    simp only [mergeCanonical, reduceIte, List.mem_cons, ih]
+    by_cases hay : a = y <;> simp [hay]
+  | case4 x xs y ys hne hlt ih => simp [mergeCanonical, hne, hlt, ih, or_assoc]
+  | case5 x xs y ys hne hnlt ih =>
+    simp [mergeCanonical, hne, hnlt, ih, or_assoc, or_left_comm]
+
+/-- A bound below both lists' members bounds the merge's members. -/
+private theorem lt_of_mem_mergeCanonical {α} [LT α] [DecidableLT α] [DecidableEq α]
+    {w : α} {xs ys : List α} (hx : ∀ z ∈ xs, w < z) (hy : ∀ z ∈ ys, w < z) :
+    ∀ z ∈ mergeCanonical xs ys, w < z :=
+  fun z hz => ((mem_mergeCanonical xs ys z).mp hz).elim (hx z) (hy z)
+
+/-- A bound below a sorted list's head bounds all of its members. -/
+private theorem lt_of_mem_cons {α} [LT α] [StrictLT α] {w x : α} {xs : List α}
+    (hw : w < x) (hx : (x :: xs).SortedBy id) : ∀ z ∈ x :: xs, w < z :=
+  fun z hz => (List.mem_cons.mp hz).elim (· ▸ hw) fun h =>
+    StrictLT.transitive _ _ _ hw (List.sortedBy_implies_head_lt_tail hx z h)
+
+private theorem mergeCanonical_sortedBy {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α]
+    (xs ys : List α) :
+    xs.SortedBy id → ys.SortedBy id → (mergeCanonical xs ys).SortedBy id := by
+  induction xs, ys using mergeCanonical.induct with
+  | case1 ys => intro _ hy; simpa [mergeCanonical] using hy
+  | case2 x xs => intro hx _; simpa [mergeCanonical] using hx
+  | case3 xs y ys ih =>
+    intro hx hy
+    simp only [mergeCanonical, reduceIte]
+    exact List.sortedBy_cons (ih (List.tail_sortedBy hx) (List.tail_sortedBy hy))
+      (lt_of_mem_mergeCanonical (List.sortedBy_implies_head_lt_tail hx)
+        (List.sortedBy_implies_head_lt_tail hy))
+  | case4 x xs y ys hne hlt ih =>
+    intro hx hy
+    simp only [mergeCanonical, hne, hlt, reduceIte]
+    exact List.sortedBy_cons (ih (List.tail_sortedBy hx) hy)
+      (lt_of_mem_mergeCanonical (List.sortedBy_implies_head_lt_tail hx) (lt_of_mem_cons hlt hy))
+  | case5 x xs y ys hne hnlt ih =>
+    intro hx hy
+    have hgt : y < x := (StrictLT.connected x y hne).elim (absurd · hnlt) id
+    simp only [mergeCanonical, hne, hnlt, reduceIte]
+    exact List.sortedBy_cons (ih hx (List.tail_sortedBy hy))
+      (lt_of_mem_mergeCanonical (lt_of_mem_cons hgt hx) (List.sortedBy_implies_head_lt_tail hy))
+
+private theorem mergeCanonical_equiv {α} [LT α] [DecidableLT α] [DecidableEq α]
+    (xs ys : List α) :
+    mergeCanonical xs ys ≡ xs ++ ys :=
+  ⟨fun _ h => List.mem_append.mpr ((mem_mergeCanonical xs ys _).mp h),
+   fun _ h => (mem_mergeCanonical xs ys _).mpr (List.mem_append.mp h)⟩
+
+/-- Merging two sorted lists canonicalizes their concatenation. -/
+private theorem mergeCanonical_eq_canonicalize {α} [LT α] [StrictLT α] [DecidableLT α]
+    [DecidableEq α] {xs ys : List α} (hx : xs.SortedBy id) (hy : ys.SortedBy id) :
+    mergeCanonical xs ys = (xs ++ ys).canonicalize id :=
+  List.sortedBy_equiv_implies_eq id (mergeCanonical_sortedBy xs ys hx hy)
+    (List.canonicalize_sortedBy id _)
+    (List.Equiv.trans (mergeCanonical_equiv xs ys) (List.canonicalize_equiv _))
+
+private theorem canonicalize_append_canonicalize {α} [LT α] [StrictLT α] [DecidableLT α]
+    (xs ys : List α) :
+    (xs.canonicalize id ++ ys.canonicalize id).canonicalize id = (xs ++ ys).canonicalize id :=
+  List.equiv_implies_canonical_eq _ _ <| List.Equiv.trans
+    (List.append_left_equiv _ _ _ (List.canonicalize_equiv xs).symm)
+    (List.append_right_equiv _ _ _ (List.canonicalize_equiv ys).symm)
+
+private theorem union_elts {α} [LT α] [DecidableLT α] (s₁ s₂ : Set α) :
+    (s₁ ∪ s₂).elts = (s₁.elts ++ s₂.elts).canonicalize id := rfl
+
+private theorem mk_elts {α} (s : Set α) : Set.mk s.elts = s := by cases s; rfl
+
+private theorem mergeCanonical_canonicalize {α} [LT α] [StrictLT α] [DecidableLT α]
+    [DecidableEq α] (s₁ s₂ : Set α) :
+    mergeCanonical (s₁.elts.canonicalize id) (s₂.elts.canonicalize id)
+      = (s₁ ∪ s₂).elts.canonicalize id := by
+  rw [mergeCanonical_eq_canonicalize (List.canonicalize_sortedBy id _)
+        (List.canonicalize_sortedBy id _),
+    canonicalize_append_canonicalize, union_elts, List.canonicalize_idempotent]
+
+private theorem foldl_mergeCanonical {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α]
+    (f : α → Set α) (l : List α) (acc : Set α) :
+    List.foldl (λ a x => mergeCanonical a ((f x).elts.canonicalize id))
+        (acc.elts.canonicalize id) l
+      = (List.foldl (λ a x => a ∪ f x) acc l).elts.canonicalize id := by
+  induction l generalizing acc with
+  | nil => rfl
+  | cons x l ih => simp only [List.foldl_cons, mergeCanonical_canonicalize, ih]
+
+/--
+Merging canonical operands computes the same round as folding `Set.union`, so
+the faster `closeAncestorsRound` is the round the proofs below reason about.
+-/
+private theorem closeAncestorsRound_eq_foldl_union {α} [LT α] [StrictLT α] [DecidableLT α]
+    [DecidableEq α] (m : Map α (Set α)) :
+    closeAncestorsRound m
+      = m.mapOnValues λ s => Set.foldl (λ acc a => acc ∪ (m.find? a).getD ∅) s s := by
+  unfold closeAncestorsRound
+  congr 1
+  funext s
+  simp only [Set.foldl, foldl_mergeCanonical]
+  cases hs : s.elts with
+  | nil =>
+    simp only [List.foldl_nil]
+    exact hs ▸ mk_elts s
+  | cons a l =>
+    have hwf : (List.foldl (λ acc x => acc ∪ (m.find? x).getD ∅) s (a :: l)).WellFormed :=
+      List.foldl_union_wf (.inr (List.cons_ne_nil a l))
+    rw [List.sortedBy_implies_canonicalize_eq ((Set.wf_iff_sorted _).mp hwf), mk_elts]
+
 -- Facts about `closeAncestors`.
 
 /-- `y` is listed as an ancestor of `x` in `m`. -/
 private def AncestorEdge (m : Map EntityType (Set EntityType)) (x y : EntityType) : Prop :=
   y ∈ (m.find? x).getD ∅
 
-/-- One round of `closeAncestors`, which adds the ancestors of every listed ancestor. -/
-private def closeRound (m : Map EntityType (Set EntityType)) : Map EntityType (Set EntityType) :=
-  m.mapOnValues λ s => Set.foldl (λ acc a => acc ∪ (m.find? a).getD ∅) s s
-
-/-- The loop of `closeAncestors`, whose own name is not accessible here. -/
+/-- The loop of `closeAncestors` without its early exit, which is easier to reason about. -/
 private def closeIter : Nat → Map EntityType (Set EntityType) → Map EntityType (Set EntityType)
   | 0, m => m
-  | n + 1, m => closeIter n (closeRound m)
+  | n + 1, m => closeIter n (closeAncestorsRound m)
 
+/-- Once a round changes nothing, no later round changes anything either. -/
+private theorem closeIter_of_closeAncestorsRound_eq {m : Map EntityType (Set EntityType)}
+    (h : closeAncestorsRound m = m) (n : Nat) : closeIter n m = m := by
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+    show closeIter n (closeAncestorsRound m) = m
+    rw [h]
+    exact ih
+
+/-- The early exit in `closeAncestorsIter` does not change its result. -/
 private theorem closeAncestors_eq_closeIter (m : Map EntityType (Set EntityType)) :
     closeAncestors m = closeIter m.size m := by
   unfold closeAncestors
   generalize m.size = n
   induction n generalizing m with
   | zero => rfl
-  | succ n ih => exact ih _
+  | succ n ih =>
+    show (if closeAncestorsRound m = m then m else closeAncestorsIter n (closeAncestorsRound m)) =
+      closeIter (n + 1) m
+    split
+    · next h => exact (closeIter_of_closeAncestorsRound_eq h (n + 1)).symm
+    · exact ih _
 
 private theorem ancestorEdge_closeRound {m : Map EntityType (Set EntityType)} {x y : EntityType} :
-    AncestorEdge (closeRound m) x y ↔
+    AncestorEdge (closeAncestorsRound m) x y ↔
       AncestorEdge m x y ∨ ∃ a, AncestorEdge m x a ∧ AncestorEdge m a y := by
-  simp only [AncestorEdge, closeRound, Map.find?_mapOnValues]
+  rw [closeAncestorsRound_eq_foldl_union]
+  simp only [AncestorEdge, Map.find?_mapOnValues]
   cases m.find? x with
   | none => simp [EmptyCollection.emptyCollection, Set.not_mem_empty]
   | some s =>
@@ -534,10 +662,10 @@ private theorem ancestorEdge_closeRound {m : Map EntityType (Set EntityType)} {x
 private theorem walk_closeRound {m : Map EntityType (Set EntityType)} {x y : EntityType}
     {srcs : List EntityType}
     (h : Relation.Walk (AncestorEdge m) x y srcs) :
-    (∃ srcs', Relation.Walk (AncestorEdge (closeRound m)) x y srcs' ∧
+    (∃ srcs', Relation.Walk (AncestorEdge (closeAncestorsRound m)) x y srcs' ∧
       2 * srcs'.length ≤ srcs.length + 1) ∧
     (∀ w, AncestorEdge m w x →
-      ∃ srcs', Relation.Walk (AncestorEdge (closeRound m)) w y srcs' ∧
+      ∃ srcs', Relation.Walk (AncestorEdge (closeAncestorsRound m)) w y srcs' ∧
         2 * srcs'.length ≤ srcs.length + 2) := by
   induction h with
   | @single x y hxy =>
@@ -567,9 +695,9 @@ private theorem walk_closeIter {n : Nat} {m : Map EntityType (Set EntityType)}
 
 /-- Every edge added by a round is a path in the original map. -/
 private theorem closeRound_sound {m : Map EntityType (Set EntityType)} {x y : EntityType}
-    (h : Relation.TransGen (AncestorEdge (closeRound m)) x y) :
+    (h : Relation.TransGen (AncestorEdge (closeAncestorsRound m)) x y) :
     Relation.TransGen (AncestorEdge m) x y := by
-  have hedge : ∀ {a b}, AncestorEdge (closeRound m) a b →
+  have hedge : ∀ {a b}, AncestorEdge (closeAncestorsRound m) a b →
       Relation.TransGen (AncestorEdge m) a b :=
     fun h => (ancestorEdge_closeRound.mp h).elim .single fun ⟨_, h₁, h₂⟩ => .tail (.single h₁) h₂
   induction h with
@@ -609,8 +737,9 @@ private theorem ancestorEdge_closeAncestors {m : Map EntityType (Set EntityType)
 
 /-- Every set computed by a round is well-formed. -/
 private theorem closeRound_wf (m : Map EntityType (Set EntityType)) (x : EntityType) :
-    (((closeRound m).find? x).getD ∅).WellFormed := by
-  simp only [closeRound, Map.find?_mapOnValues]
+    (((closeAncestorsRound m).find? x).getD ∅).WellFormed := by
+  rw [closeAncestorsRound_eq_foldl_union]
+  simp only [Map.find?_mapOnValues]
   cases m.find? x with
   | none => exact Set.empty_wf
   | some s =>
@@ -625,7 +754,7 @@ private theorem closeIter_succ_wf (n : Nat) (m : Map EntityType (Set EntityType)
     (((closeIter (n + 1) m).find? x).getD ∅).WellFormed := by
   induction n generalizing m with
   | zero => exact closeRound_wf m x
-  | succ n ih => exact ih (closeRound m)
+  | succ n ih => exact ih (closeAncestorsRound m)
 
 /-- Every set computed by `closeAncestors` is well-formed. -/
 private theorem closeAncestors_wf (m : Map EntityType (Set EntityType)) (x : EntityType) :
