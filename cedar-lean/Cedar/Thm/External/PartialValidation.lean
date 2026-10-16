@@ -202,7 +202,6 @@ theorem request_validation_soundness
     {p c t : PartialSchema}
     {request : Request}
     (hp : p.WellFormed)
-    (hc : c.WellFormed)
     (hlink : link p c = .ok t)
     (hvalid : p.validateRequest request = .ok ()) :
     t.validateRequest request = .ok () := by
@@ -285,14 +284,11 @@ theorem request_validation_completeness
   have h := hvalid c _ hc hlink (by rw [toPartialSchema_asSchema?]; rfl)
   rwa [PartialSchema.validateRequest, toPartialSchema_validationView] at h
 
-/-- At a complete link, request validation agrees exactly. -/
+/-- A complete partial schema validates requests exactly as the schema completing it. -/
 theorem complete_request_validation_agreement
-    {p c t : PartialSchema}
+    {t : PartialSchema}
     {schema : Schema}
     {request : Request}
-    (hp : p.WellFormed)
-    (hc : c.WellFormed)
-    (hlink : link p c = .ok t)
     (hcomplete : t.asSchema? = some schema) :
     t.validateRequest request = validateRequest schema request := by
   rw [PartialSchema.validateRequest, validationView_eq_of_asSchema? hcomplete]

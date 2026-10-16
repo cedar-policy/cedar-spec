@@ -1882,8 +1882,6 @@ theorem stable_entity_ancestor
     {p c t : PartialSchema}
     {ety : EntityType}
     {entry : EntitySchemaEntry}
-    (hp : p.WellFormed)
-    (hc : c.WellFormed)
     (hlink : link p c = .ok t)
     (hentry : p.ets.find? ety = some (.defined entry)) :
     ∃ linkedEntry,
