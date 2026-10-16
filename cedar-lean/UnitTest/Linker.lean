@@ -362,6 +362,13 @@ external entity E in X;
 // 15, C
 external entity G;
 external entity X in G;
+
+// 16, P
+external entity X;
+external entity F in X;
+// 16, C
+entity E enum ["x"];
+entity X in E;
 ```
 -/
 
@@ -471,6 +478,19 @@ private def example15Expected : PartialSchema := ⟨
   Map.empty
 ⟩
 
+private def example16P : PartialSchema := ⟨
+  Map.make [(X, .external Set.empty), (F, .external (Set.singleton X))],
+  Map.empty
+⟩
+
+private def example16C : PartialSchema := ⟨
+  Map.make [
+    (E, .defined (.enum (Set.singleton "x"))),
+    (X, .defined (.standard ⟨Set.singleton E, Map.empty, none⟩))
+  ],
+  Map.empty
+⟩
+
 private def matchingActionDefinition : PartialSchema := ⟨
   Map.empty,
   Map.make [
@@ -540,6 +560,8 @@ def rejectedLinkTests : TestSuite IO :=
       example13P example13C (.externalAncestorsNotInDefinition E),
     testFailedLink "example 14: linking cannot enlarge a defined entity's ancestors"
       example14P example14C (.definedEntityAncestorsChanged E),
+    testFailedLink "example 16: closing cannot give an external entity an enum ancestor"
+      example16P example16C (.externalAncestorIsEnum F),
     testFailedLink "linking cannot make a new ancestor valid for a defined entity"
       ⟨Map.make [
         (B, .external Set.empty),

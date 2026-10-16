@@ -36,9 +36,20 @@ def PartialEntitySchema.AncestorsClosed (schema : PartialEntitySchema) : Prop :=
     ancestorEntry.ancestors ⊆ entry.ancestors
 
 /--
+No external entity type declaration lists an enum entity type as a parent: a
+definition of the external must list the parent, so only a declaration of the
+parent, which an enum definition cannot be, can supply it.
+-/
+def PartialEntitySchema.ExternalParentsStandard (schema : PartialEntitySchema) : Prop :=
+  ∀ ety parents parent,
+    schema.find? ety = some (.external parents) →
+    parent ∈ parents →
+    ∃ entry, schema.find? parent = some entry ∧ entry.isStandard
+
+/--
 A partial schema is well-formed when its definitions satisfy the existing
-schema conditions and its externals satisfy those conditions using only their
-known ancestors.
+schema conditions, its externals satisfy those conditions using only their
+known ancestors, and no external lists an enum entity type as a parent.
 -/
 def PartialSchema.WellFormed (schema : PartialSchema) : Prop :=
   let view := schema.validationView
@@ -48,6 +59,7 @@ def PartialSchema.WellFormed (schema : PartialSchema) : Prop :=
     reqty := default
   }
   schema.ets.AncestorsClosed ∧
+  schema.ets.ExternalParentsStandard ∧
   env.ets.WellFormed env ∧ env.acts.WellFormed env
 
 /--
@@ -269,18 +281,19 @@ theorem PartialSchema.WellFormed.etsMap
     {schema : PartialSchema} (h : schema.WellFormed) :
     schema.ets.WellFormed := by
   simp only [PartialSchema.WellFormed, PartialSchema.validationView] at h
-  exact Map.mapOnValues_wf.mpr h.2.1.1
+  exact Map.mapOnValues_wf.mpr h.2.2.1.1
 
 /-- A well-formed partial schema has a well-formed action map. -/
 theorem PartialSchema.WellFormed.actsMap
     {schema : PartialSchema} (h : schema.WellFormed) :
     schema.acts.WellFormed := by
   simp only [PartialSchema.WellFormed, PartialSchema.validationView] at h
-  exact Map.mapOnValues_wf.mpr h.2.2.1
+  exact Map.mapOnValues_wf.mpr h.2.2.2.1
 
 /-- `PartialSchema.WellFormed` checks the maps in `wfEnv`. -/
 theorem PartialSchema.wellFormed_iff {schema : PartialSchema} :
     schema.WellFormed ↔ schema.ets.AncestorsClosed ∧
+      schema.ets.ExternalParentsStandard ∧
       schema.wfEnv.ets.WellFormed schema.wfEnv ∧ schema.wfEnv.acts.WellFormed schema.wfEnv :=
   Iff.rfl
 
@@ -311,31 +324,38 @@ theorem PartialSchema.WellFormed.entry {schema : PartialSchema} {ety : EntityTyp
     {entry : PartialEntitySchemaEntry} (h : schema.WellFormed)
     (hfind : schema.ets.find? ety = some entry) :
     entry.validationView.WellFormed schema.wfEnv :=
-  h.2.1.2 ety _ (by simp [validationView_find?_ets, hfind])
+  h.2.2.1.2 ety _ (by simp [validationView_find?_ets, hfind])
 
 /-- In a well-formed partial schema, the view of each action is well-formed. -/
 theorem PartialSchema.WellFormed.action {schema : PartialSchema} {uid : EntityUID}
     {entry : PartialActionSchemaEntry} (h : schema.WellFormed)
     (hfind : schema.acts.find? uid = some entry) :
     entry.validationView.WellFormed schema.wfEnv :=
-  h.2.2.2.1 uid _ (by simp [validationView_find?_acts, hfind])
+  h.2.2.2.2.1 uid _ (by simp [validationView_find?_acts, hfind])
 
-/-- In a well-formed partial schema, every ancestor of an entity type is standard or external. -/
-theorem PartialSchema.WellFormed.ancestor_isStandard {schema : PartialSchema}
+/-- In a well-formed partial schema, no parent of an external entity type is an enum. -/
+theorem PartialSchema.WellFormed.external_parent_isStandard {schema : PartialSchema}
+    {ety parent : EntityType} {parents : Set EntityType} (h : schema.WellFormed)
+    (hfind : schema.ets.find? ety = some (.external parents)) (hmem : parent ∈ parents) :
+    ∃ entry, schema.ets.find? parent = some entry ∧ entry.isStandard :=
+  h.2.1 ety parents parent hfind hmem
+
+/-- In a well-formed partial schema, every ancestor of an entity type is declared. -/
+theorem PartialSchema.WellFormed.ancestor_declared {schema : PartialSchema}
     {ety ancestor : EntityType} {entry : PartialEntitySchemaEntry} (h : schema.WellFormed)
     (hfind : schema.ets.find? ety = some entry) (hmem : ancestor ∈ entry.ancestors) :
-    ∃ entry', schema.ets.find? ancestor = some entry' ∧ entry'.isStandard = true := by
+    ∃ entry', schema.ets.find? ancestor = some entry' := by
   have hwf := h.entry hfind
-  have hstd : ∃ ventry, schema.wfEnv.ets.find? ancestor = some ventry ∧ ventry.isStandard := by
+  have hdeclared : ∃ ventry, schema.wfEnv.ets.find? ancestor = some ventry := by
     cases entry with
     | defined entry =>
       cases entry with
       | enum => exact absurd hmem (Set.not_mem_empty _)
       | standard => exact hwf.2.1 ancestor hmem
     | external => exact hwf.2.1 ancestor hmem
-  obtain ⟨_, hventry, hstd⟩ := hstd
-  obtain ⟨entry', hentry', rfl⟩ := PartialSchema.wfEnv_ets_find? hventry
-  exact ⟨entry', hentry', by rwa [PartialEntitySchemaEntry.validationView_isStandard] at hstd⟩
+  obtain ⟨_, hventry⟩ := hdeclared
+  obtain ⟨entry', hentry', -⟩ := PartialSchema.wfEnv_ets_find? hventry
+  exact ⟨entry', hentry'⟩
 
 /-- In a well-formed partial schema, every ancestor of an action is an action. -/
 theorem PartialSchema.WellFormed.action_ancestor {schema : PartialSchema}
@@ -352,7 +372,7 @@ theorem PartialSchema.WellFormed.acyclic {schema : PartialSchema} {uid : EntityU
     (hfind : schema.acts.find? uid = some entry) :
     uid ∉ entry.ancestors := by
   rw [← PartialActionSchemaEntry.validationView_ancestors]
-  exact h.2.2.2.2.2.1 uid _ (by simp [validationView_find?_acts, hfind])
+  exact h.2.2.2.2.2.2.1 uid _ (by simp [validationView_find?_acts, hfind])
 
 /-- A well-formed partial schema has transitively closed action ancestors. -/
 theorem PartialSchema.WellFormed.transitive {schema : PartialSchema}
@@ -364,7 +384,7 @@ theorem PartialSchema.WellFormed.transitive {schema : PartialSchema}
     entry₂.ancestors ⊆ entry₁.ancestors := by
   rw [← PartialActionSchemaEntry.validationView_ancestors,
     ← PartialActionSchemaEntry.validationView_ancestors]
-  exact h.2.2.2.2.2.2 uid₁ _ uid₂ _
+  exact h.2.2.2.2.2.2.2 uid₁ _ uid₂ _
     (by simp [validationView_find?_acts, hfind₁])
     (by simp [validationView_find?_acts, hfind₂])
     (by rwa [PartialActionSchemaEntry.validationView_ancestors])
@@ -374,7 +394,7 @@ theorem PartialSchema.WellFormed.disjoint {schema : PartialSchema} {uid : Entity
     (h : schema.WellFormed) (haction : schema.acts.contains uid) :
     ¬schema.ets.contains uid.ty := by
   rw [← PartialSchema.wfEnv_ets_contains]
-  exact (PartialSchema.wellFormed_iff.mp h).2.2.2.2.1 uid
+  exact (PartialSchema.wellFormed_iff.mp h).2.2.2.2.2.1 uid
     (by rw [PartialSchema.wfEnv_acts_contains]; exact haction)
 
 /-- In a well-formed partial schema, every entity entry has well-formed ancestors. -/
@@ -444,17 +464,17 @@ theorem DeclarationsKept.cedarType_wf {s t : PartialSchema} (h : DeclarationsKep
     CedarType.WellFormed t.wfEnv ty :=
   CedarType.WellFormed.mono (fun _ => h.entityType_wf) hwf
 
-/-- An ancestor listed in a well-formed `s` is standard or external in `t`. -/
-theorem DeclarationsKept.ancestor_isStandard {s t : PartialSchema}
+/-- An ancestor listed in a well-formed `s` is declared in `t`. -/
+theorem DeclarationsKept.ancestor_declared {s t : PartialSchema}
     (h : DeclarationsKept s t) (hs : s.WellFormed) {ety ancestor : EntityType}
     {entry : PartialEntitySchemaEntry}
     (hfind : s.ets.find? ety = some entry) (hmem : ancestor ∈ entry.ancestors) :
-    ∃ ventry, t.wfEnv.ets.find? ancestor = some ventry ∧ ventry.isStandard = true := by
-  obtain ⟨entry', hentry', hstd⟩ := hs.ancestor_isStandard hfind hmem
-  obtain ⟨entry'', hentry'', hstd'⟩ := h.standard _ _ hentry' hstd
+    ∃ ventry, t.wfEnv.ets.find? ancestor = some ventry := by
+  obtain ⟨entry', hentry'⟩ := hs.ancestor_declared hfind hmem
+  obtain ⟨entry'', hentry''⟩ := Map.contains_iff_some_find?.mp
+    (h.entities ancestor (Map.contains_iff_some_find?.mpr ⟨entry', hentry'⟩))
   exact ⟨entry''.validationView,
-    by rw [PartialSchema.wfEnv, validationView_find?_ets, hentry'']; rfl,
-    by rw [PartialEntitySchemaEntry.validationView_isStandard]; exact hstd'⟩
+    by rw [PartialSchema.wfEnv, validationView_find?_ets, hentry'']; rfl⟩
 
 /-- A definition of a well-formed `s` is well-formed in `t`. -/
 theorem DeclarationsKept.definition_wf {s t : PartialSchema}
@@ -466,7 +486,7 @@ theorem DeclarationsKept.definition_wf {s t : PartialSchema}
   | enum => exact hwf
   | standard std =>
     obtain ⟨hancestors, -, hattrs, hlifted, htags⟩ := hwf
-    exact ⟨hancestors, fun _ hmem => h.ancestor_isStandard hs hfind hmem,
+    exact ⟨hancestors, fun _ hmem => h.ancestor_declared hs hfind hmem,
       h.cedarType_wf hattrs, hlifted,
       fun ty hty => ⟨h.cedarType_wf (htags ty hty).1, (htags ty hty).2⟩⟩
 
@@ -700,7 +720,14 @@ theorem PartialSchema.WellFormed.completeWith {p : PartialSchema} {attrs : Recor
     PartialSchema.WellFormed (p.completeWith attrs) := by
   have hpu := DeclarationsKept.completeWith p attrs
   rw [PartialSchema.wellFormed_iff]
-  refine ⟨?closed, ⟨?etsMap, ?ets⟩, ⟨?actsMap, ?acts, ?disjoint, ?acyclic, ?transitive⟩⟩
+  refine ⟨?closed, ?externals, ⟨?etsMap, ?ets⟩,
+    ⟨?actsMap, ?acts, ?disjoint, ?acyclic, ?transitive⟩⟩
+  case externals =>
+    -- The completion declares no external entity type.
+    intro ety parents parent hfind
+    rw [toPartialSchema_completeWith_ets_find?, Option.map_eq_some_iff] at hfind
+    obtain ⟨pe, -, hview⟩ := hfind
+    simp at hview
   case closed =>
     intro ety entry ancestor ancestorEntry hfind hmem hfind'
     rw [toPartialSchema_completeWith_ets_find?, Option.map_eq_some_iff] at hfind hfind'
@@ -722,7 +749,7 @@ theorem PartialSchema.WellFormed.completeWith {p : PartialSchema} {attrs : Recor
     cases pe with
     | defined => exact hpu.definition_wf hp hpe
     | external =>
-      exact standardEntry_wf (hp.ancestors_wf hpe) (fun _ ha => hpu.ancestor_isStandard hp hpe ha)
+      exact standardEntry_wf (hp.ancestors_wf hpe) (fun _ ha => hpu.ancestor_declared hp hpe ha)
         (hwf _) hlifted
   case actsMap =>
     exact Map.mapOnValues_wf.mp (Map.mapOnValues_wf.mp (Map.mapOnValues_wf.mp hp.actsMap))

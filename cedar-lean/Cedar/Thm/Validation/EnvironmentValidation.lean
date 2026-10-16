@@ -655,14 +655,14 @@ theorem standard_schema_entry_validate_well_formed_is_complete
   (hwf : StandardSchemaEntry.WellFormed env entry) :
   entry.validateWellFormed env = .ok ()
 := by
-  obtain ⟨hancestors, hstandard, hattrs, hlifted, htags⟩ := hwf
+  obtain ⟨hancestors, hdeclared, hattrs, hlifted, htags⟩ := hwf
   simp only [StandardSchemaEntry.validateWellFormed, Set.wellFormed_correct.mpr hancestors,
     ↓reduceIte, Except.bind_ok]
   rw [List.all_ok_implies_forM_ok _ _ ?ancestors]
   case ancestors =>
     intro ety hmem
-    obtain ⟨entry', hfind, hstd⟩ := hstandard ety ((Set.mem_elts_iff_mem_set _ _).mp hmem)
-    simp [hfind, hstd]
+    obtain ⟨entry', hfind⟩ := hdeclared ety ((Set.mem_elts_iff_mem_set _ _).mp hmem)
+    simp [hfind]
   simp only [Except.bind_ok, type_validate_well_formed_is_complete hattrs,
     type_validate_lifted_is_complete hlifted]
   cases htag : entry.tags with

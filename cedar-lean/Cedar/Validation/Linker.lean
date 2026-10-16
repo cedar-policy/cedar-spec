@@ -41,6 +41,8 @@ public inductive LinkError where
   | externalIsEnum (ety : EntityType)
   /-- An external entity has ancestors absent from its definition. -/
   | externalAncestorsNotInDefinition (ety : EntityType)
+  /-- An external entity type has an enumerated entity type among its ancestors. -/
+  | externalAncestorIsEnum (ety : EntityType)
   /-- Linking would add ancestors to a defined entity type. -/
   | definedEntityAncestorsChanged (ety : EntityType)
   /-- Two declarations of an action have different parents. -/
@@ -55,6 +57,8 @@ public instance : ToString LinkError where
     | .externalIsEnum ety => s!"external entity type {ety} links to an enumerated entity type"
     | .externalAncestorsNotInDefinition ety =>
       s!"external entity type {ety} has ancestors absent from its definition"
+    | .externalAncestorIsEnum ety =>
+      s!"external entity type {ety} has an enumerated entity type among its ancestors"
     | .definedEntityAncestorsChanged ety =>
       s!"linking would add ancestors to defined entity type {ety}"
     | .externalActionParentsMismatch uid => s!"declarations of action {uid} have different parents"
@@ -77,6 +81,7 @@ where
 /--
 Close entity ancestors if doing so does not change a defined entity.
 Error if taking closure causes any completed entity ancestor to enlarge.
+Error if an external entity type has an enumerated ancestor, which no definition of it could list.
 -/
 public def PartialEntitySchema.closeForLink (ets : PartialEntitySchema) : Except LinkError PartialEntitySchema := do
   let ancs := closeAncestors (ets.mapOnValues (·.ancestors))
@@ -85,7 +90,13 @@ public def PartialEntitySchema.closeForLink (ets : PartialEntitySchema) : Except
     | .defined (.standard std) =>
       if (ancs.find? ety).getD Set.empty == std.ancestors then .ok ()
       else .error (.definedEntityAncestorsChanged ety)
-    | .defined (.enum _) | .external _ => .ok ()
+    | .defined (.enum _) => .ok ()
+    | .external _ =>
+      ((ancs.find? ety).getD Set.empty).toList.forM λ ancestor =>
+        match ets.find? ancestor with
+        | some entry =>
+          if entry.isStandard then .ok () else .error (.externalAncestorIsEnum ety)
+        | none => .ok ()
   pure (Map.make (ets.toList.map λ (ety, entry) =>
     (ety, entry.withAncestors ((ancs.find? ety).getD Set.empty))))
 
