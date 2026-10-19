@@ -38,6 +38,47 @@ theorem value_record_entityUIDs_def {avs : Map Attr Value} :
   rw [Value.entityUIDs]
   simp only [List.mapUnion₃_eq_mapUnion λ av : Attr × Value => av.snd.entityUIDs]
 
+theorem termPrim_entityUIDs_wf (p : TermPrim) :
+  p.entityUIDs.WellFormed
+:= by
+  cases p <;> simp only [TermPrim.entityUIDs]
+  all_goals first | exact Set.singleton_wf _ | exact Set.empty_wf
+
+theorem term_entityUIDs_wf (t : Term) :
+  t.entityUIDs.WellFormed
+:= by
+  match t with
+  | .var _ | .none _ =>
+    unfold Term.entityUIDs
+    exact Set.empty_wf
+  | .prim p =>
+    unfold Term.entityUIDs
+    exact termPrim_entityUIDs_wf p
+  | .some t =>
+    unfold Term.entityUIDs
+    exact term_entityUIDs_wf t
+  | .set ts _ =>
+    unfold Term.entityUIDs
+    simp only [List.mapUnion₁_eq_mapUnion (Term.entityUIDs ·)]
+    exact List.mapUnion_wf λ tᵢ h =>
+      have := Set.sizeOf_lt_of_mem ((Set.mem_elts_iff_mem_set _ _).mp h)
+      term_entityUIDs_wf tᵢ
+  | .record ats =>
+    unfold Term.entityUIDs
+    simp only [List.mapUnion₃_eq_mapUnion λ at' : Attr × Term => at'.snd.entityUIDs]
+    exact List.mapUnion_wf λ atᵢ h =>
+      have := List.sizeOf_snd_lt_sizeOf_list h
+      have := Map.sizeOf_lt_of_toList ats
+      term_entityUIDs_wf atᵢ.snd
+  | .app _ ts _ =>
+    unfold Term.entityUIDs
+    simp only [List.mapUnion₁_eq_mapUnion (Term.entityUIDs ·)]
+    exact List.mapUnion_wf λ tᵢ h =>
+      have := List.sizeOf_lt_of_mem h
+      term_entityUIDs_wf tᵢ
+termination_by sizeOf t
+decreasing_by all_goals (simp_wf; try omega)
+
 theorem value_ws_closed_implies_wf {v : Value} {es : Entities} :
   v.WellStructured →
   es.ClosedFor v.entityUIDs →

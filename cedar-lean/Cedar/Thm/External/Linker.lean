@@ -497,120 +497,37 @@ private theorem linkMaps_entity_external {ets₁ ets₂ out : PartialEntitySchem
       subst h₂
       exact absurd (entity_link_defined (entity_link_comm ety x _ _ hlinked)) (by simp)
 
--- Facts about `mergeCanonical`, which `closeAncestorsRound` uses in place of `Set.union`.
+/-- Linking entity entries with well-formed ancestors gives an entry with well-formed ancestors. -/
+private theorem entity_link_ancestors_wf
+    {ety : EntityType} {x y z : PartialEntitySchemaEntry}
+    (h : x.link ety y = .ok z)
+    (hx : x.ancestors.WellFormed) (hy : y.ancestors.WellFormed) :
+    z.ancestors.WellFormed := by
+  cases x with
+  | defined => rw [entity_link_defined h]; exact hx
+  | external =>
+    cases y with
+    | defined => rw [entity_link_defined (entity_link_comm _ _ _ _ h)]; exact hy
+    | external =>
+      simp only [PartialEntitySchemaEntry.link, Except.ok.injEq] at h
+      subst h
+      exact Set.union_wf hx hy
 
-private theorem mem_mergeCanonical {α} [LT α] [DecidableLT α] [DecidableEq α]
-    (xs ys : List α) (a : α) :
-    a ∈ mergeCanonical xs ys ↔ a ∈ xs ∨ a ∈ ys := by
-  induction xs, ys using mergeCanonical.induct with
-  | case1 ys => simp [mergeCanonical]
-  | case2 x xs => simp [mergeCanonical]
-  | case3 xs y ys ih =>
-    simp only [mergeCanonical, reduceIte, List.mem_cons, ih]
-    by_cases hay : a = y <;> simp [hay]
-  | case4 x xs y ys hne hlt ih => simp [mergeCanonical, hne, hlt, ih, or_assoc]
-  | case5 x xs y ys hne hnlt ih =>
-    simp [mergeCanonical, hne, hnlt, ih, or_assoc, or_left_comm]
+/-- Every entry of an entity map lists well-formed ancestors. -/
+private def AncestorsWellFormed (ets : PartialEntitySchema) : Prop :=
+  ∀ ety entry, ets.find? ety = some entry → entry.ancestors.WellFormed
 
-/-- A bound below both lists' members bounds the merge's members. -/
-private theorem lt_of_mem_mergeCanonical {α} [LT α] [DecidableLT α] [DecidableEq α]
-    {w : α} {xs ys : List α} (hx : ∀ z ∈ xs, w < z) (hy : ∀ z ∈ ys, w < z) :
-    ∀ z ∈ mergeCanonical xs ys, w < z :=
-  fun z hz => ((mem_mergeCanonical xs ys z).mp hz).elim (hx z) (hy z)
-
-/-- A bound below a sorted list's head bounds all of its members. -/
-private theorem lt_of_mem_cons {α} [LT α] [StrictLT α] {w x : α} {xs : List α}
-    (hw : w < x) (hx : (x :: xs).SortedBy id) : ∀ z ∈ x :: xs, w < z :=
-  fun z hz => (List.mem_cons.mp hz).elim (· ▸ hw) fun h =>
-    StrictLT.transitive _ _ _ hw (List.sortedBy_implies_head_lt_tail hx z h)
-
-private theorem mergeCanonical_sortedBy {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α]
-    (xs ys : List α) :
-    xs.SortedBy id → ys.SortedBy id → (mergeCanonical xs ys).SortedBy id := by
-  induction xs, ys using mergeCanonical.induct with
-  | case1 ys => intro _ hy; simpa [mergeCanonical] using hy
-  | case2 x xs => intro hx _; simpa [mergeCanonical] using hx
-  | case3 xs y ys ih =>
-    intro hx hy
-    simp only [mergeCanonical, reduceIte]
-    exact List.sortedBy_cons (ih (List.tail_sortedBy hx) (List.tail_sortedBy hy))
-      (lt_of_mem_mergeCanonical (List.sortedBy_implies_head_lt_tail hx)
-        (List.sortedBy_implies_head_lt_tail hy))
-  | case4 x xs y ys hne hlt ih =>
-    intro hx hy
-    simp only [mergeCanonical, hne, hlt, reduceIte]
-    exact List.sortedBy_cons (ih (List.tail_sortedBy hx) hy)
-      (lt_of_mem_mergeCanonical (List.sortedBy_implies_head_lt_tail hx) (lt_of_mem_cons hlt hy))
-  | case5 x xs y ys hne hnlt ih =>
-    intro hx hy
-    have hgt : y < x := (StrictLT.connected x y hne).elim (absurd · hnlt) id
-    simp only [mergeCanonical, hne, hnlt, reduceIte]
-    exact List.sortedBy_cons (ih hx (List.tail_sortedBy hy))
-      (lt_of_mem_mergeCanonical (lt_of_mem_cons hgt hx) (List.sortedBy_implies_head_lt_tail hy))
-
-private theorem mergeCanonical_equiv {α} [LT α] [DecidableLT α] [DecidableEq α]
-    (xs ys : List α) :
-    mergeCanonical xs ys ≡ xs ++ ys :=
-  ⟨fun _ h => List.mem_append.mpr ((mem_mergeCanonical xs ys _).mp h),
-   fun _ h => (mem_mergeCanonical xs ys _).mpr (List.mem_append.mp h)⟩
-
-/-- Merging two sorted lists canonicalizes their concatenation. -/
-private theorem mergeCanonical_eq_canonicalize {α} [LT α] [StrictLT α] [DecidableLT α]
-    [DecidableEq α] {xs ys : List α} (hx : xs.SortedBy id) (hy : ys.SortedBy id) :
-    mergeCanonical xs ys = (xs ++ ys).canonicalize id :=
-  List.sortedBy_equiv_implies_eq id (mergeCanonical_sortedBy xs ys hx hy)
-    (List.canonicalize_sortedBy id _)
-    (List.Equiv.trans (mergeCanonical_equiv xs ys) (List.canonicalize_equiv _))
-
-private theorem canonicalize_append_canonicalize {α} [LT α] [StrictLT α] [DecidableLT α]
-    (xs ys : List α) :
-    (xs.canonicalize id ++ ys.canonicalize id).canonicalize id = (xs ++ ys).canonicalize id :=
-  List.equiv_implies_canonical_eq _ _ <| List.Equiv.trans
-    (List.append_left_equiv _ _ _ (List.canonicalize_equiv xs).symm)
-    (List.append_right_equiv _ _ _ (List.canonicalize_equiv ys).symm)
-
-private theorem union_elts {α} [LT α] [DecidableLT α] (s₁ s₂ : Set α) :
-    (s₁ ∪ s₂).elts = (s₁.elts ++ s₂.elts).canonicalize id := rfl
-
-private theorem mk_elts {α} (s : Set α) : Set.mk s.elts = s := by cases s; rfl
-
-private theorem mergeCanonical_canonicalize {α} [LT α] [StrictLT α] [DecidableLT α]
-    [DecidableEq α] (s₁ s₂ : Set α) :
-    mergeCanonical (s₁.elts.canonicalize id) (s₂.elts.canonicalize id)
-      = (s₁ ∪ s₂).elts.canonicalize id := by
-  rw [mergeCanonical_eq_canonicalize (List.canonicalize_sortedBy id _)
-        (List.canonicalize_sortedBy id _),
-    canonicalize_append_canonicalize, union_elts, List.canonicalize_idempotent]
-
-private theorem foldl_mergeCanonical {α} [LT α] [StrictLT α] [DecidableLT α] [DecidableEq α]
-    (f : α → Set α) (l : List α) (acc : Set α) :
-    List.foldl (λ a x => mergeCanonical a ((f x).elts.canonicalize id))
-        (acc.elts.canonicalize id) l
-      = (List.foldl (λ a x => a ∪ f x) acc l).elts.canonicalize id := by
-  induction l generalizing acc with
-  | nil => rfl
-  | cons x l ih => simp only [List.foldl_cons, mergeCanonical_canonicalize, ih]
-
-/--
-Merging canonical operands computes the same round as folding `Set.union`, so
-the faster `closeAncestorsRound` is the round the proofs below reason about.
--/
-private theorem closeAncestorsRound_eq_foldl_union {α} [LT α] [StrictLT α] [DecidableLT α]
-    [DecidableEq α] (m : Map α (Set α)) :
-    closeAncestorsRound m
-      = m.mapOnValues λ s => Set.foldl (λ acc a => acc ∪ (m.find? a).getD ∅) s s := by
-  unfold closeAncestorsRound
-  congr 1
-  funext s
-  simp only [Set.foldl, foldl_mergeCanonical]
-  cases hs : s.elts with
-  | nil =>
-    simp only [List.foldl_nil]
-    exact hs ▸ mk_elts s
-  | cons a l =>
-    have hwf : (List.foldl (λ acc x => acc ∪ (m.find? x).getD ∅) s (a :: l)).WellFormed :=
-      List.foldl_union_wf (.inr (List.cons_ne_nil a l))
-    rw [List.sortedBy_implies_canonicalize_eq ((Set.wf_iff_sorted _).mp hwf), mk_elts]
+/-- Linking the entity maps of well-formed partial schemas gives entries with well-formed ancestors. -/
+private theorem linkMaps_ancestors_wf {s₁ s₂ : PartialSchema} {out : PartialEntitySchema}
+    (hs₁ : s₁.WellFormed) (hs₂ : s₂.WellFormed)
+    (hlink : linkMaps PartialEntitySchemaEntry.link s₁.ets s₂.ets = .ok out) :
+    AncestorsWellFormed out := by
+  intro ety entry hfind
+  rcases linkAt_some (hfind ▸ linkMaps_find? hlink ety) with
+    ⟨h, -⟩ | ⟨-, h⟩ | ⟨x, y, hx, hy, hlinked⟩
+  · exact hs₁.ancestors_wf h
+  · exact hs₂.ancestors_wf h
+  · exact entity_link_ancestors_wf hlinked (hs₁.ancestors_wf hx) (hs₂.ancestors_wf hy)
 
 -- Facts about `closeAncestors`.
 
@@ -650,7 +567,7 @@ private theorem closeAncestors_eq_closeIter (m : Map EntityType (Set EntityType)
 private theorem ancestorEdge_closeRound {m : Map EntityType (Set EntityType)} {x y : EntityType} :
     AncestorEdge (closeAncestorsRound m) x y ↔
       AncestorEdge m x y ∨ ∃ a, AncestorEdge m x a ∧ AncestorEdge m a y := by
-  rw [closeAncestorsRound_eq_foldl_union]
+  unfold closeAncestorsRound
   simp only [AncestorEdge, Map.find?_mapOnValues]
   cases m.find? x with
   | none => simp [EmptyCollection.emptyCollection, Set.not_mem_empty]
@@ -735,37 +652,35 @@ private theorem ancestorEdge_closeAncestors {m : Map EntityType (Set EntityType)
   simp only [List.length_map] at hlen
   exact Nat.le_of_lt (Nat.lt_of_le_of_lt hlen Nat.lt_two_pow_self)
 
-/-- Every set computed by a round is well-formed. -/
-private theorem closeRound_wf (m : Map EntityType (Set EntityType)) (x : EntityType) :
-    (((closeAncestorsRound m).find? x).getD ∅).WellFormed := by
-  rw [closeAncestorsRound_eq_foldl_union]
+/-- Every set in a map is well-formed. -/
+private def AllWellFormed (m : Map EntityType (Set EntityType)) : Prop :=
+  ∀ x, ((m.find? x).getD ∅).WellFormed
+
+/-- A round preserves well-formedness of every set. -/
+private theorem closeRound_wf {m : Map EntityType (Set EntityType)} (hm : AllWellFormed m) :
+    AllWellFormed (closeAncestorsRound m) := by
+  intro x
+  unfold closeAncestorsRound
   simp only [Map.find?_mapOnValues]
-  cases m.find? x with
+  cases hx : m.find? x with
   | none => exact Set.empty_wf
   | some s =>
-    cases s with
-    | mk elts =>
-      cases elts with
-      | nil => exact Set.empty_wf
-      | cons a l => exact List.foldl_union_wf (.inr (List.cons_ne_nil _ _))
+    have hs := hm x
+    simp only [hx, Option.getD_some] at hs
+    exact List.foldl_union_wf hs λ a _ => hm a
 
-private theorem closeIter_succ_wf (n : Nat) (m : Map EntityType (Set EntityType))
-    (x : EntityType) :
-    (((closeIter (n + 1) m).find? x).getD ∅).WellFormed := by
+private theorem closeIter_wf (n : Nat) {m : Map EntityType (Set EntityType)}
+    (hm : AllWellFormed m) :
+    AllWellFormed (closeIter n m) := by
   induction n generalizing m with
-  | zero => exact closeRound_wf m x
-  | succ n ih => exact ih (closeAncestorsRound m)
+  | zero => exact hm
+  | succ n ih => exact ih (closeRound_wf hm)
 
-/-- Every set computed by `closeAncestors` is well-formed. -/
-private theorem closeAncestors_wf (m : Map EntityType (Set EntityType)) (x : EntityType) :
-    (((closeAncestors m).find? x).getD ∅).WellFormed := by
+/-- Every set computed by `closeAncestors` is well-formed if every input set is. -/
+private theorem closeAncestors_wf {m : Map EntityType (Set EntityType)} (hm : AllWellFormed m) :
+    AllWellFormed (closeAncestors m) := by
   rw [closeAncestors_eq_closeIter]
-  cases hsize : m.size with
-  | zero =>
-    have hnil : m.toList = [] := List.eq_nil_of_length_eq_zero hsize
-    simp only [closeIter, Map.find?, hnil, List.find?_nil, Option.getD_none]
-    exact Set.empty_wf
-  | succ n => exact closeIter_succ_wf n m x
+  exact closeIter_wf _ hm
 
 -- Facts about `closeForLink`.
 
@@ -855,10 +770,17 @@ private theorem mem_closedAncestors {ets : PartialEntitySchema} {x y : EntityTyp
   rw [← hedge]
   exact ancestorEdge_closeAncestors
 
-/-- Closed ancestors are well-formed. -/
-private theorem closedAncestors_wf (ets : PartialEntitySchema) (x : EntityType) :
-    (closedAncestors ets x).WellFormed :=
-  closeAncestors_wf _ x
+/-- Closed ancestors are well-formed if every listed set of ancestors is. -/
+private theorem closedAncestors_wf {ets : PartialEntitySchema}
+    (hets : AncestorsWellFormed ets)
+    (x : EntityType) :
+    (closedAncestors ets x).WellFormed := by
+  apply closeAncestors_wf
+  intro y
+  simp only [Map.find?_mapOnValues]
+  cases hy : ets.find? y with
+  | none => exact Set.empty_wf
+  | some entry => exact hets y entry hy
 
 /-- Closed ancestors of linked entity maps are reachable through either input's ancestors. -/
 private theorem mem_closedAncestors_linkMaps {ets₁ ets₂ out : PartialEntitySchema}
@@ -997,10 +919,10 @@ private theorem link_acts_wf {p c t : PartialSchema} (hlink : link p c = .ok t) 
 
 /-- The ancestors of an unresolved external entity type in a link are well-formed. -/
 private theorem link_external_ancestors_wf {p c t : PartialSchema} {ety : EntityType}
-    {ancestors : Set EntityType} (hlink : link p c = .ok t)
+    {ancestors : Set EntityType} (hp : p.WellFormed) (hc : c.WellFormed) (hlink : link p c = .ok t)
     (hfind : t.ets.find? ety = some (.external ancestors)) :
     ancestors.WellFormed := by
-  obtain ⟨-, ets, -, -, hclose⟩ := link_ok hlink
+  obtain ⟨-, ets, hets, -, hclose⟩ := link_ok hlink
   rw [closeForLink_find? hclose, Option.map_eq_some_iff] at hfind
   obtain ⟨entry, -, hentry⟩ := hfind
   cases entry with
@@ -1009,7 +931,7 @@ private theorem link_external_ancestors_wf {p c t : PartialSchema} {ety : Entity
     simp only [PartialEntitySchemaEntry.withAncestors,
       PartialEntitySchemaEntry.external.injEq] at hentry
     rw [← hentry]
-    exact closedAncestors_wf ets ety
+    exact closedAncestors_wf (linkMaps_ancestors_wf hp hc hets) ety
 
 -- Linking partial schemas that one partial schema keeps.
 
@@ -1067,7 +989,7 @@ private theorem link_exists_of_kept {s₁ s₂ t : PartialSchema}
       rcases linkMaps_entity_defined hets hfind with h | h
       · exact ⟨hs₁.ancestors_wf h, h₁.definitions _ _ h⟩
       · exact ⟨hs₂.ancestors_wf h, h₂.definitions _ _ h⟩
-    refine (Set.subset_iff_eq (closedAncestors_wf _ _) hwf).mp
+    refine (Set.subset_iff_eq (closedAncestors_wf (linkMaps_ancestors_wf hs₁ hs₂ hets) _) hwf).mp
       ⟨Set.subset_def.mpr fun a ha => ?_,
         Set.subset_def.mpr fun a ha => mem_closedAncestors.mpr (.single ⟨_, hfind, ha⟩)⟩
     rw [mem_closedAncestors_linkMaps hets] at ha
@@ -1793,7 +1715,7 @@ theorem linker_preserves_well_formedness
       · exact hct.definition_wf hc h
     | external ancestors =>
       -- Every ancestor is listed by an input, which declares it.
-      refine standardEntry_wf (link_external_ancestors_wf hlink hfind) (fun a hmem => ?_)
+      refine standardEntry_wf (link_external_ancestors_wf hp hc hlink hfind) (fun a hmem => ?_)
         emptyRecord_wf emptyRecord_lifted
       obtain ⟨_, hedge⟩ :=
         Relation.transGen_tail ((linker_entity_ancestors hlink hfind).mp hmem)
