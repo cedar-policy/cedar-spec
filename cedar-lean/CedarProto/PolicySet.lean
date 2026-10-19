@@ -22,6 +22,7 @@ import Protobuf.Structure
 -- Message Dependencies
 import CedarProto.TemplateBody
 import CedarProto.Policy
+import CedarProto.Data
 
 open Proto
 
@@ -49,7 +50,7 @@ instance : Message PolicySet := {
 
 def toPolicies : PolicySet → Spec.Policies
   | { templates, links } =>
-    let templates := Data.Map.make $ templates.toList.map Template.toIdAndTemplate
+    let templates := Data.mapOfArray $ templates.map Template.toIdAndTemplate
     match link? templates links.toList with
     | .ok policies => policies
     | .error e     => panic!(s!"toPolicies: failed to link templates: {e}\n  templates: {repr templates}\n  links: {repr links.toList}")
