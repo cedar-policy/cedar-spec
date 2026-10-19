@@ -29,7 +29,7 @@ use smol_str::SmolStr;
 ///
 /// * Never add an edge if `u` has run out of data
 /// * Probability of adding an edge is proportional to the number of nodes in
-///   the graph, so that the number of edges does is not quadratic.
+///   the graph, so that the number of edges is not quadratic.
 pub fn should_add_edge(u: &mut Unstructured<'_>, num_nodes: usize) -> Result<bool> {
     // `+ 6` is an arbitrary bias to keep the total number of edges low enough
     // even after computing the transitive closure.
