@@ -15,53 +15,11 @@
  */
 
 #![no_main]
-use cedar_drt_inner::{fuzz_target, schemas::equivalence_check};
 
-use cedar_policy_core::extensions::Extensions;
-use cedar_policy_core::validator::{RawName, ValidatorSchema, json_schema};
-use similar_asserts::SimpleDiff;
+use cedar_drt_inner::{fuzz_target, props::schema_json_to_cedar_roundtrips};
 
-// JSON String -> json_schema::Fragment -> Natural String -> json_schema::Fragment
-// Assert that schema fragments are equivalent. By starting with a JSON String
-// we test for the existence of schema that are valid in JSON but with an
-// invalid cedar schema conversion.
-fuzz_target!(|src: String| {
-    if let Ok(parsed) = json_schema::Fragment::<RawName>::from_json_str(&src) {
-        if TryInto::<ValidatorSchema>::try_into(parsed.clone()).is_err() {
-            return;
-        }
-
-        match parsed.to_cedarschema() {
-            Ok(cedar_src) => {
-                let (cedar_parsed, _) = json_schema::Fragment::<RawName>::from_cedarschema_str(
-                    &cedar_src,
-                    Extensions::all_available(),
-                )
-                .expect("Failed to parse converted Cedar schema");
-                if let Err(msg) = equivalence_check(&parsed, &cedar_parsed) {
-                    println!("Original JSON schema: {src}");
-                    println!("Converted to Cedar format:\n{cedar_src}");
-                    println!(
-                        "{}",
-                        SimpleDiff::from_str(
-                            &format!("{:#?}", parsed),
-                            &format!("{:#?}", cedar_parsed),
-                            "Parsed JSON",
-                            "Cedar Round tripped"
-                        )
-                    );
-                    panic!("{msg}");
-                }
-            }
-            Err(
-                cedar_policy_core::validator::cedar_schema::fmt::ToCedarSchemaSyntaxError::NameCollisions(
-                    _,
-                ) | cedar_policy_core::validator::cedar_schema::fmt::ToCedarSchemaSyntaxError::UnconvertibleEntityTypeShape(_),
-            ) => {
-                // Currently, we ignore name-collisions errors, as JSON schemas encountering name-collisions errors are not supported for conversion to Cedar format; see cedar#1272
-                // We also ignore entity type shapes that are not supported in the Cedar schema syntax format; see cedar#1702
-                return;
-            }
-        }
+fuzz_target!(|input: String| {
+    if let Ok(input) = serde_json::from_str(&input) {
+        schema_json_to_cedar_roundtrips(input);
     }
 });

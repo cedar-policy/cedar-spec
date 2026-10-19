@@ -65,15 +65,9 @@ pub fn generate_requests(
             Err(_) => continue,
         };
         // Only keep requests with valid principal and resource from the hierarchy
-        if hierarchy
-            .uids()
-            .iter()
-            .any(|uid| request.principal().uid() == Some(uid))
-            && hierarchy
-                .uids()
-                .iter()
-                .any(|uid| request.resource().uid() == Some(uid))
-        {
+        let in_hierarchy =
+            |uid: Option<&ast::EntityUID>| uid.is_some_and(|uid| hierarchy.entity(uid).is_some());
+        if in_hierarchy(request.principal().uid()) && in_hierarchy(request.resource().uid()) {
             break request;
         }
     });

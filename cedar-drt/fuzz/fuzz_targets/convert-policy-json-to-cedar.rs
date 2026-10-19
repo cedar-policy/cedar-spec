@@ -15,47 +15,11 @@
  */
 
 #![no_main]
-use cedar_drt::{check_policy_set_equivalence, policy_set_to_text};
-use cedar_drt_inner::fuzz_target;
 
-use cedar_policy_core::est::PolicySetFromJsonError;
-use thiserror::Error;
+use cedar_drt_inner::{fuzz_target, props::policy_json_to_cedar_roundtrips};
 
-#[derive(miette::Diagnostic, Error, Debug)]
-enum ESTParseError {
-    #[error(transparent)]
-    JSONToEST(#[from] serde_json::error::Error),
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    ESTToAST(#[from] Box<PolicySetFromJsonError>),
-}
-
-fuzz_target!(|est_json_str: String| {
-    // JSON -> EST -> AST
-    // Attempt to deserialize an est policy set from the specified json string
-    // Then, convert the est policy set to an ast policy set
-    let ast_from_est_result = serde_json::from_str::<serde_json::Value>(&est_json_str)
-        .and_then(serde_json::from_value::<cedar_policy_core::est::PolicySet>)
-        .map_err(ESTParseError::from)
-        .and_then(|est| {
-            cedar_policy_core::ast::PolicySet::try_from(est)
-                .map_err(|e| ESTParseError::from(Box::new(e)))
-        });
-    if let Ok(ast_from_est) = ast_from_est_result {
-        // AST -> text
-        let text = policy_set_to_text(&ast_from_est);
-        // text -> CST -> AST
-        // Parse an ast policy set from the Cedar text
-        let ast_from_cedar = cedar_policy_core::parser::parse_policyset(&text);
-        match ast_from_cedar {
-            Ok(ast_from_cedar) => {
-                check_policy_set_equivalence(&ast_from_est, &ast_from_cedar);
-            }
-
-            Err(e) => {
-                println!("{:?}", miette::Report::new(e));
-                panic!("Policy set parsed from est to ast but did not roundtrip ast->text->ast");
-            }
-        }
+fuzz_target!(|input: String| {
+    if let Ok(input) = serde_json::from_str(&input) {
+        policy_json_to_cedar_roundtrips(input);
     }
 });

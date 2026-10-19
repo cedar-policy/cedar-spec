@@ -25,3 +25,4 @@ public import Cedar.Thm.Data.Map
 public import Cedar.Thm.Data.Set
 public import Cedar.Thm.Data.String
 public import Cedar.Thm.Data.MapUnion
+public import Cedar.Thm.Data.Relation

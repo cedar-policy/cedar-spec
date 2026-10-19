@@ -27,7 +27,7 @@ theorem batched_evaluate_eq_evaluate
   EntityLoader.WellBehaved es loader →
   TypedExpr.WellTyped env x →
   InstanceOfWellFormedEnvironment req es env →
-  (Residual.evaluate (batchedEvaluate env.acts x req loader iters) req es).toOption = (evaluate x.toExpr req es).toOption := by
+  (Residual.evaluate (batchedEvaluate env x req loader iters) req es).toOption = (evaluate x.toExpr req es).toOption := by
   simp only [batchedEvaluate]
   intro h₁ h₂ h₃
   have h₄ := (direct_request_and_entities_refine req es)
@@ -44,7 +44,7 @@ theorem batched_evaluate_eq_evaluate
     . apply as_partial_request_refines
     . exact actionEntities_refines h₃.1 h₃.2.2
   have h₆ : Residual.WellTyped env
-      (TPE.evaluate x.toResidual req.asPartialRequest (actionEntities env.acts)) :=
+      (TPE.evaluate env x.toResidual req.asPartialRequest (actionEntities env.acts)) :=
     partial_eval_preserves_well_typed h₃ h₇ h₅
 
   rw [batched_evaluate_loop_eq_evaluate es h₁ h₆ h₇ h₃]
@@ -72,7 +72,13 @@ theorem batched_authorize_ok_equiv
       evaluatePolicy schema p req.asPartialRequest (actionEntities schema.acts)) with
   | error e => simp [h_mapM, bind_pure_comp] at h_batched
   | ok residualPolicies =>
-    simp only [bind_pure_comp, h_mapM, Except.map_ok, Except.ok.injEq] at h_batched
+    -- `batchedAuthorize` looks the type environment up before entering the loop, so there is an
+    -- extra case for a request the schema gives no environment to.
+    simp only [bind_pure_comp, h_mapM] at h_batched
+    split at h_batched
+    case h_1 => simp at h_batched
+    case h_2 env₀ h_env₀ =>
+    simp only [Except.bind_ok, pure, Except.pure, Except.ok.injEq] at h_batched
     subst h_batched
     rw [List.mapM_ok_iff_forall₂] at h_mapM
     match policies, h_mapM with
@@ -91,6 +97,13 @@ theorem batched_authorize_ok_equiv
           simp [h_ep] at ⊢ h_first
       obtain ⟨env, h_schema_env, h_wf⟩ :=
         evaluatePolicy_ok_implies_well_formed_env h_ep h_schema_wf h_entities
+      -- Flip the direction so `subst` eliminates `env₀` and keeps `env`, which the rest of the
+      -- proof refers to.
+      have h_env_eq : env = env₀ := by
+        simp only [Request.asPartialRequest] at h_schema_env
+        simp only [h_env₀, Option.some.injEq] at h_schema_env
+        exact h_schema_env.symm
+      subst h_env_eq
       have h_acts : env.acts = schema.acts :=
         (environment?_schema (by simpa only [Request.asPartialRequest] using h_schema_env)).2
       have h_ref : RequestAndEntitiesRefine req es req.asPartialRequest

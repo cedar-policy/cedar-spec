@@ -43,12 +43,12 @@ theorem partial_evaluate_is_sound_record
 {pes : PartialEntities}
 (hᵢ₁ : ∀ (k : Attr) (v : Residual),
   (k, v) ∈ m →
-    Except.toOption (v.evaluate req es) = Except.toOption ((TPE.evaluate v preq pes).evaluate req es)) :
+    Except.toOption (v.evaluate req es) = Except.toOption ((TPE.evaluate env v preq pes).evaluate req es)) :
   Except.toOption ((Residual.record m (CedarType.record rty)).evaluate req es) =
-  Except.toOption ((TPE.evaluate (Residual.record m (CedarType.record rty)) preq pes).evaluate req es)
+  Except.toOption ((TPE.evaluate env (Residual.record m (CedarType.record rty)) preq pes).evaluate req es)
 := by
   simp only [TPE.evaluate, TPE.record,
-    List.map₁_eq_map (fun (x : Attr × Residual) => (x.fst, TPE.evaluate x.snd preq pes)),
+    List.map₁_eq_map (fun (x : Attr × Residual) => (x.fst, TPE.evaluate env x.snd preq pes)),
     List.any_map, List.any_eq_true, Function.comp_apply, Prod.exists]
   split
   case _ vs heq =>
@@ -61,17 +61,17 @@ theorem partial_evaluate_is_sound_record
     exists vs
     simp only [and_true]
     simp only [List.mapM_map, List.mapM_some_iff_forall₂] at heq
-    have : ∀ (x : Attr × Residual) y, bindAttr x.fst (TPE.evaluate x.snd preq pes).asValue = some y → bindAttr x.fst ((TPE.evaluate x.snd preq pes).evaluate req es) = .ok y := by
+    have : ∀ (x : Attr × Residual) y, bindAttr x.fst (TPE.evaluate env x.snd preq pes).asValue = some y → bindAttr x.fst ((TPE.evaluate env x.snd preq pes).evaluate req es) = .ok y := by
       intro x y h
       simp only [bindAttr] at h ⊢
-      cases h₁ : (TPE.evaluate x.snd preq pes).asValue <;>
+      cases h₁ : (TPE.evaluate env x.snd preq pes).asValue <;>
         simp only [h₁, Option.pure_def, Option.bind_none_fun, reduceCtorEq, Option.bind_some_fun, Option.some.injEq] at h
       simp [h, asValue_evaluate_val h₁]
     replace heq := List.Forall₂.imp this heq
     clear this
     rw [←List.mapM_ok_iff_forall₂] at heq
     have : ∀ x ∈ m,
-      Except.toOption (bindAttr x.fst ((TPE.evaluate x.snd preq pes).evaluate req es)) =
+      Except.toOption (bindAttr x.fst ((TPE.evaluate env x.snd preq pes).evaluate req es)) =
       Except.toOption (bindAttr x.fst (x.snd.evaluate req es))
     := by
       intro x h
@@ -84,7 +84,7 @@ theorem partial_evaluate_is_sound_record
   split
   case _ h₁ =>
     simp only [
-      List.map₁_eq_map λ (x : Attr × Residual) => (x.fst, TPE.evaluate x.snd preq pes),
+      List.map₁_eq_map λ (x : Attr × Residual) => (x.fst, TPE.evaluate env x.snd preq pes),
       List.any_map, List.any_eq_true, Function.comp_apply, Prod.exists] at h₁
     rcases h₁ with ⟨k, v, h₂, h₃⟩
     have ⟨tpe_err, h_tpe_err⟩ := isError_evaluate_err h₃ req es
@@ -105,7 +105,7 @@ theorem partial_evaluate_is_sound_record
     apply to_option_eq_do₁
     have : ∀ x ∈ m,
       Except.toOption (bindAttr x.fst (x.snd.evaluate req es)) =
-      Except.toOption (bindAttr x.fst ((TPE.evaluate x.snd preq pes).evaluate req es))
+      Except.toOption (bindAttr x.fst ((TPE.evaluate env x.snd preq pes).evaluate req es))
     := by
       intro x h
       specialize hᵢ₁ x.fst x.snd h

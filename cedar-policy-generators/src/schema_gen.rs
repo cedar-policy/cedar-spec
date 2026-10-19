@@ -46,9 +46,9 @@ impl From<types::Type> for abac::Type {
                 lub.into_single_entity()
                     .expect("should contain just one element"),
             ),
-            types::Type::Record { attrs, .. } => Self::record(attrs.into_iter().map(|(a, ty)| {
+            types::Type::Record { attrs, .. } => Self::record(attrs.iter().map(|(a, ty)| {
                 (
-                    a,
+                    a.clone(),
                     QualifiedType {
                         ty: ty.attr_type.as_ref().clone().into(),
                         required: ty.is_required,
@@ -459,6 +459,7 @@ impl SchemaGen for ValidatorSchema<'_> {
                     Some(choices)
                 }
                 cedar_policy_core::validator::ValidatorEntityTypeKind::Standard(_) => None,
+                cedar_policy_core::validator::ValidatorEntityTypeKind::External => None,
             })
     }
     fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = EntityType> + '_> {
@@ -539,7 +540,12 @@ impl SchemaGen for ValidatorSchema<'_> {
         hierarchy: &Hierarchy,
         u: &mut Unstructured<'_>,
     ) -> Result<abac::ABACRequest> {
-        let actions: Vec<_> = self.core_schema.actions().cloned().collect();
+        let actions: Vec<_> = self
+            .core_schema
+            .action_ids()
+            .filter(|id| !id.is_external())
+            .map(|id| id.name().clone())
+            .collect();
         let action = u.choose(&actions)?;
         let action_id = self
             .core_schema
@@ -549,7 +555,12 @@ impl SchemaGen for ValidatorSchema<'_> {
         let principal_type = u.choose(&principals)?;
         let resources: Vec<_> = action_id.applies_to_resources().cloned().collect();
         let resource_type = u.choose(&resources)?;
-        let context_ty = abac::Type::from(action_id.context_type().clone());
+        let context_ty = abac::Type::from(
+            action_id
+                .context_type()
+                .expect("a non-external action has a context type")
+                .clone(),
+        );
         Ok(ABACRequest(Request {
             principal: self
                 .exprgenerator(Some(hierarchy))

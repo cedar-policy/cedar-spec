@@ -42,7 +42,7 @@ theorem partial_evaluate_is_sound_val
 {pes : PartialEntities}
 {ty : CedarType} :
   Except.toOption ((Residual.val v ty).evaluate req es) =
-  Except.toOption ((TPE.evaluate (Residual.val v ty) preq pes).evaluate req es)
+  Except.toOption ((TPE.evaluate env (Residual.val v ty) preq pes).evaluate req es)
 := by
   simp [TPE.evaluate, Residual.evaluate]
 
@@ -56,7 +56,7 @@ theorem partial_evaluate_is_sound_var
 {ty : CedarType}
 (h₄ : RequestAndEntitiesRefine req es preq pes) :
   Except.toOption ((Residual.var v ty).evaluate req es) =
-  Except.toOption ((TPE.evaluate (Residual.var v ty) preq pes).evaluate req es)
+  Except.toOption ((TPE.evaluate env (Residual.var v ty) preq pes).evaluate req es)
 := by
   simp [TPE.evaluate, varₚ]
   split <;>

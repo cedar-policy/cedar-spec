@@ -31,9 +31,20 @@ open Cedar.Spec
 open Cedar.Validation
 open Cedar.TPE
 
+/-- The reductions only ever decide a boolean. -/
+theorem try_decide_has_residual_is_bool
+  {env : TypeEnv} {r : Residual} {a : Attr} {v : Value}
+  (hdec : TPE.tryDecideHasResidual env r a = .some v) :
+  ∃ b : Bool, v = .prim (.bool b)
+:= by
+  unfold TPE.tryDecideHasResidual at hdec
+  repeat' split at hdec
+  all_goals simp only [Option.some.injEq, reduceCtorEq] at hdec
+  all_goals exact ⟨_, hdec.symm⟩
+
 theorem partial_eval_well_typed_hasAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
-  Residual.WellTyped env (TPE.evaluate expr preq pes) →
-  PEWellTyped env (Residual.hasAttr expr attr ty) (TPE.evaluate (Residual.hasAttr expr attr ty) preq pes) req preq es pes
+  Residual.WellTyped env (TPE.evaluate env expr preq pes) →
+  PEWellTyped env (Residual.hasAttr expr attr ty) (TPE.evaluate env (Residual.hasAttr expr attr ty) preq pes) req preq es pes
 := by
   intros h_expr_wt h_wf h_ref h_wt
   simp only [TPE.evaluate, TPE.hasAttr, TPE.attrsOf]
@@ -41,6 +52,12 @@ theorem partial_eval_well_typed_hasAttr {env : TypeEnv} {expr : Residual} {attr 
   case h_1 =>
     apply Residual.WellTyped.error
   case h_2 r₁ h₁ =>
+    split
+    case h_1 hdec =>
+      have ⟨_, hb⟩ := try_decide_has_residual_is_bool hdec
+      subst hb
+      cases h_wt <;> exact well_typed_bool
+    case h_2 =>
     split
     case h_1 x m h₂ =>
       exact well_typed_bool

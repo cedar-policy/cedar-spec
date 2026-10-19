@@ -43,16 +43,16 @@ theorem partial_evaluate_is_sound_set
 {ty : CedarType}
 (hᵢ₁ : ∀ (x : Residual),
   x ∈ ls →
-    Except.toOption (x.evaluate req es) = Except.toOption ((TPE.evaluate x preq pes).evaluate req es)) :
+    Except.toOption (x.evaluate req es) = Except.toOption ((TPE.evaluate env x preq pes).evaluate req es)) :
   Except.toOption ((Residual.set ls ty.set).evaluate req es) =
-  Except.toOption ((TPE.evaluate (Residual.set ls ty.set) preq pes).evaluate req es)
+  Except.toOption ((TPE.evaluate env (Residual.set ls ty.set) preq pes).evaluate req es)
 := by
   simp [TPE.evaluate, List.map₁, TPE.set]
   split
   case _ vs heq =>
     simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es)]
     simp only [List.mapM_some_iff_forall₂, Function.comp_apply] at heq
-    have h_tpe_ok : List.mapM (fun x => (TPE.evaluate x preq pes).evaluate req es) ls = .ok vs := by
+    have h_tpe_ok : List.mapM (fun x => (TPE.evaluate env x preq pes).evaluate req es) ls = .ok vs := by
       rw [List.mapM_ok_iff_forall₂]
       exact List.Forall₂.imp (fun _ _ h => asValue_evaluate_val h req es) heq
     have h₅ : List.mapM (λ x => x.evaluate req es) ls = .ok vs := by
@@ -75,8 +75,8 @@ theorem partial_evaluate_is_sound_set
       simp only [Residual.evaluate, List.mapM₁_eq_mapM (Residual.evaluate · req es)]
       apply to_option_eq_do₁ (λ (x : List Value) => (Except.ok (Value.set (Data.Set.make x))))
       -- We need to show that evaluating the original list gives the same result as evaluating the TPE-transformed list
-      -- Since we're in the case where List.mapM (Residual.asValue ∘ fun x => TPE.evaluate x preq pes) ls = none
-      -- and ¬∃ x, x ∈ ls ∧ (TPE.evaluate x preq pes).isError = true
+      -- Since we're in the case where List.mapM (Residual.asValue ∘ fun x => TPE.evaluate env x preq pes) ls = none
+      -- and ¬∃ x, x ∈ ls ∧ (TPE.evaluate env x preq pes).isError = true
       -- we can directly apply our hypothesis hᵢ₁
       rw [List.mapM_to_option_congr hᵢ₁]
       rw [List.mapM_map]

@@ -47,10 +47,10 @@ theorem partial_evaluate_is_sound_or
 (hᵢ₂ : Residual.WellTyped env x₂)
 (hᵢ₃ : x₁.typeOf = CedarType.bool BoolType.anyBool)
 (hᵢ₄ : x₂.typeOf = CedarType.bool BoolType.anyBool)
-(hᵢ₅ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate x₁ preq pes).evaluate req es))
-(hᵢ₆ : Except.toOption (x₂.evaluate req es) = Except.toOption ((TPE.evaluate x₂ preq pes).evaluate req es)) :
+(hᵢ₅ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate env x₁ preq pes).evaluate req es))
+(hᵢ₆ : Except.toOption (x₂.evaluate req es) = Except.toOption ((TPE.evaluate env x₂ preq pes).evaluate req es)) :
   Except.toOption ((x₁.or x₂ (CedarType.bool BoolType.anyBool)).evaluate req es) =
-  Except.toOption ((TPE.evaluate (x₁.or x₂ (CedarType.bool BoolType.anyBool)) preq pes).evaluate req es)
+  Except.toOption ((TPE.evaluate env (x₁.or x₂ (CedarType.bool BoolType.anyBool)) preq pes).evaluate req es)
 := by
   simp [TPE.evaluate, TPE.or]
   split
@@ -104,7 +104,7 @@ theorem partial_evaluate_is_sound_or
     simp [Residual.evaluate]
     cases h₅ : x₁.evaluate req es
     · simp [Result.as, Except.toOption]
-      cases h₆ : (TPE.evaluate x₁ preq pes).errorFree <;> simp
+      cases h₆ : (TPE.evaluate env x₁ preq pes).errorFree <;> simp
       · split <;> simp
         rename_i h₇
         simp [Residual.evaluate] at h₇
@@ -118,7 +118,7 @@ theorem partial_evaluate_is_sound_or
         simp [Residual.evaluate] at h₇
         subst h₇
         rw [Residual.error_free_spec] at h₆
-        have h₇ : Residual.WellTyped env (TPE.evaluate x₁ preq pes) :=
+        have h₇ : Residual.WellTyped env (TPE.evaluate env x₁ preq pes) :=
           partial_eval_preserves_well_typed h₂ h₃ hᵢ₁
         have h₈ := error_free_evaluate_ok h₂ h₇ h₆
         simp [Except.isOk, Except.toBool] at h₈
@@ -153,7 +153,7 @@ theorem partial_evaluate_is_sound_or
         · simp
       simp [hb]
       rename_i ty _ _ _ _ _
-      cases he : (TPE.evaluate x₁ preq pes).errorFree<;> simp [Residual.evaluate, hᵢ₅, Result.as, Coe.coe, Value.asBool]
+      cases he : (TPE.evaluate env x₁ preq pes).errorFree<;> simp [Residual.evaluate, hᵢ₅, Result.as, Coe.coe, Value.asBool]
       cases b <;> simp
   case _ =>
     simp [Residual.evaluate]

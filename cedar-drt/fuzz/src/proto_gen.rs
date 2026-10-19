@@ -24,6 +24,7 @@
 use cedar_policy::proto::models;
 use cedar_policy_core::ast;
 use libfuzzer_sys::arbitrary::{self, Arbitrary, Unstructured};
+use std::collections::HashMap;
 
 /// Pool of extension function names.
 const EXT_FNS: &[(&[&str], &str)] = &[
@@ -297,7 +298,7 @@ impl ModelGenerator {
                 let num_items: usize = u.int_in_range(0..=self.max_attrs)?;
                 let items = (0..num_items)
                     .map(|_| Ok((self.pick_ident(u)?, self.arbitrary_model_expr(u, d)?)))
-                    .collect::<arbitrary::Result<std::collections::HashMap<_, _>>>()?;
+                    .collect::<arbitrary::Result<std::collections::BTreeMap<_, _>>>()?;
                 expr::ExprKind::Record(expr::Record { items })
             }
         };
@@ -564,12 +565,15 @@ impl ModelGenerator {
                 } else {
                     None
                 };
+                // An `external` declaration (RFC 116) has no shape.
+                let external: bool = !u.is_empty() && u.ratio(1, 4)?;
                 Ok(models::EntityDecl {
                     name: Some(self.arbitrary_model_name(u)?),
                     descendants,
-                    attributes,
-                    tags,
+                    attributes: if external { HashMap::new() } else { attributes },
+                    tags: if external { None } else { tags },
                     enum_choices: vec![],
+                    external,
                 })
             })
             .collect::<arbitrary::Result<Vec<_>>>()?;
@@ -601,12 +605,15 @@ impl ModelGenerator {
                 let descendants = (0..num_descendants)
                     .map(|_| self.arbitrary_model_entity_uid(u))
                     .collect::<arbitrary::Result<Vec<_>>>()?;
+                // An `external` declaration (RFC 116) has no `appliesTo`.
+                let external: bool = !u.is_empty() && u.ratio(1, 4)?;
                 Ok(models::ActionDecl {
                     name: Some(self.arbitrary_model_entity_uid(u)?),
                     descendants,
-                    context,
-                    principal_types,
-                    resource_types,
+                    context: if external { HashMap::new() } else { context },
+                    principal_types: if external { vec![] } else { principal_types },
+                    resource_types: if external { vec![] } else { resource_types },
+                    external,
                 })
             })
             .collect::<arbitrary::Result<Vec<_>>>()?;

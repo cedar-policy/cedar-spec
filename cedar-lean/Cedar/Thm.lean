@@ -22,6 +22,7 @@ import Cedar.Thm.PolicySlice
 import Cedar.Thm.SymCC.Opt
 import Cedar.Thm.Typechecking
 import Cedar.Thm.Validation
+import Cedar.Thm.External
 import Cedar.Thm.WellTyped
 import Cedar.Thm.TPE
 import Cedar.Thm.BatchedEvaluator

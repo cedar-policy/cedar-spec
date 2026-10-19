@@ -202,6 +202,18 @@ public theorem exists_iff_mem_flatMap {α β} [DecidableEq β] {f : α → List 
 
 /-! ### Forall₂ -/
 
+end List
+
+/-!
+  The following lemmas are copied from Mathlib. They live in `Cedar.List` rather
+  than `List` so that a file can import both Cedar and Mathlib without a
+  duplicate-declaration error. Code inside the `Cedar` namespace can still refer
+  to them as `List.<name>`, since Lean resolves names in enclosing namespaces first.
+-/
+namespace Cedar.List
+
+open _root_.List
+
 /--
   Copied from Mathlib
 -/
@@ -245,6 +257,12 @@ public theorem forall₂_cons_right_iff {b l u} :
     fun h =>
     match u, h with
     | _, ⟨_, _, h₁, h₂, rfl⟩ => Forall₂.cons h₁ h₂
+
+end Cedar.List
+
+namespace List
+
+open Cedar.List
 
 public theorem forall₂_singleton_right_iff {α β} {R : α → β → Prop} {xs : List α} {y : β} :
   Forall₂ R xs [y] ↔ ∃ x, R x y ∧ xs = [x]
@@ -476,6 +494,42 @@ public theorem forall₂_trans_ish {xs : List α} {ys : List β} {zs : List γ} 
       · exact h hhd₁ hhd₂
       · exact ih htl₂
 
+/-- In key-preserving related lists, an entry found for a key has a related entry found for it. -/
+public theorem forall₂_find?_some {α β} [DecidableEq α]
+  {r : α × β → α × β → Prop} {xs ys : List (α × β)} {k : α} {x : α × β}
+  (hkeys : ∀ x y, r x y → y.fst = x.fst)
+  (hrel : List.Forall₂ r xs ys)
+  (hfind : xs.find? (·.fst == k) = some x) :
+  ∃ y, ys.find? (·.fst == k) = some y ∧ r x y
+:= by
+  induction hrel with
+  | nil => simp at hfind
+  | @cons x₀ y₀ _ _ hr _ ih =>
+    simp only [List.find?] at hfind ⊢
+    rw [hkeys _ _ hr]
+    split at hfind
+    · simp only [Option.some.injEq] at hfind
+      subst x
+      exact ⟨y₀, rfl, hr⟩
+    · exact ih hfind
+
+/-- In key-preserving related lists, a key absent from one list is absent from the other. -/
+public theorem forall₂_find?_none {α β} [DecidableEq α]
+  {r : α × β → α × β → Prop} {xs ys : List (α × β)} {k : α}
+  (hkeys : ∀ x y, r x y → y.fst = x.fst)
+  (hrel : List.Forall₂ r xs ys)
+  (hfind : xs.find? (·.fst == k) = none) :
+  ys.find? (·.fst == k) = none
+:= by
+  induction hrel with
+  | nil => rfl
+  | @cons x₀ y₀ _ _ hr _ ih =>
+    simp only [List.find?] at hfind ⊢
+    rw [hkeys _ _ hr]
+    split at hfind
+    · contradiction
+    · exact ih hfind
+
 /-! ### mapM, mapM', mapM₁, and mapM₂ -/
 
 public theorem mapM_some {xs : List α} :
@@ -486,6 +540,23 @@ public theorem mapM_some {xs : List α} :
   induction xs
   case nil => simp only [mapM_nil, Option.pure_def]
   case cons hd tl ih => simp [ih]
+
+/-- `mapM` succeeds exactly when every application succeeds. -/
+public theorem mapM_isSome {xs : List α} {f : α → Option β} :
+    (xs.mapM f).isSome = xs.all (fun value => (f value).isSome) := by
+  induction xs with
+  | nil => rfl
+  | cons value rest ih =>
+    cases hv : f value with
+    | none => simp [List.mapM_cons, hv]
+    | some v =>
+      cases hr : rest.mapM f with
+      | none =>
+        simp [List.mapM_cons, hv, hr] at ih ⊢
+        exact ih
+      | some values =>
+        simp [List.mapM_cons, hv, hr] at ih ⊢
+        exact ih
 
 -- not public: you should be able to use the higher-level lemmas below
 theorem mapM_pmap_subtype [Monad m] [LawfulMonad m]
@@ -1576,6 +1647,12 @@ public theorem find?_exact_iff_mem {α} [DecidableEq α] {l : List α}  {v : α}
 
 /-! ### filterMap -/
 
+end List
+
+namespace Cedar.List
+
+open _root_.List
+
 /--
   our own variant of map_congr, for filterMap
 -/
@@ -1585,6 +1662,12 @@ public theorem filterMap_congr {f g : α → Option β} : ∀ {l : List α},
   | a :: l, h => by
     let ⟨h₁, h₂⟩ := forall_mem_cons.1 h
     rw [filterMap, filterMap, h₁, filterMap_congr h₂]
+
+end Cedar.List
+
+namespace List
+
+open Cedar.List
 
 public theorem filterMap_empty_iff_all_none {f : α → Option β} {xs : List α} :
   xs.filterMap f = [] ↔ ∀ x ∈ xs, f x = none

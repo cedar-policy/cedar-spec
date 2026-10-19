@@ -100,10 +100,9 @@ end
 def StandardSchemaEntry.WellFormed (env : TypeEnv) (entry : StandardSchemaEntry) : Prop :=
   -- Well-formed as `Map`/`Set`s
   entry.ancestors.WellFormed ∧
-  -- Each ancestor entity type must be a well-formed,
-  -- non-action, non-enum entity type
+  -- Each ancestor must be a declared, non-action entity type
   (∀ anc ∈ entry.ancestors,
-    ∃ entry, env.ets.find? anc = some entry ∧ entry.isStandard) ∧
+    ∃ entry, env.ets.find? anc = some entry) ∧
   -- The attribute types are well-formed
   (CedarType.record entry.attrs).WellFormed env ∧
   (CedarType.record entry.attrs).IsLifted ∧
@@ -225,6 +224,64 @@ theorem wf_record_implies_wf_attr {env : TypeEnv} {rty : RecordType} {attr : Att
   cases hwf with
   | record_wf _ hattr =>
     exact hattr attr qty hqty
+
+/-- A type stays well-formed in an environment that has every entity type of the original. -/
+theorem CedarType.WellFormed.mono {env₁ env₂ : TypeEnv}
+  (hety : ∀ ety, EntityType.WellFormed env₁ ety → EntityType.WellFormed env₂ ety)
+  {ty : CedarType} (h : CedarType.WellFormed env₁ ty) :
+  CedarType.WellFormed env₂ ty
+:= by
+  cases h with
+  | bool_wf => exact .bool_wf
+  | int_wf => exact .int_wf
+  | string_wf => exact .string_wf
+  | entity_wf h => exact .entity_wf (hety _ h)
+  | set_wf h => exact .set_wf (CedarType.WellFormed.mono hety h)
+  | ext_wf => exact .ext_wf
+  | @record_wf rty hmap hattrs =>
+    refine .record_wf hmap fun attr qty hfind => ?_
+    have hmem : (attr, qty) ∈ rty.1 := Map.find?_mem_toList hfind
+    have hlt := Map.sizeOf_lt_of_value hmem
+    cases hqty : qty with
+    | optional ty =>
+      have := hattrs attr qty hfind
+      rw [hqty] at this
+      cases this with
+      | optional_wf h =>
+        have : sizeOf ty < sizeOf qty := by simp [hqty]
+        exact .optional_wf (CedarType.WellFormed.mono hety h)
+    | required ty =>
+      have := hattrs attr qty hfind
+      rw [hqty] at this
+      cases this with
+      | required_wf h =>
+        have : sizeOf ty < sizeOf qty := by simp [hqty]
+        exact .required_wf (CedarType.WellFormed.mono hety h)
+termination_by sizeOf ty
+decreasing_by
+  all_goals simp_wf
+  all_goals omega
+
+/-- The empty record type is well-formed. -/
+theorem emptyRecord_wf {env : TypeEnv} :
+  (CedarType.record Map.empty).WellFormed env
+:=
+  .record_wf Map.wf_empty fun _ _ h => by simp at h
+
+/-- The empty record type is lifted. -/
+theorem emptyRecord_lifted : (CedarType.record Map.empty).IsLifted
+:=
+  .record_lifted fun _ _ h => by simp [Map.empty, Map.toList] at h
+
+/-- A standard entity type without tags is well-formed when its ancestors and attributes are. -/
+theorem standardEntry_wf {env : TypeEnv} {ancestors : Set EntityType}
+  {attrs : RecordType} (hwf : ancestors.WellFormed)
+  (hdeclared : ∀ a ∈ ancestors, ∃ entry, env.ets.find? a = some entry)
+  (hattrs : (CedarType.record attrs).WellFormed env)
+  (hlifted : (CedarType.record attrs).IsLifted) :
+  EntitySchemaEntry.WellFormed env (.standard { ancestors, attrs, tags := none })
+:=
+  ⟨hwf, hdeclared, hattrs, hlifted, by simp⟩
 
 theorem wf_env_implies_wf_entity_schema_entry {env : TypeEnv} {ety : EntityType} {entry : EntitySchemaEntry}
   (hwf : env.WellFormed)
@@ -436,7 +493,7 @@ theorem wf_env_implies_wf_ancestor
   | standard entry =>
     simp only [EntitySchemaEntry.WellFormed] at hwf_entry
     have := hwf_entry.2.1
-    have ⟨_, hanc_entry, _⟩ := this anc hanc
+    have ⟨_, hanc_entry⟩ := this anc hanc
     apply Or.inl
     simp only [EntitySchema.contains, hanc_entry, Option.isSome]
   | enum es =>
@@ -494,12 +551,12 @@ theorem wf_env_implies_transitive_action_hierarchy
   have ⟨_, _, _, _, h⟩ := hwf_acts
   exact h
 
-theorem wf_env_implies_ancestors_of_standard_ety_is_standard
+theorem wf_env_implies_ancestors_of_standard_ety_exist
   {env : TypeEnv} {ety : EntityType} {entry : StandardSchemaEntry}
   (hwf : env.WellFormed)
   (hfind : env.ets.find? ety = some (.standard entry)) :
   ∀ anc ∈ entry.ancestors,
-    ∃ entry, env.ets.find? anc = some entry ∧ entry.isStandard
+    ∃ entry, env.ets.find? anc = some entry
 := by
   have ⟨hwf_ets, _⟩ := hwf
   have hwf_entry := hwf_ets.2 ety (.standard entry) hfind
@@ -518,5 +575,34 @@ theorem wf_env_implies_ancestors_of_action_is_action
   simp only [ActionSchemaEntry.WellFormed] at hwf_entry
   have ⟨_, _, _, _, _, hancs, _⟩ := hwf_entry
   exact hancs
+
+/-- Whether an environment's maps are well-formed does not depend on its request type. -/
+theorem TypeEnv.maps_wf_of_eq {env₁ env₂ : TypeEnv}
+  (hets : env₁.ets = env₂.ets) (hacts : env₁.acts = env₂.acts)
+  (h : env₁.ets.WellFormed env₁ ∧ env₁.acts.WellFormed env₁) :
+  env₂.ets.WellFormed env₂ ∧ env₂.acts.WellFormed env₂
+:= by
+  obtain ⟨ets, acts, reqty₁⟩ := env₁
+  obtain ⟨_, _, reqty₂⟩ := env₂
+  dsimp only at hets hacts
+  subst hets hacts
+  -- Entity types are well-formed in both environments by definition.
+  have hty : ∀ {ty}, CedarType.WellFormed ⟨ets, acts, reqty₁⟩ ty →
+      CedarType.WellFormed ⟨ets, acts, reqty₂⟩ ty :=
+    CedarType.WellFormed.mono (env₁ := ⟨ets, acts, reqty₁⟩)
+      (env₂ := ⟨ets, acts, reqty₂⟩) fun _ h => h
+  obtain ⟨⟨hetsMap, hentities⟩, hactsMap, hactions, hdisjoint, hacyclic, htransitive⟩ := h
+  refine ⟨⟨hetsMap, fun ety entry hfind => ?_⟩,
+    hactsMap, fun uid entry hfind => ?_, hdisjoint, hacyclic, htransitive⟩
+  · have hwf := hentities ety entry hfind
+    cases entry with
+    | enum => exact hwf
+    | standard =>
+      obtain ⟨hancestors, hstandard, hattrs, hlifted, htags⟩ := hwf
+      exact ⟨hancestors, hstandard, hty hattrs, hlifted,
+        fun ty h => ⟨hty (htags ty h).1, (htags ty h).2⟩⟩
+  · obtain ⟨h₁, h₂, h₃, hprincipals, hresources, hancestors, hcontext, hlifted⟩ :=
+      hactions uid entry hfind
+    exact ⟨h₁, h₂, h₃, hprincipals, hresources, hancestors, hty hcontext, hlifted⟩
 
 end Cedar.Validation

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use crate::err::{while_doing, Error, Result};
+use crate::err::{Error, Result};
 use crate::schema_gen::SchemaGen;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
 use arbitrary::{Arbitrary, Unstructured};
@@ -25,89 +25,74 @@ use indexmap::{IndexMap, IndexSet};
 use nonempty::NonEmpty;
 use smol_str::SmolStr;
 
-/// EntityUIDs with the mappings to their indices in the container.
-/// This is used to generate an entity that is lexicographically smaller/greater than the input entity.
-#[derive(Debug, Clone)]
-struct EntityUIDs {
-    pub indices: IndexMap<EntityUID, usize>,
-    pub uids: Vec<EntityUID>,
-}
-
-impl From<Vec<EntityUID>> for EntityUIDs {
-    fn from(value: Vec<EntityUID>) -> Self {
-        Self {
-            indices: (0..value.len())
-                .map(|idx| (value[idx].clone(), idx))
-                .collect(),
-            uids: value,
-        }
-    }
-}
-
-impl FromIterator<EntityUID> for EntityUIDs {
-    fn from_iter<T: IntoIterator<Item = EntityUID>>(iter: T) -> Self {
-        let uids: Vec<EntityUID> = iter.into_iter().collect();
-        uids.into()
-    }
-}
-
-impl AsRef<[EntityUID]> for EntityUIDs {
-    fn as_ref(&self) -> &[EntityUID] {
-        &self.uids
-    }
-}
-
-impl EntityUIDs {
-    // Get a slice of `EntityUID`s whose indices are greater than `uid`'s
-    // INVARIANT: `uid` is in `indices`
-    fn get_slice_after_uid(&self, uid: &EntityUID) -> &[EntityUID] {
-        let idx = self.indices[uid];
-        &self.uids[idx + 1..]
-    }
-}
-
 /// Contains data about an entity hierarchy
 #[derive(Debug, Clone)]
 pub struct Hierarchy {
     /// maps EntityUID to the corresponding Entity
+    ///
+    /// The order of entities in this map is used to guarantee an acyclic hierarchy. An entity may
+    /// only have an ancestors which occurs after it in the map. The order of entries in this map
+    /// should _not_ be sorted. E.g., if they are sorted by the default euid ordering, an entity
+    /// could never have an edge to an entity with a type lexicographically before it.
     entities: IndexMap<EntityUID, Entity>,
-    /// Vec of UIDs in the hierarchy, which we keep in sync with the `entities`
-    /// HashMap.
-    /// The reason we have this separately is that is allows us to do
-    /// arbitrary_uid() fast.
-    uids: Vec<EntityUID>,
     /// Map of entity typename to UID, for all UIDs in the hierarchy.
-    /// We keep this in sync with the `entities` HashMap too.
+    /// We keep this in sync with the `entities` IndexMap too.
     /// This is to make arbitrary_uid_with_type() fast.
-    uids_by_type: IndexMap<ast::EntityType, EntityUIDs>,
-    /// Vec of all entity types used by entities in the hierarchy, again kept in
-    /// sync with the `entities` HashMap. Makes `arbitrary_entity_type()` fast.
-    entity_types: Vec<ast::EntityType>,
+    ///
+    /// INVARIANT: The euids in each vector must appear in the same order as in `entities`
+    uids_by_type: IndexMap<ast::EntityType, Vec<EntityUID>>,
 }
 
 impl Hierarchy {
+    /// Create a new `Hierarchy` from the given entities.
+    ///
+    /// `declared_entity_types` are entity types declared in a schema, which should be in the
+    /// hierarchy's type index even if no entity has that type.
+    fn new(
+        entities: IndexMap<EntityUID, Entity>,
+        declared_entity_types: impl IntoIterator<Item = ast::EntityType>,
+    ) -> Self {
+        let mut uids_by_type: IndexMap<ast::EntityType, Vec<EntityUID>> = declared_entity_types
+            .into_iter()
+            .map(|ty| (ty, Vec::new()))
+            .collect();
+        // Inserting into `uids_by_type` vectors in the order we see elements in `entities` satisfies
+        // the invariant on `uids_by_type`
+        for uid in entities.keys() {
+            uids_by_type
+                .entry(uid.entity_type().clone())
+                .or_default()
+                .push(uid.clone());
+        }
+        Self {
+            entities,
+            uids_by_type,
+        }
+    }
+
     /// Create a new `Hierarchy` from the given UIDs, sorted by type (in a
     /// `HashMap` of entity typename to UID). The entities will have no
     /// attributes or parents.
-    pub fn from_uids_by_type(uids_by_type: IndexMap<ast::EntityType, IndexSet<EntityUID>>) -> Self {
-        let uids: Vec<EntityUID> = uids_by_type
+    pub fn from_uids_by_type(
+        uids_by_type: IndexMap<ast::EntityType, IndexSet<EntityUID>>,
+        u: &mut Unstructured<'_>,
+    ) -> Result<Self> {
+        let mut uids: Vec<EntityUID> = uids_by_type
             .values()
             .flat_map(|uids_inner| uids_inner.iter().cloned())
             .collect();
-        let uids_by_type: IndexMap<_, _> = uids_by_type
-            .into_iter()
-            .map(|(n, uids)| (n, EntityUIDs::from_iter(uids)))
-            .collect();
-        let entity_types: Vec<_> = uids_by_type.keys().cloned().collect();
-        Self {
-            entities: uids
-                .iter()
-                .map(|uid| (uid.clone(), Entity::with_uid(uid.clone())))
-                .collect(),
-            uids,
-            uids_by_type,
-            entity_types,
+        // Shuffle the pool, so that entities aren't grouped by type, allowing an edge from an entity
+        // to one with type that would be lower in the ordering.
+        for i in 0..uids.len() {
+            let j = i + u.choose_index(uids.len() - i)?;
+            uids.swap(i, j);
         }
+        let entities = uids
+            .iter()
+            .map(|uid| (uid.clone(), Entity::with_uid(uid.clone())))
+            .collect();
+        // Pass the input's keys so that entity types with no UIDs are still indexed
+        Ok(Self::new(entities, uids_by_type.into_keys()))
     }
 
     /// Generate an arbitrary uid based on the hierarchy (or, with small
@@ -115,25 +100,15 @@ impl Hierarchy {
     pub fn arbitrary_uid(&self, u: &mut Unstructured<'_>) -> Result<EntityUID> {
         // UID that exists or doesn't. 90% of the time pick one that exists
         if u.ratio::<u8>(9, 10)? {
-            let uid = u
-                .choose(&self.uids)
-                .map_err(|e| while_doing("getting an arbitrary uid".into(), e))?;
+            let idx = u.choose_index(self.num_entities())?;
+            let (uid, _) = self
+                .entities
+                .get_index(idx)
+                .expect("choose_index returns an index in the requested range");
             Ok(uid.clone())
         } else {
-            // flip a coin to determine if we at least use an entity _type_
-            // that exists
-            if u.ratio::<u8>(1, 2)? {
-                let typename = u
-                    .choose(&self.entity_types)
-                    .map_err(|e| while_doing("getting an arbitrary entity type".into(), e))?;
-                Ok(EntityUID::from_components(
-                    typename.clone(),
-                    u.arbitrary()?,
-                    None,
-                ))
-            } else {
-                Ok(u.arbitrary()?)
-            }
+            let typename = self.arbitrary_entity_type(u)?;
+            Ok(EntityUID::from_components(typename, u.arbitrary()?, None))
         }
     }
     /// size hint for arbitrary_uid()
@@ -143,10 +118,10 @@ impl Hierarchy {
             arbitrary::size_hint::or(
                 // exists case
                 size_hint_for_choose(None),
-                // not-exists case; both branches should lead to a similar cost
+                // not-exists case
                 arbitrary::size_hint::and(
-                    size_hint_for_ratio(1, 2),
-                    <EntityUID as Arbitrary>::size_hint(depth),
+                    Self::arbitrary_entity_type_size_hint(depth),
+                    <Eid as Arbitrary>::size_hint(depth),
                 ),
             ),
         )
@@ -198,11 +173,26 @@ impl Hierarchy {
         // entity type that is used by some entity or isn't. 90% of the time
         // pick one that is used.
         if u.ratio::<u8>(9, 10)? {
-            let ety = u.choose(&self.entity_types)?;
+            let idx = u.choose_index(self.uids_by_type.len())?;
+            let (ety, _) = self
+                .uids_by_type
+                .get_index(idx)
+                .expect("choose_index returns an index in the requested range");
             Ok(ety.clone())
         } else {
             Ok(u.arbitrary()?)
         }
+    }
+
+    /// size hint for arbitrary_entity_type()
+    pub fn arbitrary_entity_type_size_hint(depth: usize) -> (usize, Option<usize>) {
+        arbitrary::size_hint::and(
+            size_hint_for_ratio(9, 10),
+            arbitrary::size_hint::or(
+                size_hint_for_choose(None),
+                <ast::EntityType as Arbitrary>::size_hint(depth),
+            ),
+        )
     }
 
     /// Get an Entity object by UID
@@ -217,7 +207,7 @@ impl Hierarchy {
 
     /// How many entities (UIDs) are in the hierarchy
     pub fn num_entities(&self) -> usize {
-        self.uids.len()
+        self.entities.len()
     }
 
     /// Iterate over the Hierarchy's `Entity` objects
@@ -235,47 +225,60 @@ impl Hierarchy {
         self.entities.into_values()
     }
 
-    /// Get the list of UIDs in the Hierarchy, as a slice
-    pub fn uids(&self) -> &[EntityUID] {
-        &self.uids
+    /// Iterator over the UIDs in the hierarchy
+    pub fn uids(&self) -> impl ExactSizeIterator<Item = &EntityUID> + Clone {
+        self.entities.keys()
+    }
+
+    /// Position of `uid` in the hierarchy's arbitrary pool order
+    ///
+    /// Panics if `uid` is not in the hierarchy.
+    fn index_of(&self, uid: &EntityUID) -> usize {
+        self.entities
+            .get_index_of(uid)
+            .expect("uid should be in the hierarchy")
     }
 
     /// Consume the Hierarchy and return a new one, which replaces the entities
     /// with a new set of entities.
     ///
     /// IMPORTANT: To avoid violating internal invariants, the new set of
-    /// entities must have exactly the same UIDs as the old one, with no
-    /// entities added or removed.  All that is allowed to change is the entity
-    /// data attached to each UID.
+    /// entities must have exactly the same UIDs as the old one, in the same
+    /// order, with no entities added or removed. All that is allowed to change
+    /// is the entity data attached to each UID.
     //
     // The main benefit of offering this method vs making callers use a more
-    // generic constructor is that we can move the data structures `uids` and
-    // `uids_by_type` rather than cloning or reconstructing them.
+    // generic constructor is that we can move the data structure
+    // `uids_by_type` rather than cloning or reconstructing it.
     pub fn replace_entities(self, new_entities: IndexMap<EntityUID, Entity>) -> Self {
+        debug_assert!(
+            new_entities.keys().eq(self.entities.keys()),
+            "replace_entities() must preserve the UIDs and their order"
+        );
         Self {
             entities: new_entities,
-            uids: self.uids,
             uids_by_type: self.uids_by_type,
-            entity_types: self.entity_types,
         }
     }
 
+    /// Iterate over the UIDs that come after `entity` in the (arbitrarily
+    /// ordered) pool of UIDs. Adding edges only to these UIDs ensures an acyclic hierarchy.
+    pub fn uids_after(&self, entity: &EntityUID) -> impl ExactSizeIterator<Item = &EntityUID> {
+        self.entities
+            .get_range(self.index_of(entity) + 1..)
+            .expect("range starting at an in-bounds index + 1 is valid")
+            .keys()
+    }
+
     /// Iterate over the UIDs having the given typename
-    /// Also ensure that the returned UIDs is lexicographically larger than the input `EntityUID` if its type is the same as the given typename
-    pub fn uids_for_type(
-        &self,
-        dst_ty: &ast::EntityType,
-        entity: &EntityUID,
-    ) -> Box<dyn Iterator<Item = &EntityUID> + '_> {
+    ///
+    /// Only UIDs that come after `entity` in the (arbitrarily ordered) list of UIDs are returned to
+    /// avoid producing cyclic hierarchies.
+    pub fn uids_for_type(&self, dst_ty: &ast::EntityType, entity: &EntityUID) -> &[EntityUID] {
+        let idx = self.index_of(entity);
         match self.uids_by_type.get(dst_ty) {
-            Some(v) => {
-                if entity.entity_type().to_string() == dst_ty.to_string() {
-                    Box::new(v.get_slice_after_uid(entity).iter())
-                } else {
-                    Box::new(v.as_ref().iter())
-                }
-            }
-            None => Box::new(std::iter::empty()),
+            Some(uids) => &uids[uids.partition_point(|uid| self.index_of(uid) <= idx)..],
+            None => &[],
         }
     }
 }
@@ -303,24 +306,10 @@ impl TryFrom<Hierarchy> for cedar_policy::Entities {
 
 impl From<Entities> for Hierarchy {
     fn from(entities: Entities) -> Hierarchy {
-        let mut uids = Vec::new();
-        let mut uids_by_type: IndexMap<ast::EntityType, IndexSet<&ast::EntityUID>> =
-            IndexMap::new();
-        for e in entities.iter() {
-            let etype = e.uid().entity_type().clone();
-            uids_by_type.entry(etype).or_default().insert(e.uid());
-            uids.push(e.uid().clone());
-        }
-        let entity_types: Vec<_> = uids_by_type.keys().cloned().collect();
-        Hierarchy {
-            uids,
-            uids_by_type: uids_by_type
-                .into_iter()
-                .map(|(k, v)| (k, EntityUIDs::from_iter(v.into_iter().cloned())))
-                .collect(),
-            entities: entities.into_iter().map(|e| (e.uid().clone(), e)).collect(),
-            entity_types,
-        }
+        Hierarchy::new(
+            entities.into_iter().map(|e| (e.uid().clone(), e)).collect(),
+            [],
+        )
     }
 }
 
@@ -480,7 +469,7 @@ impl HierarchyGenerator<'_, '_> {
                 Ok((name, uids))
             })
             .collect::<Result<IndexMap<ast::EntityType, IndexSet<ast::EntityUID>>>>()?;
-        let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type);
+        let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type, self.u)?;
         // now create an entity hierarchy composed of those entity UIDs
         let entities = hierarchy_no_attrs
             .entities()
@@ -492,11 +481,8 @@ impl HierarchyGenerator<'_, '_> {
                 match &self.mode {
                     HierarchyGeneratorMode::SchemaBased { schema } => {
                         for ty in schema.allowed_parent_typenames(name).unwrap() {
-                            for possible_parent_uid in
-                            // `uids_for_type` only prevent cycles resulting from self-loops in the entity types graph
-                            // It should be very unlikely where loops involving multiple entity types occur in the schemas
-                            hierarchy_no_attrs.uids_for_type(&ty, uid)
-                            {
+                            // `uids_for_type` prevent cycles
+                            for possible_parent_uid in hierarchy_no_attrs.uids_for_type(&ty, uid) {
                                 if self.u.ratio::<u8>(1, 2)? {
                                     parents.insert(possible_parent_uid.clone());
                                 }
@@ -509,12 +495,7 @@ impl HierarchyGenerator<'_, '_> {
                         // to add it as a parent. We only consider uids appearing after the
                         // given one in the pool; this ensures we get a DAG (no cycles)
                         // without loss of generality
-                        let this_idx = hierarchy_no_attrs
-                            .uids()
-                            .iter()
-                            .position(|x| x == uid)
-                            .expect("uid should be in the pool");
-                        for pool_uid in &hierarchy_no_attrs.uids()[(this_idx + 1)..] {
+                        for pool_uid in hierarchy_no_attrs.uids_after(uid) {
                             if self.u.ratio(1, 3)? {
                                 parents.insert(pool_uid.clone());
                             }

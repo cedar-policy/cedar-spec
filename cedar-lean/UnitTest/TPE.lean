@@ -776,6 +776,12 @@ def policyResidualMissEnd : Policy :=
   ⟨ "miss-end", .permit, .principalScope .any, .actionScope (.eq ⟨ActionType, "Do"⟩), .resourceScope .any,
   [⟨.when, (.extHasAttr (.var .context) "ref" ["child", "next", "missing"])⟩]⟩
 
+-- principal.manager has data.inner.nope ↝ false
+-- Because: Middle::"m2" is unknown, but the schema says `Middle` has no `nope`
+def policySchemaReduced : Policy :=
+  ⟨ "schema-reduced", .permit, .principalScope .any, .actionScope (.eq ⟨ActionType, "Do"⟩), .resourceScope .any,
+  [⟨.when, (.extHasAttr (.getAttr (.var .principal) "manager") "data" ["inner", "nope"])⟩]⟩
+
 -- Nesting pattern tests
 
 -- context has ref.data.inner ↝ true (R-E-R: record → entity → record → check)
@@ -843,15 +849,76 @@ def tests :=
       (.val (.prim (.bool true)) (.bool .anyBool)),
     -- principal has manager.child.info.tag ↝ true (E-E-R)
     testResult policyEER schema req es
-      (.val (.prim (.bool true)) (.bool .anyBool))
+      (.val (.prim (.bool true)) (.bool .anyBool)),
+    -- principal.manager has data.inner.nope ↝ false, decided by the schema mid-chain
+    testResult policySchemaReduced schema req es
+      (.val (.prim (.bool false)) (.bool .anyBool))
   ]
 
 #eval TestSuite.runAll [tests]
 
 end UnitTest.TPE.ExtHasAttr
 
+namespace UnitTest.TPE.SchemaInformed
+open Cedar.TPE
+open Cedar.Spec
+open Cedar.Validation
+open Cedar.Data
+
+/-!
+Tests for the schema-informed reductions of `is`, `==`, `in`, and `hasTag`
+-/
+
+def A0 : EntityType := ⟨"A0", []⟩
+def A1 : EntityType := ⟨"A1", []⟩
+
+def schema : Schema :=
+  ⟨Map.make [
+    (ActionType, .standard ⟨default, default, default⟩),
+    (A0, .standard ⟨Set.singleton A1, default, default⟩),
+    (A1, .standard ⟨default, default, .some (.entity A0)⟩)
+  ],
+  Map.make [
+    (⟨ActionType, "a"⟩, ⟨Set.singleton A0, Set.singleton A1, default, default⟩)
+  ]⟩
+
+def es : PartialEntities :=
+  Map.make [(⟨ActionType, "a"⟩, ⟨.some default, .some default, .some default⟩)]
+
+def req : PartialRequest :=
+  ⟨⟨A0, default⟩, ⟨ActionType, "a"⟩, ⟨A1, default⟩, default⟩
+
+def mkPolicy (x : Expr) : Policy :=
+  ⟨"0", .permit, .principalScope .any, .actionScope .any, .resourceScope .any, [⟨.when, x⟩]⟩
+
+def boolLit (b : Bool) : Residual := .val (.prim (.bool b)) (.bool .anyBool)
+
+def tests :=
+  suite "TPE schema-informed reduction of is/==/in/hasTag/has"
+  [
+    testResult (mkPolicy (.unaryApp (.is A0) (.var .principal))) schema req es
+      (boolLit true),
+    testResult (mkPolicy (.unaryApp (.is A1) (.var .principal))) schema req es
+      (boolLit false),
+    testResult (mkPolicy (.binaryApp .eq (.var .principal) (.var .resource))) schema req es
+      (boolLit false),
+    testResult (mkPolicy (.binaryApp .mem (.var .resource) (.var .principal))) schema req es
+      (boolLit false),
+    testResult (mkPolicy (.binaryApp .hasTag (.var .principal) (.lit (.string "x")))) schema req es
+      (boolLit false),
+    testResult (mkPolicy (.binaryApp .mem (.var .resource) (.set [.var .principal]))) schema req es
+      (boolLit false),
+    testResult (mkPolicy (.hasAttr (.var .principal) "x")) schema req es
+      (boolLit false),
+    -- the head of the chain is undeclared, so the whole chain is false
+    testResult (mkPolicy (.extHasAttr (.var .principal) "x" ["y"])) schema req es
+      (boolLit false),
+  ]
+
+end UnitTest.TPE.SchemaInformed
+
 open UnitTest.TPE
 
-def tests := [Basic.tests, Motivation.tests, Spec.tests, ExtHasAttr.tests]
+def tests := [Basic.tests, Motivation.tests, Spec.tests, ExtHasAttr.tests, SchemaInformed.tests]
 
 end UnitTest.TPE

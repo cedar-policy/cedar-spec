@@ -1703,124 +1703,153 @@ theorem ofEnv_entities_is_transitive
         simp only [←heq]
         exact this
 
+private theorem find?_ancestor_map_implies_mem_and_eq
+  {ancTys : List EntityType} {g : EntityType → UnaryFunction}
+  {ancTy : EntityType} {f : UnaryFunction}
+  (hfind : (Map.make (ancTys.map λ ty => (ty, g ty))).find? ancTy = some f) :
+  ancTy ∈ ancTys ∧ f = g ancTy
+:= by
+  have hmem := Map.find?_mem_toList hfind
+  replace hmem := Map.mem_make_mem_list hmem
+  have ⟨ty, hmem_ty, heq_ty⟩ := List.mem_map.mp hmem
+  simp only [Prod.mk.injEq] at heq_ty
+  have ⟨heq_ty, heq_f⟩ := heq_ty
+  subst heq_ty
+  exact ⟨hmem_ty, heq_f.symm⟩
+
+private theorem ofEntityType_partitionedAncestors
+  (ety : EntityType) (entry : EntitySchemaEntry) :
+  (SymEntityData.ofEntityType ety entry).PartitionedAncestors
+:= by
+  cases entry with
+  | standard entry =>
+    simp only [SymEntityData.ofEntityType, SymEntityData.PartitionedAncestors,
+      SymEntityData.isEnum, SymEntityData.ofStandardEntityType,
+      Option.isSome_none, Bool.false_eq_true, ↓reduceIte,
+      SymEntityData.SymbolicAncestors]
+    intros ancTy f hfind
+    have ⟨_, heq_f⟩ := find?_ancestor_map_implies_mem_and_eq hfind
+    simp only [heq_f, SymEntityData.ofStandardEntityType.ancsUUF,
+      UnaryFunction.isUUF]
+  | enum eids =>
+    simp only [SymEntityData.ofEntityType, SymEntityData.PartitionedAncestors,
+      SymEntityData.isEnum, SymEntityData.ofEnumEntityType,
+      Option.isSome_some, ↓reduceIte, SymEntityData.ConcreteAncestors]
+    intros ancTy f hfind
+    exact absurd hfind (by simp [Map.not_find?_of_empty])
+
+private theorem ofActionType_partitionedAncestors
+  (actTy : EntityType) (actTys : List EntityType) (acts : ActionSchema) :
+  (SymEntityData.ofActionType actTy actTys acts).PartitionedAncestors
+:= by
+  simp only [SymEntityData.PartitionedAncestors, SymEntityData.isEnum,
+    SymEntityData.ofActionType, Option.isSome_some, ↓reduceIte,
+    SymEntityData.ConcreteAncestors]
+  intros ancTy f hfind
+  have ⟨_, heq_f⟩ := find?_ancestor_map_implies_mem_and_eq hfind
+  simp only [heq_f, SymEntityData.ofActionType.ancsUDF, UnaryFunction.isUDF]
+
+private theorem mem_action_types_implies_exists_action
+  {Γ : TypeEnv} {actTy : EntityType}
+  (hwf : Γ.WellFormed)
+  (hmem : actTy ∈ (List.map (fun x => x.fst.ty) Γ.acts.toList).eraseDups) :
+  ∃ uid entry, uid.ty = actTy ∧ Γ.acts.find? uid = some entry
+:= by
+  replace hmem := List.mem_eraseDups_implies_mem hmem
+  have ⟨⟨uid, entry⟩, hmem_entry, heq_ty⟩ := List.mem_map.mp hmem
+  have hfind_entry :=
+    (Map.in_list_iff_find?_some (wf_env_implies_wf_acts_map hwf)).mp hmem_entry
+  exact ⟨uid, entry, heq_ty, hfind_entry⟩
+
+private theorem ofEnv_ets_isEnum_implies_no_ancestors
+  {Γ : TypeEnv} {ety : EntityType} {entry : EntitySchemaEntry}
+  {δ : SymEntityData}
+  (hwf : Γ.WellFormed)
+  (hfind_entry : Γ.ets.find? ety = some entry)
+  (hfind_δ : (SymEnv.ofEnv Γ).entities.find? ety = some δ)
+  (henum : δ.isEnum) :
+  δ.ancestors = Map.empty
+:= by
+  have h := ofEnv_entities_find?_some hwf hfind_δ
+  rcases h with (⟨_, _, hδ⟩ | ⟨_, _, hδ⟩) |
+    ⟨_, _, heq_ty, hfind_act, hδ⟩
+  · subst hδ
+    simp only [SymEntityData.isEnum, SymEntityData.ofStandardEntityType,
+      Option.isSome_none, Bool.false_eq_true] at henum
+  · subst hδ
+    simp only [SymEntityData.ofEnumEntityType]
+  · subst hδ
+    simp only [← heq_ty] at hfind_entry
+    exact (wf_env_disjoint_ets_acts hwf hfind_entry hfind_act).elim
+
+private theorem ofEnv_action_type_isEnum
+  {Γ : TypeEnv} {ety : EntityType} {uid : EntityUID}
+  {entry : ActionSchemaEntry} {δ : SymEntityData}
+  (hwf : Γ.WellFormed)
+  (heq_ty : uid.ty = ety)
+  (hfind_entry : Γ.acts.find? uid = some entry)
+  (hfind_δ : (SymEnv.ofEnv Γ).entities.find? ety = some δ) :
+  δ.isEnum
+:= by
+  have h := ofEnv_entities_find?_some hwf hfind_δ
+  rcases h with (⟨_, hfind_ets, hδ⟩ | ⟨_, hfind_ets, hδ⟩) |
+    ⟨_, _, _, _, hδ⟩
+  · simp only [← heq_ty] at hfind_ets
+    exact (wf_env_disjoint_ets_acts hwf hfind_ets hfind_entry).elim
+  · simp only [← heq_ty] at hfind_ets
+    exact (wf_env_disjoint_ets_acts hwf hfind_ets hfind_entry).elim
+  · subst hδ
+    simp only [SymEntityData.isEnum, SymEntityData.ofActionType, Option.isSome_some]
+
 theorem ofEnv_entities_is_partitioned
   {Γ : TypeEnv}
   (hwf : Γ.WellFormed) :
   (SymEnv.ofEnv Γ).entities.Partitioned
 := by
   constructor
-  · intros ety δ hfind_ety
-    simp only [SymEntityData.PartitionedAncestors]
-    have := ofEnv_entities_find?_some hwf hfind_ety
-    cases this with
-    | inl hfind_ets =>
-      cases hfind_ets with
-      | inl hfind_std =>
-        have ⟨entry, hfind_std, hstd⟩ := hfind_std
-        simp only [
-          SymEntityData.isEnum, hstd,
-          SymEntityData.ofStandardEntityType,
-          Option.isSome_none, Bool.false_eq_true,
-          ↓reduceIte,
-          SymEntityData.SymbolicAncestors,
-        ]
-        intros ancTy f hfind_f
-        have := Map.find?_mem_toList hfind_f
-        replace := Map.mem_make_mem_list this
-        have ⟨ancTy', hmem_ancTy', heq_ancTy'⟩ := List.mem_map.mp this
-        simp only [Prod.mk.injEq] at heq_ancTy'
-        simp only [
-          ←heq_ancTy'.2,
-          heq_ancTy'.1,
-          SymEntityData.ofStandardEntityType.ancsUUF,
-          UnaryFunction.isUUF,
-        ]
-      | inr hfind_enum =>
-        have ⟨entry, hfind_std, henum⟩ := hfind_enum
-        simp only [
-          SymEntityData.isEnum, henum,
-          SymEntityData.ofEnumEntityType,
-          Option.isSome_some,
-          ↓reduceIte,
-          SymEntityData.ConcreteAncestors,
-        ]
-        intros ancTy f hfind_f
-        simp [Map.empty, Map.find?] at hfind_f
-    | inr hfind_acts =>
-      have ⟨uid, entry, heq_ety, hfind_uid, hact⟩ := hfind_acts
-      simp only [
-        SymEntityData.isEnum, hact,
-        SymEntityData.ofActionType, Option.isSome_some,
-        ↓reduceIte,
-        SymEntityData.ConcreteAncestors,
-      ]
-      intros ancTy f hfind_f
-      have := Map.find?_mem_toList hfind_f
-      replace := Map.mem_make_mem_list this
-      have ⟨ancTy', hmem_ancTy', heq_ancTy'⟩ := List.mem_map.mp this
-      simp only [Prod.mk.injEq] at heq_ancTy'
-      simp only [
-        ←heq_ancTy'.2,
-        heq_ancTy'.1,
-        SymEntityData.ofActionType.ancsUDF,
-        UnaryFunction.isUDF,
-      ]
-  · intros ety₁ δ₁ f ety₂ δ₂ hfind₁ hfind₂ hanc
-    have h₁ := ofEnv_entities_find?_some hwf hfind₁
-    have h₂ := ofEnv_entities_find?_some hwf hfind₂
-    rcases h₁ with (⟨entry₁, hfind_entry₁, hδ₁⟩ | ⟨entry₁, hfind_entry₁, hδ₁⟩) | ⟨uid₁, entry₁, heq_ety₁, hfind_entry₁, hδ₁⟩
-    all_goals rcases h₂ with (⟨entry₂, hfind_entry₂, hδ₂⟩ | ⟨entry₂, hfind_entry₂, hδ₂⟩) | ⟨uid₂, entry₂, heq_ety₂, hfind_entry₂, hδ₂⟩
-    any_goals simp only [
-      hδ₁, hδ₂,
-      SymEntityData.isEnum,
-      SymEntityData.ofStandardEntityType,
-      SymEntityData.ofEnumEntityType,
-      SymEntityData.ofActionType,
-      Option.isSome,
-    ]
-    all_goals
-      simp only [
-        hδ₁,
-        SymEntityData.ofEnumEntityType,
-        SymEntityData.ofActionType,
-      ] at hanc
-    any_goals
-      try · simp [Map.empty, Map.find?] at hanc
-    -- entry₁: standard; entry₂: enum
-    · have hancs_std_only := wf_env_implies_ancestors_of_standard_ety_is_standard hwf hfind_entry₁ ety₂
-      simp only [SymEntityData.ofStandardEntityType] at hanc
-      have := Map.find?_mem_toList hanc
-      replace := Map.mem_make_mem_list this
-      have ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
-      simp only [Prod.mk.injEq] at heq_ancTy
-      simp only [heq_ancTy.1] at hmem_ancTy
-      specialize hancs_std_only hmem_ancTy
-      simp [hfind_entry₂, EntitySchemaEntry.isStandard] at hancs_std_only
-    -- entry₁: standard; entry₂: action
-    · have hancs_std_only := wf_env_implies_ancestors_of_standard_ety_is_standard hwf hfind_entry₁ ety₂
-      simp only [SymEntityData.ofStandardEntityType] at hanc
-      have := Map.find?_mem_toList hanc
-      replace := Map.mem_make_mem_list this
-      have ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
-      simp only [Prod.mk.injEq] at heq_ancTy
-      simp only [heq_ancTy.1] at hmem_ancTy
-      have ⟨_, h, _⟩ := hancs_std_only hmem_ancTy
-      simp only [←heq_ety₂] at h
-      have := wf_env_disjoint_ets_acts hwf h hfind_entry₂
-      contradiction
-    -- entry₁: action; entry₂: standard
-    · have := Map.find?_mem_toList hanc
-      replace := Map.mem_make_mem_list this
-      have ⟨ancTy, hmem_ancTy, heq_ancTy⟩ := List.mem_map.mp this
-      simp only [Prod.mk.injEq] at heq_ancTy
-      have := List.mem_eraseDups_implies_mem hmem_ancTy
-      have ⟨⟨anc, entry⟩, hmem_anc, heq_anc⟩ := List.mem_map.mp this
-      simp only at heq_anc
-      simp only [←heq_ancTy.1, ←heq_anc] at hfind_entry₂
-      have hwf_acts := wf_env_implies_wf_acts_map hwf
-      have := (Map.in_list_iff_find?_some hwf_acts).mp hmem_anc
-      have := wf_env_disjoint_ets_acts hwf hfind_entry₂ this
-      contradiction
+  · intros ety δ hfind_δ
+    have h := ofEnv_entities_find?_some hwf hfind_δ
+    rcases h with (⟨entry, _, hδ⟩ | ⟨eids, _, hδ⟩) |
+      ⟨uid, entry, _, _, hδ⟩
+    · subst hδ
+      exact ofEntityType_partitionedAncestors ety (.standard entry)
+    · subst hδ
+      exact ofEntityType_partitionedAncestors ety (.enum eids)
+    · subst hδ
+      exact ofActionType_partitionedAncestors uid.ty
+        (List.map (fun x => x.fst.ty) Γ.acts.toList).eraseDups Γ.acts
+  · intros ety₁ δ₁ ety₂ δ₂ hfind₁ hfind₂ hanc
+    have h := ofEnv_entities_find?_some hwf hfind₁
+    rcases h with (⟨entry₁, hfind_entry₁, hδ₁⟩ | ⟨eids, _, hδ₁⟩) |
+      ⟨_, _, _, _, hδ₁⟩
+    · subst hδ₁
+      have ⟨_, hfind_anc⟩ := Map.contains_iff_some_find?.mp hanc
+      simp only [SymEntityData.ofStandardEntityType] at hfind_anc
+      have ⟨hmem_anc, _⟩ := find?_ancestor_map_implies_mem_and_eq hfind_anc
+      have ⟨ancEntry, hfind_anc_entry⟩ :=
+        wf_env_implies_ancestors_of_standard_ety_exist
+          hwf hfind_entry₁ ety₂ hmem_anc
+      refine ⟨?_, ?_⟩
+      · simp only [SymEntityData.isEnum, SymEntityData.ofStandardEntityType,
+          Option.isSome_none, Bool.false_eq_true, false_implies]
+      · intro _ henum
+        exact ofEnv_ets_isEnum_implies_no_ancestors
+          hwf hfind_anc_entry hfind₂ henum
+    · subst hδ₁
+      simp [SymEntityData.ofEnumEntityType, Map.not_contains_of_empty] at hanc
+    · subst hδ₁
+      have ⟨_, hfind_anc⟩ := Map.contains_iff_some_find?.mp hanc
+      simp only [SymEntityData.ofActionType] at hfind_anc
+      have ⟨hmem_anc, _⟩ := find?_ancestor_map_implies_mem_and_eq hfind_anc
+      have ⟨_, _, heq_ty, hfind_entry₂⟩ :=
+        mem_action_types_implies_exists_action hwf hmem_anc
+      refine ⟨?_, ?_⟩
+      · intro _
+        exact ofEnv_action_type_isEnum hwf heq_ty hfind_entry₂ hfind₂
+      · intro hnot_enum
+        simp only [SymEntityData.isEnum, SymEntityData.ofActionType,
+          Option.isSome_some] at hnot_enum
+        exact absurd trivial hnot_enum
 
 theorem ofEnv_entities_is_hierarchical
   {Γ : TypeEnv}

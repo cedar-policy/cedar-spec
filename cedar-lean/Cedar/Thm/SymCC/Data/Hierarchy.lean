@@ -143,20 +143,36 @@ public def SymEntityData.SymbolicAncestors (δ : SymEntityData) : Prop :=
 public def SymEntityData.PartitionedAncestors (δ : SymEntityData) : Prop :=
   if δ.isEnum then δ.ConcreteAncestors else δ.SymbolicAncestors
 
+-- A known ancestor function is concrete exactly when its owner has members.
+public theorem SymEntityData.PartitionedAncestors.isUDF_iff_isEnum
+  {δ : SymEntityData} {ancTy : EntityType} {f : UnaryFunction}
+  (hpa : δ.PartitionedAncestors)
+  (hf : δ.ancestors.find? ancTy = .some f) :
+  f.isUDF = δ.isEnum
+:= by
+  simp only [PartitionedAncestors] at hpa
+  cases h : δ.isEnum
+  · simp only [h, Bool.false_eq_true, ↓reduceIte, SymbolicAncestors] at hpa
+    have huuf := hpa ancTy f hf
+    cases f <;> simp_all [UnaryFunction.isUUF, UnaryFunction.isUDF]
+  · simp only [h, ↓reduceIte, ConcreteAncestors] at hpa
+    simp [hpa ancTy f hf]
+
 -- The hierarchy is partitioned among enumerated and non-enumerated types.
 -- Specifically, ancestors of enumerated types must be concretely known (UDF
 -- functions), while those of non-enumerated types must be symbolic (UUF
--- functions). Additionally, enumerated types can roll up only to other
--- enumerated types, while non-enumerated types can roll up only to other
--- non-enumerated types.
+-- functions). Additionally, enumerated types cannot roll up to non-enumerated types,
+-- while non-enumerated types can roll up enumerated types provided that the
+-- enumerated type has no ancestors.
 public def SymEntities.Partitioned (εs : SymEntities) : Prop :=
   (∀ ety δ, εs.find? ety = .some δ →
     δ.PartitionedAncestors) ∧
-  (∀ ety₁ δ₁ f₁₂ ety₂ δ₂,
+  (∀ ety₁ δ₁ ety₂ δ₂,
     εs.find? ety₁ = .some δ₁ →
     εs.find? ety₂ = .some δ₂ →
-    δ₁.ancestors.find? ety₂ = .some f₁₂ →
-    δ₁.isEnum = δ₂.isEnum)
+    δ₁.ancestors.contains ety₂ →
+    (δ₁.isEnum → δ₂.isEnum) ∧
+    (¬ δ₁.isEnum → δ₂.isEnum → δ₂.ancestors = Map.empty))
 
 public def SymEntities.Acyclic (εs : SymEntities) : Prop :=
   ∀ (uid : EntityUID) δ f,
