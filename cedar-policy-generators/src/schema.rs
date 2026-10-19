@@ -1194,7 +1194,7 @@ impl Schema {
                         // with number of entity types rather than the number of possible edges (n^2).
                         // The `+ 6` is an arbitrary bias to further reduce the total number of
                         // edges present after TC computation.
-                        if should_add_edge(u,  entity_type_ids.len())? {
+                        if should_add_edge(u, entity_type_ids.len())? {
                             let etype = ast::InternalName::from(ast::Name::from(name.clone()));
                             member_of_types.push(etype);
                         }
