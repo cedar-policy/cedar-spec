@@ -1404,9 +1404,8 @@ theorem parseWith_hourMinute_at {s : String} (p : s.Pos) (pre rest hh mm : Strin
   obtain ⟨p3, hpar3, hsp3⟩ := parseOneOrTwoNum_digits_natOf_at p2
     (pre ++ String.singleton (if neg then '-' else '+') ++ hh) rest mm hmm hsp2
   refine ⟨p3, ?_, by
-    have := hsp3
-    rwa [String.append_assoc, String.append_assoc, ← String.append_assoc,
-      ← String.append_assoc] at this ⊢⟩
+    rw [String.append_assoc, String.append_assoc, ← String.append_assoc,
+      ← String.append_assoc] at hsp3; exact hsp3⟩
   show Std.Time.parseOffset .yes .no false ⟨s, p⟩ = _
   unfold Std.Time.parseOffset
   simp only [bind, Bind.bind]
@@ -4497,9 +4496,9 @@ theorem parseWith_offset_inv_at {s : String} (p p' : s.Pos) (pre suf : String)
             subst hp3
             refine ⟨neg, hh, mm, rest3, hhdig, hmdig, hhb, hmb, ?_, ?_⟩
             · rw [hsuf1, hhsuf, hmsuf]
-            · have := hmsp
-              rwa [String.append_assoc, String.append_assoc, ← String.append_assoc,
-                ← String.append_assoc] at this ⊢
+            · rw [String.append_assoc, String.append_assoc, ← String.append_assoc,
+                ← String.append_assoc] at hmsp
+              exact hmsp
 
 /-- `pstring` preserves the string component. -/
 theorem pstring_preserves {s : String} (sep : String) (p : s.Pos) (rem : ParseIt) (out : String)
@@ -5338,7 +5337,6 @@ theorem dateUTC_wf_inv (str : String) (zt : Std.Time.ZonedDateTime)
   · exact ⟨⟨hyfd, hmfd, hdfd⟩, ⟨hhfd, hmmfd, hssfd⟩, trivial, trivial⟩
   · exact ⟨⟨hm.1, hm.2, hd.1, hdayle⟩, ⟨hhbound, hmmbound, hssbound⟩, trivial⟩
 
-#print axioms dateUTC_wf_inv
 
 /-- `parseWithDate` on the `.S (.truncated 3)` fraction modifier preserves the string component. -/
 theorem parseWithDate_fraction_preserves {s : String} (b : DateBuilder) (config : FormatConfig)
@@ -5524,7 +5522,6 @@ theorem dateUTCWithMillis_wf_inv (str : String) (zt : Std.Time.ZonedDateTime)
   · exact ⟨⟨hyfd, hmfd, hdfd⟩, ⟨hhfd, hmmfd, hssfd⟩, hsssfd, trivial⟩
   · exact ⟨⟨hm.1, hm.2, hd.1, hdayle⟩, ⟨hhbound, hmmbound, hssbound⟩, trivial⟩
 
-#print axioms dateUTCWithMillis_wf_inv
 
 /-! ## Phase 3: DateWithOffset (the `±hhmm` offset tail) -/
 

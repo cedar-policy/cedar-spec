@@ -491,7 +491,7 @@ theorem typechecked_is_well_typed_after_lifting_binary_app
     constructor
     · exact hᵢ₁ hᵢ₁'
     · exact hᵢ₂ hᵢ₂'
-    · constructor <;> simp [type_of_after_lifted_is_lifted]
+    · constructor! <;> simp [type_of_after_lifted_is_lifted]
       · simp [heq₁, CedarType.liftBoolTypes]
       · simp [heq₂, CedarType.liftBoolTypes]
   case _ heq₁ heq₂ =>
@@ -524,7 +524,7 @@ theorem typechecked_is_well_typed_after_lifting_binary_app
       constructor
       · exact hᵢ₁ hᵢ₁'
       · exact hᵢ₂ hᵢ₂'
-      · constructor <;> simp [type_of_after_lifted_is_lifted]
+      · constructor! <;> simp [type_of_after_lifted_is_lifted]
         · simp [heq₁, CedarType.liftBoolTypes]
         · simp [heq₂, CedarType.liftBoolTypes]
   case _ heq₁ heq₂ =>
