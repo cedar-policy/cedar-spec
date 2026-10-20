@@ -187,7 +187,7 @@ theorem entity_access_at_level_succ {path} {tx : TypedExpr} {env : TypeEnv} {n n
     specialize ih h₂
     apply TypedExpr.EntityAccessAtLevel.getAttrRecord <;> assumption
   all_goals
-    constructor <;> first
+    constructor! <;> first
     | assumption
     | exact entity_access_at_level_succ (by assumption)
 termination_by tx
@@ -203,7 +203,7 @@ theorem entity_access_at_level_then_at_level {tx : TypedExpr} {n : Nat} {env : T
       assumption
     · assumption
   all_goals
-    constructor <;>
+    constructor! <;>
     first
     | assumption
     | exact entity_access_at_level_succ (by assumption)
@@ -421,7 +421,7 @@ theorem level_spec {tx : TypedExpr} {env : TypeEnv} {n : Nat}:
       · intro ⟨ ⟨ h₁, h₂⟩, h₃ ⟩
         have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₁]
         subst n
-        constructor <;> assumption
+        constructor! <;> assumption
     all_goals
       have ih₁ := @level_spec tx₁
       have ih₂ := @level_spec tx₂
@@ -453,7 +453,7 @@ theorem level_spec {tx : TypedExpr} {env : TypeEnv} {n : Nat}:
       intro h₁ h₂
       have ⟨ n', hn ⟩  : ∃ n' : Nat , n = (n' + 1) := by simp [h₁]
       subst n
-      constructor <;> assumption
+      constructor! <;> assumption
     · intro h
       cases h
       · rename_i hety'
