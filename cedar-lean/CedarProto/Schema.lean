@@ -21,6 +21,7 @@ import Protobuf.String
 -- Message Dependencies
 import CedarProto.ActionDecl
 import CedarProto.EntityDecl
+import CedarProto.Data
 
 open Proto
 
@@ -36,25 +37,11 @@ deriving instance Hashable for Spec.EntityType
 deriving instance Hashable for Spec.EntityUID
 
 /-
-Fast variant of `Set.make`, assuming we start with an array we can
-sort in place. Not proven equivalent.
--/
-private def setOfArray {α} [LT α] [DecidableLT α] [BEq α] (elts : Array α) : Data.Set α :=
-  Data.Set.mk (elts.qsort (· < ·)).eraseReps.toList
-
-/-
 Faster Variant of `Set.make`, assuming we have hash set without duplicates but
 with elements in arbitrary order. Not proven equivalent.
 -/
 private def setOfHashSet [BEq α] [Hashable α] [LT α] [DecidableLT α] (set : Std.HashSet α) : Data.Set α :=
   Data.Set.mk (set.toList.mergeSort (· < ·))
-
-/-
-Faster variant of `Map.make`, assuming we start with an array we can sort in
-place. Not proven equivalent.
--/
-private def mapOfArray {α β} [LT α] [DecidableLT α] [BEq α] (kvs : Array (α × β)) : Data.Map α β :=
-  Data.Map.mk ((kvs.qsort (·.1 < ·.1)).toList.eraseRepsBy (·.1 == ·.1))
 
 /-
 The Rust data types store _descendant_ information for the entity type store
@@ -66,10 +53,9 @@ representation to the ancestor representation.
 -/
 @[inline]
 private def descendantsToAncestors [BEq α] [Hashable α] (descendants : Std.HashMap α (Std.HashSet α)) : Std.HashMap α (Std.HashSet α) :=
-  descendants.fold (fun acc k _ => acc.insert k (findInMapValues k)) Std.HashMap.emptyWithCapacity
-where
-  findInMapValues (k₁ : α) : Std.HashSet α :=
-    descendants.fold (fun acc k₂ v => if v.contains k₁ then acc.insert k₂ else acc) Std.HashSet.emptyWithCapacity
+  descendants.fold (fun acc anc ds =>
+    ds.fold (fun acc d => acc.alter d (some ∘ (·.getD Std.HashSet.emptyWithCapacity |>.insert anc))) acc)
+    Std.HashMap.emptyWithCapacity
 
 namespace Schema
 
@@ -96,7 +82,7 @@ private def attrsToCedarType (attrs : Proto.Map String (Qualified ProtoType)) : 
   let attrs ← attrs.mapM λ (k,v) => do
     let v ← v.map ProtoType.toCedarType |>.transpose
     .ok (k, v)
-  .ok $ mapOfArray attrs
+  .ok $ Data.mapOfArray attrs
 
 /-- Decode definitions and `external` declarations. -/
 def toPartialSchema (schema : Schema) : Except String Validation.PartialSchema := do
@@ -112,7 +98,7 @@ def toPartialSchema (schema : Schema) : Except String Validation.PartialSchema :
         attrs := ← attrsToCedarType decl.attrs
         tags := ← option_transpose $ decl.tags.map ProtoType.toCedarType
       }
-      else .ok $ .defined $ .enum $ setOfArray decl.enums
+      else .ok $ .defined $ .enum $ Data.setOfArray decl.enums
     .ok (name, pese)
   let descendantMap := Std.HashMap.emptyWithCapacity.insertMany $ schema.acts.map λ decl => (decl.name, Std.HashSet.ofArray decl.descendants)
   let ancestorMap := descendantsToAncestors descendantMap
@@ -121,13 +107,13 @@ def toPartialSchema (schema : Schema) : Except String Validation.PartialSchema :
     let pase : PartialActionSchemaEntry ←
       if decl.external then .ok $ .external ancestors
       else .ok $ .defined {
-        appliesToPrincipal := setOfArray $ decl.principalTypes.map Spec.Proto.Name.toName
-        appliesToResource := setOfArray $ decl.resourceTypes.map Spec.Proto.Name.toName
+        appliesToPrincipal := Data.setOfArray $ decl.principalTypes.map Spec.Proto.Name.toName
+        appliesToResource := Data.setOfArray $ decl.resourceTypes.map Spec.Proto.Name.toName
         ancestors
         context := ← attrsToCedarType decl.context
       }
     .ok (decl.name, pase)
-  .ok { ets := mapOfArray ets, acts := mapOfArray acts }
+  .ok { ets := Data.mapOfArray ets, acts := Data.mapOfArray acts }
 
 /-- Errors on any `external` declaration (RFC 116): every caller of this
 requires a complete schema. -/

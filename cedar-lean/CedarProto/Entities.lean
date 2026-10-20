@@ -20,6 +20,7 @@ import Protobuf.Structure
 
 -- Message Dependencies
 import CedarProto.Entity
+import CedarProto.Data
 
 open Proto
 
@@ -54,12 +55,12 @@ instance : Message Entities := {
 
 @[inline]
 def toEntities (e : Entities) : Spec.Entities :=
-  Data.Map.make $ e.entities.toList.map λ { uid, attrs, ancestors, tags } => (
+  Data.mapOfArray $ e.entities.map λ { uid, attrs, ancestors, tags } => (
     uid,
     {
-      attrs := Data.Map.make attrs.toList
-      ancestors := Data.Set.make ancestors.toList
-      tags := Data.Map.make tags.toList
+      attrs := Data.mapOfArray attrs
+      ancestors := Data.setOfArray ancestors
+      tags := Data.mapOfArray tags
     }
   )
 

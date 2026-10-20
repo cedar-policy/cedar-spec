@@ -23,6 +23,7 @@ import Protobuf.String
 
 -- Message Dependencies
 import CedarProto.Name
+import CedarProto.Data
 
 open Proto
 
@@ -36,7 +37,7 @@ inductive PrimType where
 deriving Repr, Inhabited
 
 structure RecordType where
-  attrs : List (String × (Qualified ProtoType))
+  attrs : Array (String × (Qualified ProtoType))
 deriving Repr, Inhabited
 
 inductive ProtoType where
@@ -93,14 +94,12 @@ end Qualified
 namespace RecordType
 
 @[inline]
-def mergeAttrs (result : RecordType) (x : List (String × (Qualified ProtoType))) : RecordType :=
+def mergeAttrs (result : RecordType) (x : Array (String × (Qualified ProtoType))) : RecordType :=
   { attrs := result.attrs ++ x }
 
 @[inline]
 def merge (x1 x2 : RecordType) : RecordType :=
-  match x1.attrs with
-    | [] => { attrs := x2.attrs }
-    | _ => { attrs := x1.attrs ++ x2.attrs }
+  { attrs := x1.attrs ++ x2.attrs }
 
 -- parseField requires mutual recursion and can be found at the end of the file
 end RecordType
@@ -158,7 +157,7 @@ partial def toCedarType : ProtoType → Except String CedarType
   | .entity e => .ok (.entity e.toName)
   | .record r => do
     let attrs ← r.attrs.mapM λ (k,v) => do .ok (k, ← v.map toCedarType |>.transpose)
-    .ok (.record $ Data.Map.make attrs)
+    .ok (.record $ Data.mapOfArray attrs)
   | .ext n => match n.id with -- ignoring n.path because currently no extension types have nonempty namespaces
     | "ipaddr" => .ok (.ext .ipAddr)
     | "decimal" => .ok (.ext .decimal)
@@ -189,7 +188,7 @@ partial def RecordType.parseField (t : Tag) : BParsec (MergeFn RecordType) := do
   match t.fieldNum with
   | 1 =>
     let x : Proto.Map String (Qualified ProtoType) ← Field.guardedParse t
-    pureMergeFn (RecordType.mergeAttrs · x.toList)
+    pureMergeFn (RecordType.mergeAttrs · x)
   | _ =>
     t.wireType.skip
     pure ignore

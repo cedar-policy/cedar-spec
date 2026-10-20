@@ -35,7 +35,11 @@ inductive ActionScope.Any where
   | any
 deriving Inhabited
 
-def ActionScope.In := ActionScope
+/-- Entity UIDs are accumulated in an `Array` so that parsing them one at a time is linear. -/
+structure ActionScope.In where
+  euids : Array EntityUID
+deriving Inhabited
+
 def ActionScope.Eq := ActionScope
 end Proto
 
@@ -52,21 +56,13 @@ instance : ProtoEnum ActionScope.Any := {
 end Proto.ActionScope.Any
 
 namespace Proto.ActionScope.In
-instance : Inhabited ActionScope.In where
-  default := .actionInAny default
-
 @[inline]
 def mergeEuids (result : ActionScope.In) (e2 : Array EntityUID) : ActionScope.In :=
-  match result with
-  | .actionInAny e1 => .actionInAny (e1 ++ e2.toList)
-  | _ => panic!("ActionScope.In expected ActionScope constructor to be set to .actionInAny")
+  { euids := result.euids ++ e2 }
 
 @[inline]
 def merge (x1 x2 : ActionScope.In) : ActionScope.In :=
-  match x1, x2 with
-  | .actionInAny e1, .actionInAny e2 =>
-    .actionInAny (e1 ++ e2)
-  | _, _ => panic!("ActionScope.In expected ActionScope constructor to be set to .actionInAny")
+  { euids := x1.euids ++ x2.euids }
 
 @[inline]
 def parseField (t : Proto.Tag) : BParsec (MergeFn ActionScope.In) := do
@@ -125,10 +121,7 @@ def mergeAny (_ : ActionScope) (x : Proto.ActionScope.Any) : ActionScope :=
 
 @[inline]
 def mergeIn (result : ActionScope) (x : Proto.ActionScope.In) : ActionScope :=
-  have e2 :=
-    match x with
-    | .actionInAny e => e
-    | _              => panic!("Proto.ActionScope.In expected to have constructor .actionInAny")
+  have e2 := x.euids.toList
   match result with
   | .actionInAny e1 => .actionInAny (e1 ++ e2)
   | _ => .actionInAny e2

@@ -213,9 +213,11 @@ def ExprKind.BinaryApp := ExprKind
 instance : Inhabited ExprKind.BinaryApp where
   default := .binaryApp default default default
 
-def ExprKind.ExtensionFunctionApp := ExprKind
-instance : Inhabited ExprKind.ExtensionFunctionApp where
-  default := .call default default
+/-- Arguments are accumulated in an `Array` so that parsing them one at a time is linear. -/
+structure ExprKind.ExtensionFunctionApp where
+  fn : ExtFun
+  args : Array Expr
+deriving Inhabited
 
 def ExprKind.GetAttr := ExprKind
 instance : Inhabited ExprKind.GetAttr where
@@ -225,25 +227,31 @@ def ExprKind.HasAttr := ExprKind
 instance : Inhabited ExprKind.HasAttr where
   default := .hasAttr default default
 
-def ExprKind.ExtHasAttr := ExprKind
-instance : Inhabited ExprKind.ExtHasAttr where
-  default := .extHasAttr default default default
+/-- Attributes are accumulated in an `Array` so that parsing them one at a time is linear. -/
+structure ExprKind.ExtHasAttr where
+  expr : Expr
+  attrs : Array String
+deriving Inhabited
 
-def ExprKind.Like := ExprKind
-instance : Inhabited ExprKind.Like where
-  default := .unaryApp (.like default) default
+/-- The pattern is accumulated in an `Array` so that parsing it one element at a time is linear. -/
+structure ExprKind.Like where
+  pattern : Array PatElem
+  expr : Expr
+deriving Inhabited
 
 def ExprKind.Is := ExprKind
 instance : Inhabited ExprKind.Is where
   default := .unaryApp (.is default) default
 
-def ExprKind.Set := ExprKind
-instance : Inhabited ExprKind.Set where
-  default := .set default
+/-- Elements are accumulated in an `Array` so that parsing them one at a time is linear. -/
+structure ExprKind.Set where
+  elts : Array Expr
+deriving Inhabited
 
-def ExprKind.Record := ExprKind
-instance : Inhabited ExprKind.Record where
-  default := .record default
+/-- Items are accumulated in an `Array` so that parsing them one at a time is linear. -/
+structure ExprKind.Record where
+  items : Array (String × Expr)
+deriving Inhabited
 
 end Proto
 
@@ -492,9 +500,7 @@ namespace Proto.ExprKind.ExtensionFunctionApp
 
 @[inline]
 def mergeName (result : ExprKind.ExtensionFunctionApp) (xfn : Spec.Name) : BParsec ExprKind.ExtensionFunctionApp :=
-  match result with
-  | .call _ es =>
-    let ret f := pure (.call f es)
+    let ret f := pure { result with fn := f }
     match xfn.id with
     | "decimal" => ret .decimal
     | "lessThan" => ret .lessThan
@@ -519,19 +525,20 @@ def mergeName (result : ExprKind.ExtensionFunctionApp) (xfn : Spec.Name) : BPars
     | "toHours" => ret .toHours
     | "toDays" => ret .toDays
     | xfn => throw s!"mergeName: unknown extension function {xfn}"
-  | _ => throw "Expected ExprKind.ExtensionFunctionApp to have constructor .call"
 
 @[inline]
 def mergeArgs (result : ExprKind.ExtensionFunctionApp) (es2 : Array Expr) : ExprKind.ExtensionFunctionApp :=
-  match result with
-  | .call n1 es1 => .call n1 (es1 ++ es2.toList)
-  | _            => panic!("Expected ExprKind.ExtensionFunctionApp to have constructor .call")
+  let args := result.args
+  let result := { result with args := #[] }
+  { result with args := args ++ es2 }
 
 @[inline]
 def merge (x1 x2 : ExprKind.ExtensionFunctionApp) : ExprKind.ExtensionFunctionApp :=
-  match x1, x2 with
-  | .call _ args1, .call fn2 args2 => .call fn2 (args1 ++ args2)
-  | _, _                           => panic!("Expected ExprKind.ExtensionFunctionApp to have constructor .call")
+  { fn := x2.fn, args := x1.args ++ x2.args }
+
+@[inline]
+def toExpr (x : ExprKind.ExtensionFunctionApp) : Expr :=
+  .call x.fn x.args.toList
 
 -- parseField requires mutual recursion and can be found at the end of the file
 end Proto.ExprKind.ExtensionFunctionApp
@@ -586,29 +593,25 @@ namespace Proto.ExprKind.ExtHasAttr
 
 @[inline]
 def mergeExpr (result : ExprKind.ExtHasAttr) (e2 : Expr) : ExprKind.ExtHasAttr :=
-  match result with
-  | .extHasAttr e1 attr attrs => .extHasAttr (Expr.merge e1 e2) attr attrs
-  | _                         => panic!("Expected ExprKind.ExtHasAttr to be constructor .extHasAttr")
+  { result with expr := Expr.merge result.expr e2 }
 
 @[inline]
 def mergeAttrs (result : ExprKind.ExtHasAttr) (as2 : Array String) : ExprKind.ExtHasAttr :=
-  -- note this assumes protobuf of syntactically correct extended has: the attr are non-empty
-  -- ids
-  match result with
-  | .extHasAttr expr attr attrs =>
-    if attr == "" && attrs == [] then
-      match as2.toList with
-      | []      => .extHasAttr expr attr attrs
-      | a :: as => .extHasAttr expr a as
-    else
-      .extHasAttr expr attr (attrs ++ as2.toList)
-  | _ => panic!("Expected ExprKind.ExtHasAttr to be constructor .extHasAttr")
+  let attrs := result.attrs
+  let result := { result with attrs := #[] }
+  { result with attrs := attrs ++ as2 }
 
 @[inline]
 def merge (x1 x2 : ExprKind.ExtHasAttr) : ExprKind.ExtHasAttr :=
-  match x1, x2 with
-  | .extHasAttr e1 a1 as1, .extHasAttr e2 a2 as2 => .extHasAttr (Expr.merge e1 e2) (Field.merge a1 a2) (as1 ++ as2)
-  | _, _                                          => panic!("Expected ExprKind.ExtHasAttr to be constructor .extHasAttr")
+  { expr := Expr.merge x1.expr x2.expr, attrs := x1.attrs ++ x2.attrs }
+
+@[inline]
+def toExpr (x : ExprKind.ExtHasAttr) : Expr :=
+  -- note this assumes protobuf of syntactically correct extended has: the attr are non-empty
+  -- ids
+  match x.attrs.toList with
+  | []      => .extHasAttr x.expr "" []
+  | a :: as => .extHasAttr x.expr a as
 
 -- parseField requires mutual recursion and can be found at the end of this file
 end Proto.ExprKind.ExtHasAttr
@@ -617,21 +620,21 @@ namespace Proto.ExprKind.Like
 
 @[inline]
 def mergeExpr (result : ExprKind.Like) (e2 : Expr) : ExprKind.Like :=
-  match result with
-  | .unaryApp (.like pat) e1 => .unaryApp (.like pat) (Expr.merge e1 e2)
-  | _                        => panic!("Expected ExprKind.Like to have constructor .unaryApp .like")
+  { result with expr := Expr.merge result.expr e2 }
 
 @[inline]
-def mergePattern (result : ExprKind.Like) (pat2 : Repeated PatElem) : ExprKind.Like :=
-  match result with
-  | .unaryApp (.like pat1) e => .unaryApp (.like (Field.merge pat1 pat2.toList)) e
-  | _                        => panic!("Expected ExprKind.Like to have constructor .unaryApp .like")
+def mergePattern (result : ExprKind.Like) (pat2 : Array PatElem) : ExprKind.Like :=
+  let pattern := result.pattern
+  let result := { result with pattern := #[] }
+  { result with pattern := pattern ++ pat2 }
 
 @[inline]
 def merge (x1 x2 : ExprKind.Like) : ExprKind.Like :=
-  match x1, x2 with
-  | .unaryApp (.like p1) e1, .unaryApp (.like p2) e2 => .unaryApp (.like (Field.merge p1 p2)) (Expr.merge e1 e2)
-  | _, _                                             => panic!("Expected ExprKind.Like to have constructor .unaryApp .like")
+  { pattern := x1.pattern ++ x2.pattern, expr := Expr.merge x1.expr x2.expr }
+
+@[inline]
+def toExpr (x : ExprKind.Like) : Expr :=
+  .unaryApp (.like x.pattern.toList) x.expr
 
 -- parseField relies on mutual recursion and can be found at the end of the file
 end Proto.ExprKind.Like
@@ -663,15 +666,15 @@ namespace Proto.ExprKind.Set
 
 @[inline]
 def mergeElems (result : ExprKind.Set) (es2 : Array Expr) : ExprKind.Set :=
-  match result with
-  | .set es1 => .set (es1 ++ es2.toList)
-  | _        => panic!("Expected ExprKind.Set to have the .set constructor")
+  { elts := result.elts ++ es2 }
 
 @[inline]
 def merge (x1 x2 : ExprKind.Set) : ExprKind.Set :=
-  match x1, x2 with
-  | .set es1, .set es2 => .set (es1 ++ es2)
-  | _, _               => panic!("Expected ExprKind.Set to have the .set constructor")
+  { elts := x1.elts ++ x2.elts }
+
+@[inline]
+def toExpr (x : ExprKind.Set) : Expr :=
+  .set x.elts.toList
 
 -- parseField relies on mutual recursion and can be found at the end of the file
 end Proto.ExprKind.Set
@@ -680,15 +683,15 @@ namespace Proto.ExprKind.Record
 
 @[inline]
 def mergeItems (result : ExprKind.Record) (its2 : Array (String × Expr)) : ExprKind.Record :=
-  match result with
-  | .record its1 => .record (its1 ++ its2.toList)
-  | _            => panic!("Expected ExprKind.Record to have constructor .record")
+  { items := result.items ++ its2 }
 
 @[inline]
 def merge (x1 x2 : ExprKind.Record) : ExprKind.Record :=
-  match x1, x2 with
-  | .record items1, .record items2 => .record (items1 ++ items2)
-  | _, _                           => panic!("Expected ExprKind.Record to have constructor .record")
+  { items := x1.items ++ x2.items }
+
+@[inline]
+def toExpr (x : ExprKind.Record) : Expr :=
+  .record x.items.toList
 
 -- parseField relies on mutual recursion and can be found at the end of the file
 end Proto.ExprKind.Record
@@ -740,8 +743,8 @@ def mergeBApp (result : ExprKind) (x : ExprKind.BinaryApp) : ExprKind :=
 @[inline]
 def mergeExtApp (result : ExprKind) (x : ExprKind.ExtensionFunctionApp) : ExprKind :=
   match result with
-  | .call _ _ => ExprKind.ExtensionFunctionApp.merge result x
-  | _         => x
+  | .call _ _ => Expr.merge result x.toExpr
+  | _         => x.toExpr
 
 @[inline]
 def mergeGetAttr (result : ExprKind) (x : ExprKind.GetAttr) : ExprKind :=
@@ -758,14 +761,14 @@ def mergeHasAttr (result : ExprKind) (x : ExprKind.HasAttr) : ExprKind :=
 @[inline]
 def mergeExtHasAttr (result : ExprKind) (x : ExprKind.ExtHasAttr) : ExprKind :=
   match result with
-  | .extHasAttr _ _ _ => ExprKind.ExtHasAttr.merge result x
-  | _                 => x
+  | .extHasAttr _ _ _ => Expr.merge result x.toExpr
+  | _                 => x.toExpr
 
 @[inline]
 def mergeLike (result : ExprKind) (x : ExprKind.Like) : ExprKind :=
   match result with
-  | .unaryApp (.like _) _ => ExprKind.Like.merge result x
-  | _                     => x
+  | .unaryApp (.like _) _ => Expr.merge result x.toExpr
+  | _                     => x.toExpr
 
 @[inline]
 def mergeIs (result : ExprKind) (x : ExprKind.Is) : ExprKind :=
@@ -776,14 +779,14 @@ def mergeIs (result : ExprKind) (x : ExprKind.Is) : ExprKind :=
 @[inline]
 def mergeSet (result : ExprKind) (x : ExprKind.Set) : ExprKind :=
   match result with
-  | .set _ => ExprKind.Set.merge result x
-  | _      => x
+  | .set _ => Expr.merge result x.toExpr
+  | _      => x.toExpr
 
 @[inline]
 def mergeRecord (result : ExprKind) (x : ExprKind.Record) : ExprKind :=
   match result with
-  | .record _ => ExprKind.Record.merge result x
-  | _         => x
+  | .record _ => Expr.merge result x.toExpr
+  | _         => x.toExpr
 
 @[inline]
 def merge (x1 x2 : ExprKind) : ExprKind :=

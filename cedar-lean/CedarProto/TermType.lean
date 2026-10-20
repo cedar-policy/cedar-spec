@@ -155,7 +155,7 @@ mutual
   deriving Repr, Inhabited
 
   structure RecordType where
-    fields : List RecordFieldType
+    fields : Array RecordFieldType
   deriving Repr, Inhabited
 end
 
@@ -185,11 +185,8 @@ mutual
 
   partial def RecordType.parseField (t : Tag) : BParsec (MergeFn RecordType) := do
     have : Message RecordFieldType := { parseField := RecordFieldType.parseField, merge := RecordFieldType.merge }
-    have : Field (List RecordFieldType) := Field.fromInterField (λ (fields : Repeated RecordFieldType) => fields.toList) (· ++ ·)
     match t.fieldNum with
-    | 1 =>
-      let x : List RecordFieldType ← Field.guardedParse t
-      pureMergeFn (RecordType.merge · (RecordType.mk x))
+    | 1 => parseRepeatedFieldElement t RecordType.fields (update fields)
     | _ => let _ ← t.wireType.skip ; pure ignore
 
   partial def TermType.parseField (t : Tag) : BParsec (MergeFn TermType) := do
@@ -234,7 +231,7 @@ end TermType
 
 mutual
   partial def RecordType.toCedarMap (rty : RecordType) : Cedar.Data.Map Cedar.Spec.Attr Cedar.SymCC.TermType :=
-    Cedar.Data.Map.mk (rty.fields.map (λ rf => (rf.attr, TermType.toCedarTermType rf.ty)))
+    Cedar.Data.Map.mk (rty.fields.map (λ rf => (rf.attr, TermType.toCedarTermType rf.ty))).toList
 
   partial def TermType.toCedarTermType (ty: TermType) : Cedar.SymCC.TermType :=
     match ty with

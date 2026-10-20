@@ -24,6 +24,7 @@ import Protobuf.String
 -- Message Dependencies
 import CedarProto.EntityUID
 import CedarProto.TermType
+import CedarProto.Data
 
 open Proto
 
@@ -242,17 +243,16 @@ namespace PatElem
     | .char c => .justChar c
 end PatElem
 
-abbrev Pattern := List PatElem
+abbrev Pattern := Array PatElem
 
 namespace Pattern
   @[inline]
   def merge (p₁ p₂ : Pattern) : Pattern := p₁ ++ p₂
 
   def parseField (t : Tag) : BParsec (MergeFn Pattern) := do
-    have : Field (List PatElem) := Field.fromInterField (λ (elems : Repeated PatElem) => elems.toList) (· ++ ·)
     match t.fieldNum with
     | 1 =>
-      let x : List PatElem ← Field.guardedParse t
+      let x : Repeated PatElem ← Field.guardedParse t
       pureMergeFn (merge · x)
     | _ => t.wireType.skip ; pure ignore
 
@@ -261,7 +261,7 @@ namespace Pattern
     merge := merge
   }
 
-  def toCedar (p : Pattern) : Cedar.Spec.Pattern := p.map PatElem.toCedar
+  def toCedar (p : Pattern) : Cedar.Spec.Pattern := (p.map PatElem.toCedar).toList
 end Pattern
 
 inductive Op where
@@ -641,11 +641,11 @@ mutual
   deriving Repr, Inhabited
 
   structure Asserts where
-    asserts: List Term
+    asserts: Array Term
   deriving Repr, Inhabited
 
   structure Set where
-    elts : List Term
+    elts : Array Term
     ty : TermType
   deriving Repr, Inhabited
 
@@ -655,12 +655,12 @@ mutual
   deriving Repr, Inhabited
 
   structure Record where
-    fields : List RecordField
+    fields : Array RecordField
   deriving Repr, Inhabited
 
   structure App where
     op : Op
-    args : List Term
+    args : Array Term
     ty : TermType
   deriving Repr, Inhabited
 end
@@ -709,34 +709,28 @@ mutual
 
   partial def Record.parseField (t : Tag) : BParsec (MergeFn Record) := do
     have : Message RecordField := { parseField := RecordField.parseField, merge := RecordField.merge }
-    have : Field (List RecordField) := Field.fromInterField (λ (fields : Repeated RecordField) => fields.toList) (· ++ ·)
     match t.fieldNum with
-    | 1 =>
-      let x : List RecordField ← Field.guardedParse t
-      pureMergeFn (Record.merge · (Record.mk x))
+    | 1 => parseRepeatedFieldElement t Record.fields (update fields)
     | _ => t.wireType.skip ; pure ignore
 
   partial def Asserts.parseField (t : Tag) : BParsec (MergeFn Asserts) := do
     have : Message Term := { parseField := Term.parseField, merge := Term.merge }
-    have : Field (List Term) := Field.fromInterField (λ (terms : Repeated Term) => terms.toList) (· ++ ·)
     match t.fieldNum with
-    | 1 => parseFieldElement t Asserts.asserts (update asserts)
+    | 1 => parseRepeatedFieldElement t Asserts.asserts (update asserts)
     | _ => t.wireType.skip ; pure ignore
 
   partial def Set.parseField (t : Tag) : BParsec (MergeFn Set) := do
     have : Message Term := { parseField := Term.parseField, merge := Term.merge }
-    have : Field (List Term) := Field.fromInterField (λ (terms : Repeated Term) => terms.toList) (· ++ ·)
     match t.fieldNum with
-    | 1 => parseFieldElement t Set.elts (update elts)
+    | 1 => parseRepeatedFieldElement t Set.elts (update elts)
     | 2 => parseFieldElement t Set.ty (update ty)
     | _ => t.wireType.skip ; pure ignore
 
   partial def App.parseField (t : Tag) : BParsec (MergeFn App) := do
     have : Message Term := { parseField := Term.parseField, merge := Term.merge }
-    have : Field (List Term) := Field.fromInterField (λ (terms : Repeated Term) => terms.toList) (· ++ ·)
     match t.fieldNum with
     | 1 => parseFieldElement t App.op (update op)
-    | 2 => parseFieldElement t App.args (update args)
+    | 2 => parseRepeatedFieldElement t App.args (update args)
     | 3 => parseFieldElement t App.ty (update ty)
     | _ => t.wireType.skip ; pure ignore
 
@@ -819,11 +813,11 @@ mutual
       | .none => .none
       | .some t => .some ⟨rf.attr, t⟩
     )
-    return Cedar.Data.Map.mk attrs
+    return Cedar.Data.Map.mk attrs.toList
 
   partial def Set.toCedar (s : Set) : Option (Cedar.Data.Set Cedar.SymCC.Term × Cedar.SymCC.TermType) := do
     let elts ← s.elts.mapM Term.toCedar
-    return ⟨Cedar.Data.Set.make elts, s.ty.toCedarTermType⟩
+    return ⟨Cedar.Data.setOfArray elts, s.ty.toCedarTermType⟩
 
   partial def Term.toCedar (t : Term) : Option Cedar.SymCC.Term := do
     match t with
@@ -844,11 +838,11 @@ mutual
       let op := a.op.toCedar
       let ret_ty := a.ty.toCedarTermType
       let cedar_args ← a.args.mapM Term.toCedar
-      return .app op cedar_args ret_ty
+      return .app op cedar_args.toList ret_ty
     | .record r => return .record (← r.toCedar)
 
   partial def Asserts.toCedar (a : Asserts) : Option Cedar.SymCC.Asserts :=
-    a.asserts.mapM Term.toCedar
+    (·.toList) <$> a.asserts.mapM Term.toCedar
 end
 
 end Cedar.SymCC.Proto

@@ -21,6 +21,7 @@ import Protobuf.Structure
 import CedarProto.EntityUID
 import CedarProto.Expr
 import CedarProto.Value
+import CedarProto.Data
 
 open Proto
 
@@ -60,7 +61,7 @@ def toRequest : Request → Except String Spec.Request
       resource
       context := ← do
         let pairs ← context.mapM λ (k,v) => do .ok (k, ← Spec.Value.exprToValue v)
-        .ok $ Data.Map.make pairs.toList
+        .ok $ Data.mapOfArray pairs
     }
 
 end Request

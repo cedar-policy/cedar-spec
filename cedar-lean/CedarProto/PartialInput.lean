@@ -23,6 +23,7 @@ import Protobuf.Structure
 import CedarProto.EntityUID
 import CedarProto.Expr
 import CedarProto.Value
+import CedarProto.Data
 
 
 
@@ -92,7 +93,7 @@ instance : Message PartialRequest where
 def toPartialRequest (p : PartialRequest) : Except String TPE.PartialRequest := do
   let context ← if p.hasContext then do
       let pairs ← p.context.mapM fun (k, v) => do .ok (k, ← Spec.Value.exprToValue v)
-      .ok (some (Data.Map.make pairs.toList))
+      .ok (some (Data.mapOfArray pairs))
     else .ok none
   .ok {
     principal := p.principal.toPartialEntityUID
@@ -163,16 +164,16 @@ instance : Message PartialEntities where
 private def convertMap (has : Bool) (m : Proto.Map String Expr) : Except String (Option (Data.Map Attr Value)) :=
   if has then do
     let pairs ← m.mapM fun (k, v) => do .ok (k, ← Spec.Value.exprToValue v)
-    .ok (some (Data.Map.make pairs.toList))
+    .ok (some (Data.mapOfArray pairs))
   else .ok none
 
 def toPartialEntities (e : PartialEntities) : Except String TPE.PartialEntities := do
-  let pairs ← e.entities.toList.mapM fun pe => do
+  let pairs ← e.entities.mapM fun pe => do
     let attrs ← convertMap pe.hasAttrs pe.attrs
-    let ancestors := if pe.hasAncestors then some (Data.Set.make pe.ancestors.toList) else none
+    let ancestors := if pe.hasAncestors then some (Data.setOfArray pe.ancestors) else none
     let tags ← convertMap pe.hasTags pe.tags
     .ok (pe.uid, TPE.PartialEntityData.mk attrs ancestors tags)
-  .ok (Data.Map.make pairs)
+  .ok (Data.mapOfArray pairs)
 
 end PartialEntities
 
