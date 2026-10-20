@@ -680,6 +680,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "entities-upsert-equivalence"
+path = "fuzz_targets/entities-upsert-equivalence.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "partial-entity-validation-drt"
 path = "fuzz_targets/partial-entity-validation-drt.rs"
 test = false

@@ -50,6 +50,8 @@ The table below lists all available fuzz targets, including which component of t
 | [`validation-pbt-type-directed`](fuzz/fuzz_targets/validation-pbt-type-directed.rs) | Validator | PBT | Test that validated policies do not result in type errors using (mostly) well-typed inputs |
 | [`entity-manifest-drt-type-directed`](fuzz/fuzz_targets/entity-slicing-pbt-type-directed.rs) | Entity Slicing | DRT | Test that entity slicing produces the same authorization response as without it. |
 | [`wildcard-matching`](fuzz/fuzz_targets/wildcard-matching.rs) | String matching algorithm used for the `like` operator | PBT | Test algorithm against a regex-based implementation |
+| [`tc-repair-equivalence`](fuzz/fuzz_targets/tc-repair-equivalence.rs) | Entity transitive closure (`repair_tc` vs `compute_tc`) | PBT | Test that incrementally repairing the transitive closure of an entity graph (`repair_tc` after adding edges) agrees with recomputing it from scratch (`compute_tc`), on both cycle detection and the resulting ancestor sets |
+| [`entities-upsert-equivalence`](fuzz/fuzz_targets/entities-upsert-equivalence.rs) | Entity store incremental update (`Entities::upsert_entities`) | PBT | Test that applying a batch of entity upserts to a store agrees with rebuilding the store from scratch via `Entities::from_entities`, comparing ancestor sets and cycle detection. Catches the stale-ancestor bug fixed in [cedar#2628](https://github.com/cedar-policy/cedar/pull/2628) where a node repeated in one batch kept a dropped parent's ancestors |
 
 ## Generating corpus tests
 
