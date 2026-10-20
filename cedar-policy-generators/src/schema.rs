@@ -19,7 +19,7 @@ use crate::abac::{
 };
 use crate::err::{while_doing, Error, Result};
 use crate::expr::ExprGenerator;
-use crate::hierarchy::Hierarchy;
+use crate::hierarchy::{should_add_edge, Hierarchy};
 use crate::request::Request;
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
@@ -1194,7 +1194,7 @@ impl Schema {
                         // with number of entity types rather than the number of possible edges (n^2).
                         // The `+ 6` is an arbitrary bias to further reduce the total number of
                         // edges present after TC computation.
-                        if u.ratio::<usize>(1, entity_type_ids.len() + 6)? {
+                        if should_add_edge(u, entity_type_ids.len())? {
                             let etype = ast::InternalName::from(ast::Name::from(name.clone()));
                             member_of_types.push(etype);
                         }
@@ -1317,7 +1317,7 @@ impl Schema {
         if settings.enable_action_groups_and_attrs {
             for i in 0..actions.len() {
                 for name in action_names[(i + 1)..].iter() {
-                    if u.ratio::<u8>(1, 2)? {
+                    if should_add_edge(u, action_names.len())? {
                         actions[i]
                             .1
                             .member_of

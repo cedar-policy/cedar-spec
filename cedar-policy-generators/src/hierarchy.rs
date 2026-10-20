@@ -25,6 +25,17 @@ use indexmap::{IndexMap, IndexSet};
 use nonempty::NonEmpty;
 use smol_str::SmolStr;
 
+/// Decide if we should add an edge in a graph
+///
+/// * Never add an edge if `u` has run out of data
+/// * Probability of adding an edge is proportional to the number of nodes in
+///   the graph, so that the number of edges is not quadratic.
+pub fn should_add_edge(u: &mut Unstructured<'_>, num_nodes: usize) -> Result<bool> {
+    // `+ 6` is an arbitrary bias to keep the total number of edges low enough
+    // even after computing the transitive closure.
+    Ok(!u.is_empty() && u.ratio(1, num_nodes + 6)?)
+}
+
 /// Contains data about an entity hierarchy
 #[derive(Debug, Clone)]
 pub struct Hierarchy {
@@ -483,7 +494,7 @@ impl HierarchyGenerator<'_, '_> {
                         for ty in schema.allowed_parent_typenames(name).unwrap() {
                             // `uids_for_type` prevent cycles
                             for possible_parent_uid in hierarchy_no_attrs.uids_for_type(&ty, uid) {
-                                if self.u.ratio::<u8>(1, 2)? {
+                                if should_add_edge(self.u, hierarchy_no_attrs.num_entities())? {
                                     parents.insert(possible_parent_uid.clone());
                                 }
                             }
@@ -496,7 +507,7 @@ impl HierarchyGenerator<'_, '_> {
                         // given one in the pool; this ensures we get a DAG (no cycles)
                         // without loss of generality
                         for pool_uid in hierarchy_no_attrs.uids_after(uid) {
-                            if self.u.ratio(1, 3)? {
+                            if should_add_edge(self.u,  hierarchy_no_attrs.num_entities())? {
                                 parents.insert(pool_uid.clone());
                             }
                         }
