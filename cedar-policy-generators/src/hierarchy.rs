@@ -27,13 +27,18 @@ use smol_str::SmolStr;
 
 /// Decide if we should add an edge in a graph
 ///
-/// * Never add an edge if `u` has run out of data
-/// * Probability of adding an edge is proportional to the number of nodes in
-///   the graph, so that the number of edges is not quadratic.
+/// Probability `1 / (num_nodes + 6)`, so edges are linear in the number of
+/// nodes. We avoid `ratio(1, d)`: it triggers on the bottom of the range, which
+/// `0x00` always produces, so `0x00`-heavy corpora yield near-complete
+/// hierarchies. Triggering on the top of the range keeps the same probability
+/// but maps low bytes to "no edge".
 pub fn should_add_edge(u: &mut Unstructured<'_>, num_nodes: usize) -> Result<bool> {
-    // `+ 6` is an arbitrary bias to keep the total number of edges low enough
-    // even after computing the transitive closure.
-    Ok(!u.is_empty() && u.ratio(1, num_nodes + 6)?)
+    if u.is_empty() {
+        return Ok(false);
+    }
+    let d = (num_nodes + 6) as u32;
+    let x: u32 = u.int_in_range(0..=d - 1)?;
+    Ok(x == d - 1)
 }
 
 /// Contains data about an entity hierarchy
