@@ -466,7 +466,7 @@ theorem Cst.Member.collectAccessors_complete
         | inr uop =>
           match hargs : args with
           | [] =>
-            simp only [hi, hop, List.isEmpty_nil, if_true] at h
+            simp only [hi, hop, List.isEmpty_nil, ite_true] at h
             obtain ⟨_, hrst⟩ := (noCstError_union _ _).mpr h
             obtain ⟨rest_ast, hrest_ast, hnc, hmemb⟩ := Cst.Member.collectAccessors_complete _ rest hrst
             subst hii
@@ -475,7 +475,7 @@ theorem Cst.Member.collectAccessors_complete
               simp [Cst.MemAccess.toAstAccessor?, hi, Cst.Expr.toAExprs?, hrest_ast]
             · intro he
               obtain ⟨r, hr⟩ := hmemb (Expr.unaryApp uop he)
-              exact ⟨r, by simp only [memberAuxB, Cst.Ident.toMeth?, hop, List.isEmpty_nil, if_true]; exact hr⟩
+              exact ⟨r, by simp only [memberAuxB, Cst.Ident.toMeth?, hop, List.isEmpty_nil, ite_true]; exact hr⟩
           | a :: rst =>
             simp only [hi, hop, List.isEmpty_cons] at h
             obtain ⟨hab, _⟩ := (noCstError_union _ _).mpr h

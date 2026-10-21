@@ -1180,7 +1180,7 @@ theorem evalAccessors_eq
             simp [Cst.Ident.toMeth?, hop] at hb
           | nil =>
             simp only [Cst.Expr.toAExprs?, Option.some.injEq] at hxs; subst hxs
-            simp only [Cst.Ident.toMeth?, hop, List.isEmpty_nil, if_true] at hb
+            simp only [Cst.Ident.toMeth?, hop, List.isEmpty_nil, ite_true] at hb
             have hstep : evaluate (Expr.unaryApp uop headExpr) req es = apply₁ uop head := by
               simp [evaluate, hhead, bind, Except.bind]
             have hev : Cst.Member.evalAccessors head (.field (.idIdent s hs0) :: .call [] :: rest2) req es
@@ -1332,7 +1332,7 @@ theorem rIsIn_some_eval_eq
           | false => simp [Result.as, Coe.coe, Value.asBool]
           | true =>
             simp only [Result.as, Coe.coe, Value.asBool, Bool.not_true,
-                       Bool.false_eq_true, if_false]
+                       Bool.false_eq_true, ite_false]
             rw [hinEntity_eq]
             cases hie : ie.evaluate req es with
             | error e => simp
@@ -1891,7 +1891,7 @@ theorem Cst.Expr.toAttr?_consistent (e : Cst.Expr) :
     rw [hred]
     cases hoe : o.extended with
     | cons _ _ =>
-      simp only [Cst.Expr.toAttr?, hoe, List.isEmpty_cons, Bool.not_false, Bool.true_or, if_true]
+      simp only [Cst.Expr.toAttr?, hoe, List.isEmpty_cons, Bool.not_false, Bool.true_or, ite_true]
       rw [Cst.OrExpr.toExprOrSpecial?, hoe]
       simp [Cst.ExprOrSpecial.toValidAttr?, Option.bind_assoc]
     | nil =>
@@ -1899,7 +1899,7 @@ theorem Cst.Expr.toAttr?_consistent (e : Cst.Expr) :
       cases hae : o.initial.extended with
       | cons _ _ =>
         simp only [Cst.Expr.toAttr?, hoe, hae, List.isEmpty_nil, List.isEmpty_cons,
-          Bool.not_true, Bool.not_false, Bool.or_true, if_true]
+          Bool.not_true, Bool.not_false, Bool.or_true, ite_true]
         rw [Cst.AndExpr.toExprOrSpecial?, hae]
         simp [Cst.ExprOrSpecial.toValidAttr?, Option.bind_assoc]
       | nil =>

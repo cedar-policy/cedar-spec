@@ -75,7 +75,7 @@ theorem toHexChars_pos_roundtrip (n : Nat) (hn : n > 0) :
     hexFold (Nat.toHexChars n) (.ok 0) = .ok n := by
   simp only [Nat.toHexChars]
   have hne : (n == 0) = false := by simp [BEq.beq]; omega
-  rw [if_neg (by simp [hne])]
+  rw [ite_eq_right (by simp [hne])]
   rw [go_hexFold]
   simp [hexFold]
 
@@ -97,8 +97,8 @@ theorem asHexNat_eq_hexFold (cs : List Char) (hne : cs ≠ []) (hlen : cs.length
         have := String.toList_ofList (l := c :: cs)
         rw [h] at this; simp at this
       exact Bool.eq_false_iff.mpr (mt String.isEmpty_iff.mp hne')
-  rw [if_neg (by rw [h1]; exact Bool.false_ne_true)]
-  rw [if_neg (by rw [String.length_ofList]; omega)]
+  rw [ite_eq_right (by rw [h1]; exact Bool.false_ne_true)]
+  rw [ite_eq_right (by rw [String.length_ofList]; omega)]
   rw [String.toList_ofList]
 
 /-- Length of `toHexChars.go` output. -/
