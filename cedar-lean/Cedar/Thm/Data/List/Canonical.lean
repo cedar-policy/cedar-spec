@@ -595,4 +595,148 @@ public theorem list_find?_at_head
   simp only [canonicalize]
   rw [insertCanonical_find?_key k hd (canonicalize f tl)]
   simp [h₁]
+/-! ### mergeCanonical -/
+
+@[simp]
+public theorem mergeCanonical_nil_left [LT α] [DecidableLT α] (ys : List α) :
+  mergeCanonical [] ys = ys
+:= by simp [mergeCanonical]
+
+@[simp]
+public theorem mergeCanonical_nil_right [LT α] [DecidableLT α] (xs : List α) :
+  mergeCanonical xs [] = xs
+:= by cases xs <;> simp [mergeCanonical]
+
+/-- Membership in a merge does not require its inputs to be canonical. -/
+public theorem mem_mergeCanonical [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} {a : α} :
+  a ∈ mergeCanonical xs ys ↔ a ∈ xs ∨ a ∈ ys
+:= by
+  induction xs, ys using mergeCanonical.induct with
+  | case1 ys => simp
+  | case2 x xs => simp
+  | case3 x xs y ys hlt ih =>
+    simp only [mergeCanonical, hlt, reduceIte, mem_cons, ih, or_assoc]
+  | case4 x xs y ys hnlt hgt ih =>
+    simp only [mergeCanonical, hnlt, hgt, reduceIte, mem_cons, ih]
+    constructor
+    · rintro (h | h | h) <;> simp [h]
+    · rintro ((h | h) | h | h) <;> simp [h]
+  | case5 x xs y ys hnlt hngt ih =>
+    have hxy := StrictLT.if_not_lt_gt_then_eq x y hnlt hngt
+    subst hxy
+    simp only [mergeCanonical, hnlt, reduceIte, mem_cons, ih]
+    constructor
+    · rintro (h | h | h) <;> simp [h]
+    · rintro ((h | h) | h | h) <;> simp [h]
+
+/-- Merging a list with itself does not require the list to be canonical. -/
+@[simp]
+public theorem mergeCanonical_self [LT α] [DecidableLT α] [StrictLT α] (xs : List α) :
+  mergeCanonical xs xs = xs
+:= by
+  induction xs with
+  | nil => simp
+  | cons x xs ih =>
+    simp [mergeCanonical, StrictLT.irreflexive x, ih]
+
+/-- Merging is commutative even if its inputs are not canonical. -/
+public theorem mergeCanonical_comm [LT α] [DecidableLT α] [StrictLT α] (xs ys : List α) :
+  mergeCanonical xs ys = mergeCanonical ys xs
+:= by
+  induction xs, ys using mergeCanonical.induct with
+  | case1 ys => simp
+  | case2 x xs => simp
+  | case3 x xs y ys hlt ih =>
+    simp [mergeCanonical, hlt, StrictLT.asymmetric x y hlt, ih]
+  | case4 x xs y ys hnlt hgt ih =>
+    simp [mergeCanonical, hnlt, hgt, ih]
+  | case5 x xs y ys hnlt hngt ih =>
+    have hxy := StrictLT.if_not_lt_gt_then_eq x y hnlt hngt
+    subst hxy
+    simp [mergeCanonical, hnlt, ih]
+
+private theorem mergeCanonical_cons_cons [LT α] [DecidableLT α] (x y : α) (xs ys : List α) :
+  mergeCanonical (x :: xs) (y :: ys) =
+    if x < y then x :: mergeCanonical xs (y :: ys)
+    else if x > y then y :: mergeCanonical (x :: xs) ys
+    else x :: mergeCanonical xs ys
+:= by simp [mergeCanonical]
+
+private theorem StrictLT.trichotomous [LT α] [StrictLT α] (x y : α) :
+  x < y ∨ y < x ∨ x = y
+:= by
+  by_cases h₁ : x < y
+  · exact .inl h₁
+  · by_cases h₂ : y < x
+    · exact .inr (.inl h₂)
+    · exact .inr (.inr (StrictLT.if_not_lt_gt_then_eq x y h₁ h₂))
+
+/-- Merging is associative even if its inputs are not canonical. -/
+public theorem mergeCanonical_assoc [LT α] [DecidableLT α] [StrictLT α] (xs ys zs : List α) :
+  mergeCanonical (mergeCanonical xs ys) zs = mergeCanonical xs (mergeCanonical ys zs)
+:= by
+  match xs, ys, zs with
+  | [], _, _ => simp
+  | _ :: _, [], _ => simp
+  | _ :: _, _ :: _, [] => simp
+  | x :: xs, y :: ys, z :: zs =>
+    have ih₁ := mergeCanonical_assoc xs (y :: ys) (z :: zs)
+    have ih₂ := mergeCanonical_assoc (x :: xs) ys (z :: zs)
+    have ih₃ := mergeCanonical_assoc (x :: xs) (y :: ys) zs
+    have ih₁₂ := mergeCanonical_assoc xs ys (z :: zs)
+    have ih₁₃ := mergeCanonical_assoc xs (y :: ys) zs
+    have ih₂₃ := mergeCanonical_assoc (x :: xs) ys zs
+    have ih₁₂₃ := mergeCanonical_assoc xs ys zs
+    rcases StrictLT.trichotomous x y with hxy | hxy | hxy <;>
+    rcases StrictLT.trichotomous y z with hyz | hyz | hyz <;>
+    rcases StrictLT.trichotomous x z with hxz | hxz | hxz <;>
+    subst_vars <;>
+    first
+    | exact absurd hxy (StrictLT.irreflexive _)
+    | exact absurd hyz (StrictLT.irreflexive _)
+    | exact absurd hxz (StrictLT.irreflexive _)
+    | exact absurd hxz (StrictLT.asymmetric _ _ hxy)
+    | exact absurd hxz (StrictLT.asymmetric _ _ hyz)
+    | exact absurd hyz (StrictLT.asymmetric _ _ hxy)
+    | exact absurd hxz (StrictLT.asymmetric _ _ (StrictLT.transitive _ _ _ hxy hyz))
+    | exact absurd hxz (StrictLT.asymmetric _ _ (StrictLT.transitive _ _ _ hyz hxy))
+    | simp_all [mergeCanonical_cons_cons, StrictLT.irreflexive, StrictLT.asymmetric]
+termination_by xs.length + ys.length + zs.length
+
+private theorem lt_of_mem_mergeCanonical [LT α] [DecidableLT α] [StrictLT α]
+  {w : α} {xs ys : List α} (hx : ∀ z ∈ xs, w < z) (hy : ∀ z ∈ ys, w < z) :
+  ∀ z ∈ mergeCanonical xs ys, w < z
+:= fun z hz => (mem_mergeCanonical.mp hz).elim (hx z) (hy z)
+
+private theorem lt_of_mem_sorted_cons [LT α] [StrictLT α] {w x : α} {xs : List α}
+  (hw : w < x) (hx : (x :: xs).SortedBy id) :
+  ∀ z ∈ x :: xs, w < z
+:= fun z hz => (mem_cons.mp hz).elim (· ▸ hw) fun h =>
+    StrictLT.transitive _ _ _ hw (sortedBy_implies_head_lt_tail hx z h)
+
+public theorem mergeCanonical_sortedBy [LT α] [DecidableLT α] [StrictLT α] {xs ys : List α} :
+  xs.SortedBy id → ys.SortedBy id → (mergeCanonical xs ys).SortedBy id
+:= by
+  induction xs, ys using mergeCanonical.induct with
+  | case1 ys => intro _ hy; simpa [mergeCanonical] using hy
+  | case2 x xs => intro hx _; simpa [mergeCanonical] using hx
+  | case3 x xs y ys hlt ih =>
+    intro hx hy
+    simp only [mergeCanonical, hlt, reduceIte]
+    exact sortedBy_cons (ih (tail_sortedBy hx) hy)
+      (lt_of_mem_mergeCanonical (sortedBy_implies_head_lt_tail hx) (lt_of_mem_sorted_cons hlt hy))
+  | case4 x xs y ys hnlt hgt ih =>
+    intro hx hy
+    simp only [mergeCanonical, hnlt, hgt, reduceIte]
+    exact sortedBy_cons (ih hx (tail_sortedBy hy))
+      (lt_of_mem_mergeCanonical (lt_of_mem_sorted_cons hgt hx) (sortedBy_implies_head_lt_tail hy))
+  | case5 x xs y ys hnlt hngt ih =>
+    intro hx hy
+    have hxy := StrictLT.if_not_lt_gt_then_eq x y hnlt hngt
+    subst hxy
+    simp only [mergeCanonical, hnlt, reduceIte]
+    exact sortedBy_cons (ih (tail_sortedBy hx) (tail_sortedBy hy))
+      (lt_of_mem_mergeCanonical (sortedBy_implies_head_lt_tail hx)
+        (sortedBy_implies_head_lt_tail hy))
+
 end List

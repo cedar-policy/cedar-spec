@@ -80,7 +80,7 @@ public def intersect {α} [DecidableEq α] (s₁ s₂ : Set α) : Set α :=
 
 /-- s₁ ∪ s₂ -/
 public def union {α} [LT α] [DecidableLT α] (s₁ s₂ : Set α) : Set α :=
-  make (s₁.elts ++ s₂.elts)           -- enforce well-formedness
+  Set.mk (s₁.elts.mergeCanonical s₂.elts) -- well-formed if s₁ and s₂ are
 
 public instance [LT α] [DecidableLT α] : HAppend (Set α) (Set α) (Set α) where
   hAppend := Set.union

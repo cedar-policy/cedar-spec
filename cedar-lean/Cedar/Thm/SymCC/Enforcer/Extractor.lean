@@ -35,7 +35,8 @@ open Data Spec SymCC Factory
 private theorem footprintUIDs_wf {xs : List Expr} {εnv : SymEnv} {I : Interpretation} :
   (Interpretation.repair.footprintUIDs (footprints xs εnv) I).WellFormed
 := by
-  simp only [Interpretation.repair.footprintUIDs, List.mapUnion_wf]
+  simp only [Interpretation.repair.footprintUIDs]
+  exact List.mapUnion_wf λ _ _ => term_entityUIDs_wf _
 
 private theorem footprintUIDs_valid {xs : List Expr} {εnv : SymEnv} {I : Interpretation}
   (hwε : εnv.WellFormed)
@@ -240,7 +241,8 @@ private theorem footprintAncestors_eq {xs : List Expr} {ety ancTy : EntityType} 
   apply Map.mem_toList_find?
   · simp only [Map.wf_iff_sorted, Map.toList_mk_id]
     rw [@List.map_eq_implies_sortedBy _ _ _ _ _ _ id _ εnv.entities.uufAncestors.elts]
-    · simp only [SymEntities.uufAncestors, ← Set.wf_iff_sorted, List.mapUnion_wf]
+    · simp only [SymEntities.uufAncestors, ← Set.wf_iff_sorted]
+      exact List.mapUnion_wf λ _ _ => Set.make_wf _
     · simp only [List.map_map]
       apply List.map_congr
       simp only [Function.comp_apply, id_eq, implies_true]

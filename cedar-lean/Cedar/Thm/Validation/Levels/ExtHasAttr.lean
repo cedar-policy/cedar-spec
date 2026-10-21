@@ -42,7 +42,7 @@ theorem reachable_implies_find_agree
     let eids := Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs (n + 1)
     let eds := eids.elts.filterMap (λ e => do some (e, ← Map.find? entities e))
     have hmake : Map.mk eds = Map.make eds := by
-      have hsorted := eids.wf_iff_sorted.mp slice_at_level_inner_well_formed
+      have hsorted := eids.wf_iff_sorted.mp slice_at_level_request_well_formed
       have hsbfst : eds.SortedBy Prod.fst := List.filterMap_key_id_sortedBy_key hsorted
       have hwf : (Map.mk eds).WellFormed := by
         simpa [Map.wf_iff_sorted] using hsbfst

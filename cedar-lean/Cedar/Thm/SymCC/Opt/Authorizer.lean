@@ -159,10 +159,8 @@ theorem Opt.isAuthorized.correctness (ps : Policies) (εnv : SymEnv) :
   simp only [Except.ok.injEq, Opt.CompileResult.mk.injEq, true_and]
   simp only [footprints, List.mapUnion_filterMap, List.mapUnion_map]
   rw [List.mapUnion_union_mapUnion']
-  · apply List.mapUnion_congr
-    intro p hp
-    cases p.effect <;> simp only [reduceCtorEq, ↓reduceIte, Option.mapD_none, Option.mapD_some, Function.comp_apply]
-    · exact Data.Set.union_empty_right (footprint_wf _ _)
-    · exact Data.Set.union_empty_left (footprint_wf _ _)
-  · intro p hp
-    cases p.effect <;> simp [Data.Set.empty_wf, footprint_wf _ _]
+  apply List.mapUnion_congr
+  intro p hp
+  cases p.effect <;> simp only [reduceCtorEq, ↓reduceIte, Option.mapD_none, Option.mapD_some, Function.comp_apply]
+  · exact Data.Set.union_empty_right
+  · exact Data.Set.union_empty_left

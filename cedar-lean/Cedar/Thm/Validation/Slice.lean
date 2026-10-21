@@ -31,13 +31,47 @@ open Cedar.Data
 open Cedar.Spec
 open Cedar.Validation
 
+theorem Value.sliceEUIDs_wf (v : Value) :
+  v.sliceEUIDs.WellFormed
+:= by
+  match v with
+  | .prim (.entityUID uid) => unfold Value.sliceEUIDs; exact Set.singleton_wf uid
+  | .prim (.bool _) | .prim (.int _) | .prim (.string _) | .set _ | .ext _ =>
+    unfold Value.sliceEUIDs; exact Set.empty_wf
+  | .record (Map.mk avs) =>
+    unfold Value.sliceEUIDs
+    rw [List.mapUnion₃_eq_mapUnion (λ e : (Attr × Value) => e.snd.sliceEUIDs)]
+    apply List.mapUnion_wf
+    intro av h
+    have := List.sizeOf_snd_lt_sizeOf_list h
+    exact Value.sliceEUIDs_wf av.snd
+termination_by sizeOf v
+decreasing_by simp only [Value.record.sizeOf_spec, Map.mk.sizeOf_spec]; omega
+
+theorem EntityData.sliceEUIDs_wf (ed : EntityData) :
+  ed.sliceEUIDs.WellFormed
+:= Set.union_wf
+    (List.mapUnion_wf λ v _ => Value.sliceEUIDs_wf v)
+    (List.mapUnion_wf λ v _ => Value.sliceEUIDs_wf v)
+
+theorem Request.sliceEUIDs_wf (r : Request) :
+  r.sliceEUIDs.WellFormed
+:= Set.union_wf (Set.make_wf _) (Value.sliceEUIDs_wf _)
+
 theorem slice_at_level_inner_well_formed {entities : Entities} {work : Set EntityUID} {n : Nat} :
+  work.WellFormed →
   (Entities.sliceAtLevel.sliceAtLevel entities work n).WellFormed
 := by
+  intro hwork
   unfold Entities.sliceAtLevel.sliceAtLevel
   split
   · exact Set.empty_wf
-  · simp only [Set.union_wf]
+  · exact Set.union_wf hwork
+      (List.mapUnion_wf λ ed _ => slice_at_level_inner_well_formed (EntityData.sliceEUIDs_wf ed))
+
+theorem slice_at_level_request_well_formed {entities : Entities} {request : Request} {n : Nat} :
+  (Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs n).WellFormed
+:= slice_at_level_inner_well_formed (Request.sliceEUIDs_wf _)
 
 theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : TypedExpr} {env : TypeEnv} {entities : Entities} {ed : EntityData}
   (hc : CapabilitiesInvariant c request entities)
@@ -56,7 +90,7 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   let eids := Entities.sliceAtLevel.sliceAtLevel entities request.sliceEUIDs (n + 1)
   let eds := eids.elts.filterMap (λ e => do some (e, ← Map.find? entities e))
   replace hmake : Map.mk eds = Map.make eds := by
-    have hsorted := eids.wf_iff_sorted.mp slice_at_level_inner_well_formed
+    have hsorted := eids.wf_iff_sorted.mp slice_at_level_request_well_formed
     have hsbfst : eds.SortedBy Prod.fst := List.filterMap_key_id_sortedBy_key hsorted
     have hwf : (Map.mk eds).WellFormed := by
       simpa [Map.wf_iff_sorted] using hsbfst

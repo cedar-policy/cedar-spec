@@ -506,18 +506,21 @@ public theorem intersects_iff_exists {α} [LT α] [StrictLT α] [DecidableLT α]
     simp only [Set.intersects_def, Set.non_empty_iff_exists]
     exists a
 
-public theorem union_wf [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
-  WellFormed (s₁ ∪ s₂)
+private theorem union_elts [LT α] [DecidableLT α] (s₁ s₂ : Set α) :
+  (s₁ ∪ s₂).elts = s₁.elts.mergeCanonical s₂.elts
+:= by simp [Union.union, union]
+
+public theorem union_wf [LT α] [DecidableLT α] [StrictLT α] {s₁ s₂ : Set α} :
+  s₁.WellFormed → s₂.WellFormed → WellFormed (s₁ ∪ s₂)
 := by
-  simp only [Union.union, union, make_wf]
+  simp only [wf_iff_sorted, union_elts]
+  exact List.mergeCanonical_sortedBy
 
 public theorem make_cons_eq_singleton_union [LT α] [DecidableLT α] [StrictLT α] (a : α) (xs : List α) :
   Set.make (a :: xs) = Set.singleton a ∪ Set.make xs := by
-  rw [eq_means_eqv (make_wf _) (union_wf _ _)]
-  simp only [make, singleton, Union.union, union, elts]
-  rw [List.canonicalize_cons]
-  · apply List.Equiv.refl
-  · simp [List.canonicalize_idempotent]
+  rw [eq_means_eqv (make_wf _) (union_wf ((wf_iff_sorted (Set.singleton a)).mpr List.SortedBy.cons_nil) (make_wf _))]
+  simp [List.Equiv, List.subset_def, union_elts, List.mem_mergeCanonical, singleton,
+    mem_elts_iff_mem_set, mem_make]
 
 /-- The `++` notation on sets  is definitionally `∪`. -/
 @[simp]
@@ -529,20 +532,7 @@ public theorem append_eq_union [LT α] [DecidableLT α] (s₁ s₂ : Set α) :
 public theorem mem_union [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) (a : α) :
   a ∈ s₁ ∪ s₂ ↔ (a ∈ s₁ ∨ a ∈ s₂)
 := by
-  simp only [Union.union, union, make, ← mem_elts_iff_mem_set]
-  constructor <;> intro h
-  case mp =>
-    have hc := (List.canonicalize_equiv (s₁.elts ++ s₂.elts)).right
-    simp only [List.subset_def, List.mem_append] at hc
-    replace hc := hc h
-    rcases hc with hc | hc <;> simp [hc]
-  case mpr =>
-    have hc := (List.canonicalize_equiv (s₁.elts ++ s₂.elts)).left
-    simp only [List.append_subset] at hc
-    simp only [List.subset_def] at hc
-    rcases h with h | h
-    · exact hc.left h
-    · exact hc.right h
+  simp only [← mem_elts_iff_mem_set, union_elts, List.mem_mergeCanonical]
 
 public theorem prop_union_iff_prop_and [LT α] [DecidableLT α] [StrictLT α] (p : α → Prop) (s₁ s₂ : Set α) :
   ((∀ a ∈ s₁, p a) ∧ (∀ a ∈ s₂, p a)) ↔ ∀ a ∈ (s₁ ∪ s₂), p a
@@ -563,55 +553,35 @@ public theorem prop_union_iff_prop_and [LT α] [DecidableLT α] [StrictLT α] (p
       exact h₁
     }
 
+/-- Union is commutative even if its operands are not well-formed. -/
 public theorem union_comm [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ : Set α) :
   s₁ ∪ s₂ = s₂ ∪ s₁
 := by
-  simp only [Union.union, union, make, elts, mk.injEq]
-  apply List.equiv_implies_canonical_eq
-  simp only [List.Equiv, List.append_subset,
-    List.subset_append_right, List.subset_append_left, and_self]
+  simp only [Union.union, union, List.mergeCanonical_comm s₁.elts]
 
+/-- Union is associative even if its operands are not well-formed. -/
 public theorem union_assoc [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ s₃ : Set α) :
   (s₁ ∪ s₂) ∪ s₃ = s₁ ∪ (s₂ ∪ s₃)
 := by
-  rw [eq_means_eqv (union_wf _ _) (union_wf _ _)]
-  simp only [Union.union, Set.union, Set.make, Set.elts]
-  have h₁ := List.Equiv.symm (List.canonicalize_equiv (List.canonicalize id (s₁.1 ++ s₂.1) ++ s₃.1))
-  have h₂ := List.Equiv.symm (List.canonicalize_equiv (s₁.1 ++ List.canonicalize id (s₂.1 ++ s₃.1)))
-  apply List.Equiv.trans h₁
-  apply List.Equiv.symm
-  apply List.Equiv.trans h₂
-  have h₃ := List.Equiv.symm (List.canonicalize_equiv (s₂.1 ++ s₃.1))
-  replace h₃ := List.append_right_equiv s₁.1 _ _ h₃
-  have h₄ := List.Equiv.symm (List.canonicalize_equiv (s₁.1 ++ s₂.1))
-  replace h₄ := List.append_left_equiv _ _ s₃.1 h₄
-  apply List.Equiv.trans h₃
-  apply List.Equiv.symm
-  apply List.Equiv.trans h₄
-  simp only [List.append_assoc]
-  exact List.append_right_equiv _ _ _ List.Equiv.refl
+  simp only [Union.union, union, elts, List.mergeCanonical_assoc]
 
-public theorem union_empty_right [LT α] [DecidableLT α] [StrictLT α] {s : Set α} :
-  s.WellFormed → s ∪ Set.empty = s
+/-- Union with the empty set does not require well-formedness. -/
+public theorem union_empty_right [LT α] [DecidableLT α] {s : Set α} :
+  s ∪ Set.empty = s
 := by
-  intro h
-  simp only [WellFormed, toList, elts] at h
-  simp only [Union.union, union, elts, empty, List.append_nil, ← h]
+  simp only [Union.union, union, elts, empty, List.mergeCanonical_nil_right]
 
-public theorem union_empty_left [LT α] [DecidableLT α] [StrictLT α] {s : Set α} :
-  s.WellFormed → Set.empty ∪ s = s
+/-- Union with the empty set does not require well-formedness. -/
+public theorem union_empty_left [LT α] [DecidableLT α] {s : Set α} :
+  Set.empty ∪ s = s
 := by
-  rw [union_comm]
-  exact union_empty_right
+  simp only [Union.union, union, elts, empty, List.mergeCanonical_nil_left]
 
+/-- Union with itself does not require well-formedness. -/
 public theorem union_idempotent [LT α] [DecidableLT α] [StrictLT α] {s : Set α} :
-  s.WellFormed → s ∪ s = s
+  s ∪ s = s
 := by
-  intro h
-  rw [eq_means_eqv (union_wf _ _) h]
-  simp only [Union.union, Set.union, Set.make, Set.elts]
-  apply List.Equiv.trans (List.Equiv.symm (List.canonicalize_equiv _))
-  simp only [List.Equiv, List.append_subset, List.Subset.refl, and_self, List.subset_append_left]
+  simp only [Union.union, union, List.mergeCanonical_self]
 
 /-! ### subset -/
 
@@ -716,10 +686,10 @@ public theorem union_subset [LT α] [DecidableLT α] [StrictLT α] [DecidableEq 
     · exact h.right a hor
 
 public theorem union_subset_eq [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α] {s₁ s₂ : Set α} :
-  s₂.WellFormed → s₁ ⊆ s₂ → s₁ ∪ s₂ = s₂
+  s₁.WellFormed → s₂.WellFormed → s₁ ⊆ s₂ → s₁ ∪ s₂ = s₂
 := by
-  intro h₁ h₂
-  rw [← subset_iff_eq (union_wf _ _) h₁]
+  intro h₀ h₁ h₂
+  rw [← subset_iff_eq (union_wf h₀ h₁) h₁]
   constructor
   · simp only [union_subset, h₂, subset_refl, and_self]
   · rw [union_comm]
@@ -799,7 +769,7 @@ public theorem map_union [LT α] [DecidableLT α] [StrictLT α] [LT β] [Decidab
   (f : α → β) (s₁ s₂ : Set α) :
   (s₁ ∪ s₂).map f = s₁.map f ∪ s₂.map f
 := by
-  rw [eq_means_eqv (map_wf _ _) (union_wf _ _)]
+  rw [eq_means_eqv (map_wf _ _) (union_wf (map_wf _ _) (map_wf _ _))]
   simp only [List.Equiv, List.subset_def, mem_elts_iff_mem_set, mem_union, mem_map]
   constructor <;> intro a h
   · rcases h with ⟨x, hx | hx, hf⟩
