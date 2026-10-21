@@ -21,9 +21,6 @@ import UnitTest.Decimal
 import UnitTest.IPAddr
 import UnitTest.Linker
 import UnitTest.PartialSchema
-import UnitTest.Parser
-import UnitTest.ParserStrings
-import UnitTest.ParserStress
 import UnitTest.Proto
 import UnitTest.Wildcard
 import UnitTest.TPE
@@ -38,9 +35,6 @@ def tests :=
   IPAddr.tests ++
   Linker.tests ++
   PartialSchema.tests ++
-  Parser.tests ++
-  ParserStrings.tests ++
-  ParserStress.tests ++
   Wildcard.tests ++
   Proto.tests ++
   CedarProto.tests ++

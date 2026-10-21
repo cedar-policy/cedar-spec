@@ -312,7 +312,7 @@ private theorem scope_slice_translate
             if satisfiedBound (Cst.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
             then some x.1 else none) hF,
           List.filterMap_map, List.filter_cons]
-        simp only [hb, Bool.false_eq_true, if_false]
+        simp only [hb, Bool.false_eq_true, ite_false]
         exact ihtl
       · have hF : (fun x : {x // x ∈ hd :: tl} =>
             if satisfiedBound (Cst.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
@@ -323,7 +323,7 @@ private theorem scope_slice_translate
             if satisfiedBound (Cst.scopeAnalysis x.1 (hwf x.1 x.2)) req entities
             then some x.1 else none) hF,
           List.filterMap_map, List.filter_cons]
-        simp only [hb, if_true]
+        simp only [hb, ite_true]
         exact mapM_toPolicy?_cons hhd ihtl
 
 /-- The CST scope-based slice and the AST scope-based slice choose the same
