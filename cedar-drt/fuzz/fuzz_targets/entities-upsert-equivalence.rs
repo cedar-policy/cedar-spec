@@ -19,6 +19,7 @@
 use cedar_drt_inner::entity_graph::{MAX_NODES, NodeUids, ancestor_sets};
 use cedar_drt_inner::fuzz_target;
 
+use cedar_policy::entities_errors;
 use cedar_policy_core::ast::Entity;
 use cedar_policy_core::entities::{Entities, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::extensions::Extensions;
@@ -96,7 +97,9 @@ fuzz_target!(|input: FuzzTargetInput| {
         Ok(store) => store,
         // Initial graph is cyclic (not a DAG). `upsert_entities` on the final
         // graph would also fail; this target only checks the acyclic case.
-        Err(_) => return,
+        Err(entities_errors::EntitiesError::TransitiveClosureError { .. }) => return,
+        // Other types of errors De/serialization, malformed, dup entities is unexpected
+        Err(e) => panic!("from_entities unexpectedly failure: {}", e),
     };
 
     let batch_entities: Vec<Arc<Entity>> = input
