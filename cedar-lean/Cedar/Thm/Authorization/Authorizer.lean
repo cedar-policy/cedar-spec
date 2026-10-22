@@ -14,10 +14,18 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Thm.Authorization.Evaluator
-import Cedar.Thm.Data
-import Cedar.Thm.Validation.Typechecker.BinaryApp -- mapM'_asEntityUID_eq_entities
+module
+
+import Batteries.Data.Except
+public import Cedar.Spec
+public import Cedar.Thm.Authorization.Evaluator
+public import Cedar.Thm.Data
+import all Cedar.Data.Set
+import all Cedar.Spec.Authorizer
+import all Cedar.Spec.Policy
+import all Cedar.Thm.Data.Set
+
+@[expose] public section
 
 /-!
 This file contains useful lemmas about the `Authorizer` functions.

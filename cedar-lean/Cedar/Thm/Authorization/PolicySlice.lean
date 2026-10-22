@@ -14,8 +14,13 @@
  limitations under the License.
 -/
 
-import Cedar.Slice.PolicySlice
-import Cedar.Thm.Authorization.Authorizer
+module
+
+public import Cedar.Slice.PolicySlice
+public import Cedar.Thm.Authorization.Authorizer
+import all Cedar.Spec.Authorizer
+
+@[expose] public section
 
 /-! This file contains definitions relevant to slicing. -/
 
