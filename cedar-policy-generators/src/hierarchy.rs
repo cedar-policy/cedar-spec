@@ -429,7 +429,9 @@ impl HierarchyGenerator<'_, '_> {
     /// Generate a `Hierarchy` according to the specified parameters
     pub fn generate(&mut self) -> Result<Hierarchy> {
         let entity_types: IndexSet<ast::EntityType> = match &self.mode {
-            HierarchyGeneratorMode::SchemaBased { schema } => schema.entity_types().collect(),
+            HierarchyGeneratorMode::SchemaBased { schema } => {
+                schema.entity_types().cloned().collect()
+            }
             HierarchyGeneratorMode::Arbitrary { .. } => {
                 // generate a HashSet first to avoid duplicates
                 let entity_types: IndexSet<ast::EntityType> = self.u.arbitrary()?;

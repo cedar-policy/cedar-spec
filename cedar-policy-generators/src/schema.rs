@@ -749,10 +749,10 @@ impl Schema {
                 match &shape.0 {
         json_schema::Type::CommonTypeRef { type_name, .. } => match lookup_common_type(&self.schema, type_name).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")) {
             json_schema::Type::CommonTypeRef { .. } => panic!("common type `{type_name}` refers to another common type, which is not allowed as of this writing?"),
-            json_schema::Type::Type { ty: json_schema::TypeVariant::Record(json_schema::RecordType { attributes, .. }), .. } => Ok(u.choose(&attributes.keys().cloned().collect::<Vec<_>>())?.clone()),
+            json_schema::Type::Type { ty: json_schema::TypeVariant::Record(json_schema::RecordType { attributes, .. }), .. } => Ok(u.choose_iter(attributes.keys())?.clone()),
             ty => panic!("expected attributes or context to be a record, got {ty:?}"),
         }
-        json_schema::Type::Type { ty: json_schema::TypeVariant::Record(json_schema::RecordType { attributes, .. }), .. } => Ok(u.choose(&attributes.keys().cloned().collect::<Vec<_>>())?.clone()),
+        json_schema::Type::Type { ty: json_schema::TypeVariant::Record(json_schema::RecordType { attributes, .. }), .. } => Ok(u.choose_iter(attributes.keys())?.clone()),
         ty => panic!("expected attributes or context to be a record, got {ty:?}")
             }}
         }

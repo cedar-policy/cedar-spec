@@ -74,7 +74,7 @@ impl From<types::Type> for abac::Type {
 /// A trait that specifies what methods other generators expect from a schema
 pub trait SchemaGen: std::fmt::Debug {
     /// Gen all entity types
-    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = EntityType> + '_>;
+    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = &EntityType> + '_>;
     /// Get an arbitrary entity type
     fn arbitrary_entity_type(&self, u: &mut Unstructured<'_>) -> Result<EntityType>;
     /// Get an arbitrary attribute
@@ -257,7 +257,7 @@ pub trait SchemaGen: std::fmt::Debug {
         if u.ratio(1, 5)? {
             Ok(PrincipalOrResourceConstraint::NoConstraint)
         } else {
-            let choose_ety = |u: &mut Unstructured<'_>| u.choose_iter(self.entity_types());
+            let choose_ety = |u: &mut Unstructured<'_>| u.choose_iter(self.entity_types()).cloned();
             // If slots are allowed, then generate a slot 50% of the time.
             if allow_slots && u.ratio(1, 2)? {
                 // 40% Eq, 40% In or IsIn.
@@ -460,8 +460,8 @@ impl SchemaGen for ValidatorSchema<'_> {
                 cedar_policy_core::validator::ValidatorEntityTypeKind::External => None,
             })
     }
-    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = EntityType> + '_> {
-        Box::new(self.entity_types.clone().into_iter())
+    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = &EntityType> + '_> {
+        Box::new(self.entity_types.iter())
     }
     fn allowed_parent_typenames(
         &self,
@@ -635,8 +635,8 @@ impl SchemaGen for Schema {
     fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Option<&NonEmpty<Eid>> {
         self.get_uid_enum_choices(ty)
     }
-    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = EntityType> + '_> {
-        Box::new(self.entity_types.clone().into_iter())
+    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = &EntityType> + '_> {
+        Box::new(self.entity_types.iter())
     }
     fn allowed_parent_typenames(
         &self,
