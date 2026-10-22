@@ -18,6 +18,7 @@ pub use libfuzzer_sys::fuzz_target;
 
 pub mod abac;
 pub mod arbitrary_json;
+pub mod entity_graph;
 pub mod partial_schema;
 pub mod props;
 pub mod proto_gen;
