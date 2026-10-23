@@ -25,18 +25,34 @@ use indexmap::{IndexMap, IndexSet};
 use nonempty::NonEmpty;
 use smol_str::SmolStr;
 
-/// Decide if we should add an edge in a graph
+/// Expected number of edges in an entity graph (the entity hierarchy). Higher
+/// than the type/action graphs so individual hierarchies stay interesting,
+/// since the entity graph is a DAG and its closure is cheaper than a cyclic
+/// type graph's.
+pub const ENTITY_EDGE_BUDGET: u64 = 16;
+
+/// Expected number of edges in a type or action graph. Kept low: the entity-type
+/// graph may be cyclic and its transitive closure feeds the allowed parent types
+/// per entity, so a dense type graph multiplies entity-level density.
+pub const TYPE_EDGE_BUDGET: u64 = 4;
+
+/// Decide if we should add an edge in a graph with the given edge `budget`.
 ///
-/// Probability `1 / (num_nodes + 6)`, so edges are linear in the number of
-/// nodes. We avoid `ratio(1, d)`: it triggers on the bottom of the range, which
-/// `0x00` always produces, so `0x00`-heavy corpora yield near-complete
-/// hierarchies. Triggering on the top of the range keeps the same probability
+/// There are `~num_nodes^2 / 2` candidate edges, so a per-edge probability of
+/// `2 * budget / num_nodes^2` keeps the expected edge count at `budget` instead
+/// of growing with the graph, which bounds the transitive closure.
+///
+/// Draw `int_in_range(0..=d-1)` and trigger on the top value, not `ratio(1, d)`:
+/// `ratio` triggers on the bottom, which `0x00` always produces, so `0x00`-heavy
+/// corpora yielded near-complete hierarchies. The top keeps probability `1/d`
 /// but maps low bytes to "no edge".
-pub fn should_add_edge(u: &mut Unstructured<'_>, num_nodes: usize) -> Result<bool> {
+pub fn should_add_edge(u: &mut Unstructured<'_>, num_nodes: usize, budget: u64) -> Result<bool> {
     if u.is_empty() {
         return Ok(false);
     }
-    let d = (num_nodes + 6) as u32;
+    // Clamp `d` to at least 2 so tiny graphs still get an edge sometimes.
+    let n = num_nodes as u64;
+    let d = ((n * n).div_ceil(2 * budget)).max(2) as u32;
     let x: u32 = u.int_in_range(0..=d - 1)?;
     Ok(x == d - 1)
 }
@@ -501,7 +517,11 @@ impl HierarchyGenerator<'_, '_> {
                         for ty in schema.allowed_parent_typenames(name).unwrap() {
                             // `uids_for_type` prevent cycles
                             for possible_parent_uid in hierarchy_no_attrs.uids_for_type(&ty, uid) {
-                                if should_add_edge(self.u, hierarchy_no_attrs.num_entities())? {
+                                if should_add_edge(
+                                    self.u,
+                                    hierarchy_no_attrs.num_entities(),
+                                    ENTITY_EDGE_BUDGET,
+                                )? {
                                     parents.insert(possible_parent_uid.clone());
                                 }
                             }
@@ -514,7 +534,11 @@ impl HierarchyGenerator<'_, '_> {
                         // given one in the pool; this ensures we get a DAG (no cycles)
                         // without loss of generality
                         for pool_uid in hierarchy_no_attrs.uids_after(uid) {
-                            if should_add_edge(self.u,  hierarchy_no_attrs.num_entities())? {
+                            if should_add_edge(
+                                self.u,
+                                hierarchy_no_attrs.num_entities(),
+                                ENTITY_EDGE_BUDGET,
+                            )? {
                                 parents.insert(pool_uid.clone());
                             }
                         }
