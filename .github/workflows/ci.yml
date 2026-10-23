@@ -78,6 +78,7 @@ jobs:
     needs: get-branch-name
     uses: ./.github/workflows/build_and_test_drt_reusable.yml
     with:
+      cedar_spec_repository: ${{ github.repository }}
       cedar_spec_ref: ${{ github.ref }}
       cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}
 
@@ -85,6 +86,7 @@ jobs:
     needs: get-branch-name
     uses: ./.github/workflows/corpus_generation_test_reusable.yml
     with:
+      cedar_spec_repository: ${{ github.repository }}
       cedar_spec_ref: ${{ github.ref }}
       cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}
 
@@ -92,6 +94,7 @@ jobs:
     needs: get-branch-name
     uses: ./.github/workflows/build_and_test_ffi_reusable.yml
     with:
+      cedar_spec_repository: ${{ github.repository }}
       cedar_spec_ref: ${{ github.ref }}
       cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}
 
@@ -99,6 +102,7 @@ jobs:
     needs: [get-branch-name, build_and_test_ffi]
     uses: ./.github/workflows/build_and_test_cli_reusable.yml
     with:
+      cedar_spec_repository: ${{ github.repository }}
       cedar_spec_ref: ${{ github.ref }}
       cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}
 
@@ -134,6 +138,7 @@ jobs:
     needs: get-branch-name
     uses: ./.github/workflows/run_integration_tests_reusable.yml
     with:
+      cedar_spec_repository: ${{ github.repository }}
       cedar_spec_ref: ${{ github.ref }}
       cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}
       cedar_integration_tests_ref: ${{ needs.get-branch-name.outputs.branch_name }}
@@ -142,5 +147,6 @@ jobs:
     needs: get-branch-name
     uses: ./.github/workflows/build_and_test_benchmarking_reusable.yml
     with:
+      cedar_spec_repository: ${{ github.repository }}
       cedar_spec_ref: ${{ github.ref }}
       cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}

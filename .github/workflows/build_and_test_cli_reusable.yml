@@ -3,6 +3,10 @@ name: Build and Test Cedar Lean CLI
 on:
   workflow_call:
     inputs:
+      cedar_spec_repository:
+        required: false
+        default: cedar-policy/cedar-spec
+        type: string
       cedar_spec_ref:
         required: false
         default: "main"
@@ -24,7 +28,7 @@ jobs:
       - name: Checkout cedar-spec
         uses: actions/checkout@v7
         with:
-          repository: cedar-policy/cedar-spec
+          repository: ${{ inputs.cedar_spec_repository }}
           ref: ${{ inputs.cedar_spec_ref }}
           path: ./cedar-spec
       - name: checkout cedar
