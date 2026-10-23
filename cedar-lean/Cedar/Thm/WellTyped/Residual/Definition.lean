@@ -156,10 +156,11 @@ inductive ExtResidualWellTyped : ExtFun → List Residual → CedarType → Prop
   | isMulticast {x₁ : Residual}
     (h₁ : x₁.typeOf = .ext .ipAddr) :
     ExtResidualWellTyped .isMulticast [x₁] (.bool .anyBool)
-  | isInRange {x₁ x₂ : Residual}
+  | isInRange {x₁ : Residual} {xs : List Residual}
     (h₁ : x₁.typeOf = .ext .ipAddr)
-    (h₂ : x₂.typeOf = .ext .ipAddr):
-    ExtResidualWellTyped .isInRange [x₁, x₂] (.bool .anyBool)
+    (h₂ : xs.length > 0)
+    (h₃ : ∀ x ∈ xs, x.typeOf = .ext .ipAddr):
+    ExtResidualWellTyped .isInRange (x₁ :: xs) (.bool .anyBool)
   | datetime {s₁ : String} {d₁ : Datetime}
     (h₁ : d₁ =  Datetime.parse s₁) :
     ExtResidualWellTyped .datetime [.val (.prim (.string s₁)) .string] (.ext .datetime)
