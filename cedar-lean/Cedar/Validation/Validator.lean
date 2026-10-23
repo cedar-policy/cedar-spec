@@ -18,6 +18,7 @@ module
 
 public import Cedar.Validation.Typechecker
 import Cedar.Validation.Levels
+public import Lean.Data.Json.FromToJson.Basic
 
 /-! This file defines the Cedar validator. -/
 
