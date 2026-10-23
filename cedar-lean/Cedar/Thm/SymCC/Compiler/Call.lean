@@ -231,8 +231,9 @@ private theorem pe_datetime_toDate {dt : Ext.Datetime}:
 := by
   -- Rewrite the spec's toDate to the smod-based formulation
   rw [toDate_eq_smod]
-  simp only [Datetime.toDate, pe_ext_datetime_val, Int64.toBitVec_ofNat, BitVec.ofNat_eq_ofNat,
-    pe_bvsmod, pe_bvssubo, Int64.toInt_toBitVec, pe_bvsub, BitVec.sub_eq, pe_ext_datetime_ofBitVec,
+  simp only [Datetime.toDate, pe_ext_datetime_val,
+    pe_bvsmod_pos (d := 86400000) (by decide),
+    pe_bvssubo, Int64.toInt_toBitVec, pe_bvsub, BitVec.sub_eq, pe_ext_datetime_ofBitVec,
     Int64.ofInt, BitVec.toInt_sub, Nat.reducePow, Ext.Datetime.datetime?,
     Int64.ofIntChecked, Ext.Datetime.MILLISECONDS_PER_DAY, BitVec.ofInt_ofNat,
     UInt64.ofBitVec_ofNat, Option.pure_def, Option.bind_eq_bind]
@@ -289,52 +290,27 @@ private theorem pe_datetime_toDate {dt : Ext.Datetime}:
     simp only [Int64.smod, Int64.toInt_ofBitVec, BitVec.toInt_smod, Int64.toInt_toBitVec] at h₁
     exact BitVec.overflows_false_64.mp h₁
 
+private theorem pe_bvsmod_pos_toTime {dt : Ext.Datetime}:
+  ext.duration.ofBitVec
+    (Datetime.bvsmod_pos (.prim (.bitvec dt.val.toBitVec)) 86400000) =
+  .prim (.ext (Ext.duration dt.toTime))
+:= by
+  rw [pe_bvsmod_pos (d := 86400000) (by decide)]
+  rw [toTime_eq_smod]
+  have hd : (UInt64.toInt64 {toBitVec := BitVec.ofInt 64 86400000}).toBitVec = 86400000#64 := by
+    simp only [BitVec.ofInt_ofNat, UInt64.ofBitVec_ofNat, UInt64.toBitVec_toInt64,
+      UInt64.toBitVec_ofNat]
+  simp only [UInt64.toInt64] at hd
+  simp only [Ext.Datetime.MILLISECONDS_PER_DAY, Int64.ofIntChecked, Int64.ofInt,
+    Int64.smod, pe_ext_duration_ofBitVec, Term.prim.injEq, TermPrim.ext.injEq,
+    Ext.duration.injEq, Ext.Datetime.Duration.mk.injEq, Int64.eq_iff_toBitVec_eq,
+    BitVec.ofInt_toInt, hd, Int64.toBitVec_ofBitVec]
+  rfl
+
 private theorem pe_datetime_toTime {dt : Ext.Datetime}:
   Datetime.toTime (.prim (.ext (Ext.datetime dt))) = .prim (.ext (Ext.duration dt.toTime))
 := by
-  simp only [Datetime.toTime, pe_ext_datetime_val, pe_bvsrem, pe_bvadd, pe_bvsle,
-    pe_eq_lit isLiteral_prim isLiteral_prim, Ext.Datetime.toTime]
-  simp only [Int64.ofIntChecked, Int64.ofInt, Int64.mod, Ext.Datetime.MILLISECONDS_PER_DAY]
-  simp only [
-    show Int64.toBitVec 0 = 0#64 by rfl,
-    show Int64.toBitVec 86400000 = 86400000#64 by rfl ]
-  have h₀ : (UInt64.toInt64 {toBitVec := (BitVec.ofInt 64 86400000)}).toBitVec = 86400000#64 := by
-    simp only [BitVec.ofInt_ofNat, UInt64.ofBitVec_ofNat, UInt64.toBitVec_toInt64,
-      UInt64.toBitVec_ofNat]
-  simp only [UInt64.toInt64] at h₀
-  simp only [h₀] ; clear h₀
-  cases h₀ : BitVec.sle 0#64 dt.val.toBitVec
-  case false =>
-    have h₁ : ¬dt.val ≥ 0 := by
-      simp only [ge_iff_le, LE.le, Int64.le, Bool.not_eq_true]
-      exact h₀
-    simp only [pe_ite_false, h₁, ↓reduceIte]; clear h₀ h₁
-    have h₁ : UInt64.toInt64 { toBitVec := 0#64 } = 0 := by
-        simp only [UInt64.toInt64, UInt64.ofBitVec_ofNat, OfNat.ofNat, Int64.ofNat, UInt64.ofBitVec_ofNat, UInt64.reduceOfNat]
-    simp only [UInt64.toInt64] at h₁
-    cases h₀ : Term.prim (TermPrim.bitvec (dt.val.toBitVec.srem 86400000#64)) == Term.prim (TermPrim.bitvec 0#64)
-    case false =>
-      simp only [pe_ite_false]
-      simp only [beq_eq_false_iff_ne, ne_eq, Term.prim.injEq, TermPrim.bitvec.injEq, heq_eq_eq, true_and] at h₀
-      rw [BitVec.eq_iff_UInt64_toInt64_eq_64, UInt64.toInt64, UInt64.toInt64] at h₀
-      simp only [h₁] at h₀
-      simp only [beq_iff_eq, h₀, ↓reduceIte, pe_ext_duration_ofBitVec, Term.prim.injEq, TermPrim.ext.injEq, Ext.duration.injEq,
-        Ext.Datetime.Duration.mk.injEq]
-      simp only [Int64.eq_iff_toBitVec_eq, BitVec.toInt_ofInt64_toBitVec]
-      rfl
-    case true =>
-      simp only [beq_iff_eq, Term.prim.injEq, TermPrim.bitvec.injEq, heq_eq_eq, true_and] at h₀
-      rw [BitVec.eq_iff_UInt64_toInt64_eq_64, UInt64.toInt64, UInt64.toInt64] at h₀
-      simp only [h₁] at h₀
-      simp only [BitVec.add_eq, pe_ite_true, pe_ext_duration_ofBitVec, BitVec.toInt_zero, h₀,
-        beq_self_eq_true, ↓reduceIte, Term.prim.injEq, TermPrim.ext.injEq, Ext.duration.injEq,
-        Ext.Datetime.Duration.mk.injEq]
-      rfl
-  case true =>
-    have h₁ : dt.val ≥ 0 := by
-      simp only [ge_iff_le, LE.le, Int64.le]
-      exact h₀
-    simp only [h₁, ↓reduceIte, pe_ite_true, pe_ext_duration_ofBitVec, Int64.ofInt, BitVec.ofInt_toInt]
+  simp only [Datetime.toTime, pe_ext_datetime_val, pe_bvsmod_pos_toTime]
 
 private theorem pe_duration_toMilliseconds {dur : Ext.Datetime.Duration} :
   Duration.toMilliseconds (.prim (.ext (Ext.duration dur))) = dur.toMilliseconds
@@ -620,23 +596,41 @@ private theorem interpret_datetime_durationSince {I : Interpretation} {t₁ t₂
     interpret_ext_duration_ofBitVec, interpret_bvsub, interpret_bvssubo,
     interpret_ext_datetime_val]
 
+private theorem interpret_datetime_bvsmod_pos {εs : SymEntities} {I : Interpretation} {x : Term} (d : Nat)
+  (hI : I.WellFormed εs)
+  (hw : x.WellFormed εs ∧ x.typeOf = .bitvec 64) :
+  (Datetime.bvsmod_pos x d).interpret I = Datetime.bvsmod_pos (x.interpret I) d
+:= by
+  have hwf_bv_zero := @wf_bv εs _ (BitVec.ofNat 64 0)
+  have hwf_bv_d := @wf_bv εs _ (BitVec.ofNat 64 d)
+  have ⟨hwfle, htyle⟩ := wf_bvsle hwf_bv_zero hw.left typeOf_bv hw.right
+  have ⟨hwfrem, htyrem⟩ := wf_bvsrem hw.left hwf_bv_d hw.right typeOf_bv
+  have ⟨hwfeq, htyeq⟩ := wf_eq hwfrem hwf_bv_zero (by simp only [htyrem, typeOf_bv])
+  have ⟨hwfadd, htyadd⟩ := wf_bvadd hwfrem hwf_bv_d htyrem typeOf_bv
+  have ⟨hwfite₂, htyite₂⟩ := wf_ite hwfeq hwf_bv_zero hwfadd htyeq (by simp only [typeOf_bv, htyadd])
+  simp only [Datetime.bvsmod_pos,
+    interpret_ite hI hwfle hwfrem hwfite₂ htyle (by simp only [htyrem, htyite₂, typeOf_bv]),
+    interpret_ite hI hwfeq hwf_bv_zero hwfadd htyeq (by simp only [typeOf_bv, htyadd]),
+    interpret_eq hI hwfrem hwf_bv_zero, interpret_bvsle, interpret_bvadd,
+    interpret_bvsrem, interpret_term_prim,
+  ]
+
 private theorem interpret_datetime_toDate {εs : SymEntities} {I : Interpretation} {t : Term}
   (hI : I.WellFormed εs)
   (hw : t.WellFormed εs ∧ t.typeOf = .ext .datetime) :
   (Datetime.toDate t).interpret I = Datetime.toDate (t.interpret I)
 := by
   have ⟨hwf₀, hty₀⟩ := wf_ext_datetime_val hw.left hw.right
-  have hwf_bv_zero := @wf_bv εs _ (Int64.toBitVec 0)
-  have hwf_bv_ms_per_day := @wf_bv εs _ (Int64.toBitVec 86400000)
+  have ⟨hwf₁, hty₁⟩ := wf_datetime_bvsmod_pos 86400000 (And.intro hwf₀ hty₀)
   simp only [Datetime.toDate]
-  have ⟨hwf₁, hty₁⟩   := wf_bvsmod hwf₀ hwf_bv_ms_per_day hty₀ typeOf_bv
   have ⟨hwf₂, hty₂⟩   := wf_bvsub hwf₀ hwf₁ hty₀ hty₁
   have ⟨hwf₃, hty₃⟩   := wf_bvssubo hwf₀ hwf₁ hty₀ hty₁
   have ⟨hwf₄, hty₄⟩   := wf_ext_datetime_ofBitVec hwf₂ hty₂
   simp only [
     interpret_ifFalse hI hwf₃ hty₃ hwf₄,
-    interpret_bvssubo, interpret_ext_datetime_val, interpret_bvsmod,
-    interpret_term_prim, interpret_ext_datetime_ofBitVec, interpret_bvsub,
+    interpret_bvssubo, interpret_ext_datetime_val,
+    interpret_ext_datetime_ofBitVec, interpret_bvsub,
+    interpret_datetime_bvsmod_pos 86400000 hI (And.intro hwf₀ hty₀),
   ]
 
 private theorem interpret_datetime_toTime {εs : SymEntities} {I : Interpretation} {t : Term}
@@ -645,18 +639,9 @@ private theorem interpret_datetime_toTime {εs : SymEntities} {I : Interpretatio
   (Datetime.toTime t).interpret I = Datetime.toTime (t.interpret I)
 := by
   have ⟨hwf₀, hty₀⟩ := wf_ext_datetime_val hw.left hw.right
-  have hwf_bv_zero := @wf_bv εs _ (Int64.toBitVec 0)
-  have hwf_bv_ms_per_day := @wf_bv εs _ (Int64.toBitVec 86400000)
-  have ⟨hwf₁, hty₁⟩ := wf_bvsle hwf_bv_zero hwf₀ typeOf_bv hty₀
-  have ⟨hwf₂, hty₂⟩ := wf_bvsrem hwf₀ hwf_bv_ms_per_day hty₀ typeOf_bv
-  have ⟨hwf₃, hty₃⟩ := wf_eq hwf₂ hwf_bv_zero (by simp only [hty₂, typeOf_bv])
-  have ⟨hwf₄, hty₄⟩ := wf_bvadd hwf₂ hwf_bv_ms_per_day hty₂ typeOf_bv
-  have ⟨hwf₅, hty₅⟩ := wf_ite hwf₃ hwf_bv_zero hwf₄ hty₃ (by simp only [typeOf_bv, hty₄])
   simp only [Datetime.toTime, interpret_ext_duration_ofBitVec,
-    interpret_ite hI hwf₁ hwf₂ hwf₅ hty₁ (by simp only [hty₂, hty₅, typeOf_bv]),
-    interpret_ite hI hwf₃ hwf_bv_zero hwf₄ hty₃ (by simp only [typeOf_bv, hty₄]),
-    interpret_eq hI hwf₂ hwf_bv_zero, interpret_bvsle, interpret_bvadd,
-    interpret_bvsrem, interpret_term_prim, interpret_ext_datetime_val
+    interpret_datetime_bvsmod_pos 86400000 hI (And.intro hwf₀ hty₀),
+    interpret_ext_datetime_val
   ]
 
 private theorem interpret_duration_toMilliseconds {I : Interpretation} {t : Term} :

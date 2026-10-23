@@ -581,6 +581,23 @@ public theorem bvule_iff_le {n : Nat} {bv₁ bv₂ : BitVec n} :
   simp only [BitVec.ule]
   bv_omega
 
+public theorem smod_eq_bvsmod_pos_bitvec {w : Nat} (x d : BitVec w) (hd : d.msb = false) :
+  (if BitVec.sle 0#w x then x.srem d
+   else if x.srem d = 0#w then 0#w else x.srem d + d) = x.smod d
+:= by
+  rw [BitVec.smod_eq, BitVec.srem_eq]
+  by_cases hx : x.msb = false
+  · simp only [hx, hd, BitVec.zero_sle_iff_msb_eq_false.mpr hx, ↓reduceIte, BitVec.umod_eq]
+  · simp only [Bool.not_eq_false] at hx
+    have hsle : BitVec.sle 0#w x = false := by
+      rw [Bool.eq_false_iff, ne_eq, BitVec.zero_sle_iff_msb_eq_false, hx]
+      exact Bool.noConfusion
+    simp only [hx, hd, hsle, Bool.false_eq_true, ↓reduceIte, BitVec.umod_eq]
+    simp only [BitVec.neg_eq_zero_iff]
+    by_cases h0 : (-x) % d = 0#w
+    · simp only [h0, ↓reduceIte]
+    · simp only [h0, ↓reduceIte, BitVec.add_comm, BitVec.sub_eq_add_neg]
+
 end BitVec
 
 public theorem Int.bmod_bounded_eq_self {n : Nat} {i : Int}

@@ -874,6 +874,35 @@ public theorem pe_bvule {n : Nat} {bv₁ bv₂ : BitVec n} :
   Term.prim (TermPrim.bool (BitVec.ule bv₁ bv₂))
 := by simp only [bvule, bvcmp, BitVec.ofNat_toNat, BitVec.setWidth_eq]
 
+public theorem pe_bvsmod_pos {bv : BitVec 64} {d : Nat}
+  (hD : (BitVec.ofNat 64 d).msb = false) :
+  Datetime.bvsmod_pos (Term.prim (TermPrim.bitvec bv)) d =
+  Term.prim (TermPrim.bitvec (BitVec.smod bv (BitVec.ofNat 64 d)))
+:= by
+  unfold Datetime.bvsmod_pos
+  rw [← BitVec.smod_eq_bvsmod_pos_bitvec bv (BitVec.ofNat 64 d) hD]
+  simp only [pe_bvsle, pe_bvsrem, pe_eq_lit isLiteral_prim isLiteral_prim]
+  by_cases hle : BitVec.sle 0#64 bv = true
+  · simp only [hle, pe_ite_true, ↓reduceIte]
+  · simp only [Bool.not_eq_true] at hle
+    simp only [hle, pe_ite_false, Bool.false_eq_true, ↓reduceIte]
+    cases heq : Term.prim (TermPrim.bitvec (bv.srem (BitVec.ofNat 64 d))) ==
+        Term.prim (TermPrim.bitvec 0#64)
+    · simp only [beq_eq_false_iff_ne, ne_eq, Term.prim.injEq, TermPrim.bitvec.injEq, heq_eq_eq,
+        true_and] at heq
+      simp only [heq, ↓reduceIte, pe_ite_false, pe_bvadd, BitVec.add_eq]
+    · simp only [beq_iff_eq, Term.prim.injEq, TermPrim.bitvec.injEq, heq_eq_eq, true_and] at heq
+      simp only [heq, ↓reduceIte, pe_ite_true]
+
+public theorem smod_eq_bvsmod_pos {bv : BitVec 64} {d : Nat}
+  (hD : (BitVec.ofNat 64 d).msb = false) :
+  Datetime.bvsmod_pos (Term.prim (TermPrim.bitvec bv)) d =
+  bvsmod
+    (Term.prim (TermPrim.bitvec bv))
+    (Term.prim (TermPrim.bitvec (BitVec.ofNat 64 d)))
+:= by
+  rw [pe_bvsmod_pos hD, pe_bvsmod]
+
 public theorem pe_bvaddChecked_wfl {εs : SymEntities} {t₁ t₂ : Term} {n : Nat} :
   Term.WellFormedLiteral εs t₁ → Term.typeOf t₁ = TermType.bitvec n →
   Term.WellFormedLiteral εs t₂ → Term.typeOf t₂ = TermType.bitvec n →

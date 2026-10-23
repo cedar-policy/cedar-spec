@@ -150,26 +150,35 @@ public def durationSince (dt₁ dt₂ : Term) : Term :=
   let dt₂_val := ext.datetime.val dt₂
   ifFalse (bvssubo dt₁_val dt₂_val) (ext.duration.ofBitVec (bvsub dt₁_val dt₂_val))
 
+/--
+Builds a term equivalent to `bvsmod x d` for a non-negative constant divisor `d`:
+
+  if 0 <= x then bvsrem x d
+  else if bvsrem x d = 0 then 0
+  else bvsrem x d + d
+
+Experimentally, we've seen this is easier for the solver.
+-/
+def bvsmod_pos (x : Term) (d : Nat) : Term :=
+  let zero := .prim (.bitvec (BitVec.ofNat 64 0))
+  let d := .prim (.bitvec (BitVec.ofNat 64 d))
+  ite (bvsle zero x)
+    (bvsrem x d)
+    (ite (eq (bvsrem x d) zero)
+      zero
+      (bvadd (bvsrem x d) d)
+    )
+
 public def toDate (dt : Term) : Term :=
-  let ms_per_day := .prim (.bitvec (Int64.toBitVec 86400000))
   let dt_val := ext.datetime.val dt
   -- we want dt - (dt % MS_PER_DAY), with the right version of '%'
   -- using bvsmod does the right thing: we have 0 <= (bvsmod x MS_PER_DAY) < MS_PER_DAY
-  let rem := bvsmod dt_val ms_per_day
+  let rem := bvsmod_pos dt_val 86400000
   ifFalse (bvssubo dt_val rem) (ext.datetime.ofBitVec (bvsub dt_val rem))
 
 public def toTime (dt : Term) : Term :=
-  let zero := .prim (.bitvec (Int64.toBitVec 0))
-  let ms_per_day := .prim (.bitvec (Int64.toBitVec 86400000))
   let dt_val := ext.datetime.val dt
-  ext.duration.ofBitVec
-    (ite (bvsle zero dt_val)
-      (bvsrem dt_val ms_per_day)
-      (ite (eq (bvsrem dt_val ms_per_day) zero)
-        zero
-        (bvadd (bvsrem dt_val ms_per_day) ms_per_day)
-      )
-    )
+  ext.duration.ofBitVec (bvsmod_pos dt_val 86400000)
 
 end Datetime
 

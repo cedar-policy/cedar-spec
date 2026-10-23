@@ -18,6 +18,8 @@ module
 
 public import Cedar.Spec.Ext.Datetime
 import all Cedar.Spec.Ext.Datetime
+import all Cedar.Data.Int64
+import Cedar.Thm.SymCC.Data.BitVec
 
 /-!
 # Extension function rewriting lemmas
@@ -119,5 +121,44 @@ public theorem toDate_eq_smod (datetime : Spec.Ext.Datetime) :
         omega
       rw [hfdiv] at hfmod
       omega
+
+public theorem toTime_eq_smod (datetime : Spec.Ext.Datetime) :
+  toTime datetime =
+  let millisPerDayI64 := Int64.ofIntChecked MILLISECONDS_PER_DAY (by decide)
+  (Int64.smod datetime.val millisPerDayI64 : Duration)
+:= by
+  simp only [toTime, MILLISECONDS_PER_DAY, Int64.ofIntChecked, Int64.ofInt,
+    Int64.mod, Int64.smod]
+  have hd : (UInt64.toInt64 {toBitVec := BitVec.ofInt 64 86400000}).toBitVec = 86400000#64 := by
+    simp only [BitVec.ofInt_ofNat, UInt64.ofBitVec_ofNat, UInt64.toBitVec_toInt64,
+      UInt64.toBitVec_ofNat]
+  simp only [UInt64.toInt64] at hd
+  simp only [hd]
+  rw [← BitVec.smod_eq_bvsmod_pos_bitvec datetime.val.toBitVec 86400000#64 (by decide)]
+  cases hs : BitVec.sle 0#64 datetime.val.toBitVec
+  case false =>
+    have hn : ¬datetime.val ≥ 0 := by
+      simp only [ge_iff_le, LE.le, Int64.le, Bool.not_eq_true]
+      exact hs
+    simp only [hn, ↓reduceIte]
+    by_cases hr : datetime.val.toBitVec.srem 86400000#64 = 0#64
+    · simp only [hr, ↓reduceIte]
+      rfl
+    · have hrem : ¬({toUInt64 := {toBitVec := datetime.val.toBitVec.srem 86400000#64}} : Int64) = 0 := by
+        intro h
+        apply hr
+        exact Int64.eq_iff_toBitVec_eq.mp h
+      have hbeq : (({toUInt64 := {toBitVec := datetime.val.toBitVec.srem 86400000#64}} : Int64) == 0) = false :=
+        beq_eq_false_iff_ne.mpr hrem
+      simp only [hr, hbeq, ↓reduceIte]
+      apply congrArg Duration.mk
+      rw [Int64.eq_iff_toBitVec_eq, Int64.toBitVec_add]
+      rfl
+  case true =>
+    have hp : datetime.val ≥ 0 := by
+      simp only [ge_iff_le, LE.le, Int64.le]
+      exact hs
+    simp only [hp, ↓reduceIte]
+    rfl
 
 end Cedar.Thm
