@@ -1,0 +1,18 @@
+[package]
+name = "cedar-rust-model"
+version = "0.1.0"
+edition = "2021"
+description = "A simplified executable model of the Cedar evaluator and authorizer, used to connect the production Rust implementation (via Verus) to the Lean specification (via Aeneas)."
+license = "Apache-2.0"
+
+[dependencies]
+vstd = { version = "=0.0.0-2026-10-18-0147", optional = true }
+
+[features]
+verus = ["dep:vstd"]
+
+[package.metadata.verus]
+verify = true
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(verus_only)', 'cfg(verus_keep_ghost)', 'cfg(verus_keep_ghost_body)'] }
