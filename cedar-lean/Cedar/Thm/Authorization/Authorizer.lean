@@ -184,7 +184,7 @@ theorem satisfied_implies_principal_scope {policy : Policy} {request : Request} 
   inₑ request.principal uid entities = true
 := by
   intro h₁ h₂
-  simp only [satisfied, Policy.toExpr] at h₁
+  simp only [satisfied, evaluate_policy_toExpr] at h₁
   replace h₁ := and_true_implies_left_true (of_decide_eq_true h₁)
   exact principal_eval_ok_means_principal_in_uid h₁ h₂
 
@@ -194,7 +194,7 @@ theorem satisfied_implies_resource_scope {policy : Policy} {request : Request} {
   inₑ request.resource uid entities = true
 := by
   intro h₁ h₂
-  simp only [satisfied, Policy.toExpr] at h₁
+  simp only [satisfied, evaluate_policy_toExpr] at h₁
   replace h₁ :=
     and_true_implies_left_true
       (and_true_implies_right_true
@@ -421,14 +421,14 @@ theorem principal_scope_false_then_policy_false {p : Policy}
   (hp: evaluate p.principalScope.toExpr req entities = .ok false) :
   evaluate p.toExpr req entities = .ok false
 := by
-  unfold Policy.toExpr
+  rw [evaluate_policy_toExpr]
   exact left_false_implies_and_false hp
 
 theorem action_scope_false_then_policy_false {p : Policy}
   (ha: evaluate p.actionScope.toExpr req entities = .ok false) :
   evaluate p.toExpr req entities = .ok false
 := by
-  unfold Policy.toExpr
+  rw [evaluate_policy_toExpr]
   have hp := principal_scope_produces_boolean p req entities
   apply left_bool_right_false_implies_and_false hp
   exact left_false_implies_and_false ha
@@ -437,7 +437,7 @@ theorem resource_scope_false_then_policy_false {p : Policy}
   (hr : evaluate p.resourceScope.toExpr req entities = .ok false) :
   evaluate p.toExpr req entities = .ok false
 := by
-  unfold Policy.toExpr
+  rw [evaluate_policy_toExpr]
   have hp := principal_scope_produces_boolean p req entities
   apply left_bool_right_false_implies_and_false hp
   have ha := action_scope_produces_boolean p req entities
@@ -455,7 +455,7 @@ theorem error_implies_scope_satisfied {policy : Policy} {request : Request} {ent
   evaluate policy.resourceScope.toExpr request entities = .ok true
 := by
   intro h₁
-  unfold Policy.toExpr at h₁
+  rw [evaluate_policy_toExpr] at h₁
   rcases (ways_and_can_error h₁) with h₂ | ⟨h₂, h₃⟩ | ⟨_, h₃⟩ | ⟨h₂, _, h₄⟩ <;> clear h₁
   case _ =>
     -- in this case, evaluating principal produced the error

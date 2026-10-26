@@ -186,12 +186,12 @@ theorem isAuthorized_allowAll_is_ok (Γ : TypeEnv) :
   isAuthorized [verifyAlwaysAllows.allowAll] (SymEnv.ofEnv Γ) = .ok (.prim (.bool .true))
 := by
   simp [SymCC.isAuthorized, SymCC.satisfiedPolicies, SymCC.compileWithEffect, verifyAlwaysAllows.allowAll]
-  simp [Policy.toExpr, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr, Condition.toExpr]
+  simp [Policy.toExpr, Expr.mkAnd, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr, Condition.toExpr]
   simp [Factory.and, Factory.anyTrue, Factory.not, Factory.or]
   simp [do_eq_ok, Factory.someOf]
   exists (Term.prim (.bool true)).some
   simp only [pe_eq_same, and_true]
-  simp [SymCC.compile, compilePrim, Factory.someOf, compileAnd, pe_ifSome_some]
+  simp [SymCC.compile, compilePrim, Factory.someOf]
 
 /-- `verifyAlwaysAllows` succeeds on sufficiently well-formed inputs. -/
 theorem verifyAlwaysAllows_is_ok {ps ps' : Policies} {Γ : TypeEnv}

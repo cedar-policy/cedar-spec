@@ -204,13 +204,26 @@ def TermPrim.mkName : TermPrim → String
   | .entity _ => "entity"
   | .ext _    => "ext"
 
+/-- Rust SymCC's order on extension values: .decimal < .ipaddr < .datetime < .duration.
+Differs from `Ext.lt` across types. -/
+public def Ext.symccLt : Ext → Ext → Bool
+  | .decimal d₁, .decimal d₂ => d₁ < d₂
+  | .ipaddr ip₁, .ipaddr ip₂ => ip₁ < ip₂
+  | .datetime d₁, .datetime d₂ => d₁ < d₂
+  | .duration d₁, .duration d₂ => d₁ < d₂
+  | .decimal  _, _
+  | .ipaddr   _, .datetime _
+  | .ipaddr   _, .duration _
+  | .datetime _, .duration _  => true
+  | _ , _ => false
+
 public def TermPrim.lt : TermPrim → TermPrim → Bool
   | .bool b₁, .bool b₂         => b₁ < b₂
   | @TermPrim.bitvec n₁ bv₁,
     @TermPrim.bitvec n₂ bv₂    => n₁ < n₂ || (n₁ = n₂ && bv₁.toNat < bv₂.toNat)
   | .string s₁, .string s₂     => s₁ < s₂
   | .entity uid₁, .entity uid₂ => uid₁ < uid₂
-  | .ext x₁, .ext x₂           => x₁ < x₂
+  | .ext x₁, .ext x₂           => Ext.symccLt x₁ x₂
   | p₁, p₂                     => p₁.mkName < p₂.mkName
 
 public instance : LT TermPrim where

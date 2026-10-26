@@ -134,8 +134,8 @@ private theorem satisfiedWithEffect_allowAll_permit (env : Env) :
   .some verifyAlwaysAllows.allowAll.id
 := by
   simp [satisfiedWithEffect, verifyAlwaysAllows.allowAll, satisfied,
-    Policy.toExpr, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr,
-    Conditions.toExpr, Condition.toExpr, evaluate, Result.as, Coe.coe, Value.asBool]
+    Policy.toExpr, Expr.mkAnd, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr,
+    Conditions.toExpr, Condition.toExpr, evaluate]
 
 private theorem satisfiedWithEffect_allowAll_forbid (env : Env) :
   satisfiedWithEffect .forbid verifyAlwaysAllows.allowAll env.request env.entities =
@@ -175,22 +175,9 @@ private theorem allowAll_validRefs (f : EntityUID → Prop) :
   Expr.ValidRefs f verifyAlwaysAllows.allowAll.toExpr
 := by
   simp only [Policy.toExpr, PrincipalScope.toExpr, Scope.toExpr, verifyAlwaysAllows.allowAll,
-    ActionScope.toExpr, ResourceScope.toExpr, Conditions.toExpr, Condition.toExpr]
-  have ht : Prim.ValidRef f (Prim.bool true) := by simp only [Prim.ValidRef]
-  apply Expr.ValidRefs.and_valid (Expr.ValidRefs.lit_valid ht)
-  apply Expr.ValidRefs.and_valid (Expr.ValidRefs.lit_valid ht)
-  apply Expr.ValidRefs.and_valid (Expr.ValidRefs.lit_valid ht)
-  split
-  · apply Expr.ValidRefs.lit_valid ht
-  · rename_i c cs h
-    cases cs
-    case nil =>
-      simp at * ; subst c ; simp
-      apply Expr.ValidRefs.and_valid (Expr.ValidRefs.lit_valid ht)
-      apply Expr.ValidRefs.and_valid (Expr.ValidRefs.lit_valid ht)
-      apply Expr.ValidRefs.and_valid (Expr.ValidRefs.lit_valid ht)
-      exact Expr.ValidRefs.lit_valid ht
-    case cons => simp at h
+    ActionScope.toExpr, ResourceScope.toExpr, Conditions.toExpr, Condition.toExpr, List.reverse_cons,
+    List.reverse_nil, List.nil_append, List.foldl_nil, Expr.mkAnd, Bool.and_self]
+  exact Expr.ValidRefs.lit_valid (by simp only [Prim.ValidRef])
 
 theorem swf_εnv_for_allowAll_policies {εnv : SymEnv} :
   εnv.StronglyWellFormed → εnv.StronglyWellFormedForPolicies [verifyAlwaysAllows.allowAll]

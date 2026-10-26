@@ -111,6 +111,12 @@ public def ActionScope.toExpr : ActionScope → Expr
     let exprs := es.map (fun e => .lit (.entityUID e))
     .binaryApp (.mem) (.var .action) (.set exprs)
 
+/-- Conjunction that folds two boolean literals, as Rust's `ExprBuilder::and`. -/
+@[expose]
+public def Expr.mkAnd : Expr → Expr → Expr
+  | .lit (.bool b₁), .lit (.bool b₂) => .lit (.bool (b₁ && b₂))
+  | x₁, x₂ => .and x₁ x₂
+
 public def Condition.toExpr (c : Condition) : Expr :=
   match c.kind with
   | .when => c.body
@@ -120,15 +126,17 @@ public def Condition.toExpr (c : Condition) : Expr :=
 public def Conditions.toExpr (cs : Conditions) : Expr :=
   match cs.reverse with
   | [] => Expr.lit (Prim.bool true)
-  | c :: cs => cs.foldl (λ expr c => .and (c.toExpr) expr) c.toExpr
+  | c :: cs => cs.foldl (λ expr c => Expr.mkAnd (c.toExpr) expr) c.toExpr
 
+/-- Conjunction of the scopes and conditions, folded with `Expr.mkAnd` as in
+Rust's `Policy::condition`. -/
 @[expose]
 public def Policy.toExpr (p : Policy) : Expr :=
-  .and
+  Expr.mkAnd
     p.principalScope.toExpr
-    (.and
+    (Expr.mkAnd
       p.actionScope.toExpr
-      (.and
+      (Expr.mkAnd
         p.resourceScope.toExpr
         p.condition.toExpr))
 

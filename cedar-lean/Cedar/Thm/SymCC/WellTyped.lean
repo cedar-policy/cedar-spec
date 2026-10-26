@@ -40,14 +40,10 @@ theorem wellTypedPolicy_ok_implies_exists_typed_exprs
     TypedExpr.WellTyped Γ tx' ∧
     typeOf (substituteAction Γ.reqty.action p.toExpr) ∅ Γ = Except.ok (tx, c) ∧
     p'.toExpr = tx'.toExpr ∧
-    tx' =
-      (TypedExpr.and (TypedExpr.lit (Prim.bool true) (.bool .anyBool))
-      (TypedExpr.and (TypedExpr.lit (Prim.bool true) (.bool .anyBool))
-      (TypedExpr.and (TypedExpr.lit (Prim.bool true) (.bool .anyBool))
-        tx.liftBoolTypes
-      (.bool .anyBool))
-      (.bool .anyBool))
-      (.bool .anyBool)) ∧
+    p'.toExpr =
+      Expr.mkAnd (.lit (.bool true))
+        (Expr.mkAnd (.lit (.bool true))
+          (Expr.mkAnd (.lit (.bool true)) tx.liftBoolTypes.toExpr)) ∧
     tx.liftBoolTypes.typeOf = .bool .anyBool
 := by
   simp only [wellTypedPolicy, bind, Except.bind] at hwt
@@ -93,26 +89,54 @@ theorem wellTypedPolicy_ok_implies_exists_typed_exprs
           · rfl
         · rfl
         · rfl
-      exists tx, tx'', c
-      simp only [
-        hwf_lift, hwf_tx'', hty, htx'', this,
-        true_and, and_true,
-      ]
-      simp only [
-        Policy.toExpr,
-        Scope.toExpr,
-        PrincipalScope.toExpr,
-        ActionScope.toExpr,
-        ResourceScope.toExpr,
-        Conditions.toExpr,
-        Condition.toExpr,
-        List.foldl,
-        List.reverse,
-        List.reverseAux,
-        TypedExpr.toExpr,
-        ←htx'',
-        type_lifting_preserves_expr tx,
-      ]
+      have hp' :
+        ({ id := p.id, effect := p.effect, principalScope := .principalScope .any,
+           actionScope := .actionScope .any, resourceScope := .resourceScope .any,
+           condition := [{ kind := .when, body := tx.toExpr }] } : Policy).toExpr =
+        Expr.mkAnd (.lit (.bool true))
+          (Expr.mkAnd (.lit (.bool true))
+            (Expr.mkAnd (.lit (.bool true)) tx.liftBoolTypes.toExpr))
+      := by
+        simp only [
+          Policy.toExpr,
+          Scope.toExpr,
+          PrincipalScope.toExpr,
+          ActionScope.toExpr,
+          ResourceScope.toExpr,
+          Conditions.toExpr,
+          Condition.toExpr,
+          List.foldl,
+          List.reverse,
+          List.reverseAux,
+          type_lifting_preserves_expr tx,
+        ]
+      by_cases hlit : ∃ b ty, tx.liftBoolTypes = .lit (.bool b) ty
+      · -- the condition is a boolean literal, and the whole policy folds into it
+        obtain ⟨b, ty, hb⟩ := hlit
+        exists tx, tx.liftBoolTypes, c
+        refine ⟨hwf_lift, hwf_lift, hty, ?_, hp', this⟩
+        rw [hp', hb]
+        simp [TypedExpr.toExpr, Expr.mkAnd]
+      · exists tx, tx'', c
+        refine ⟨hwf_lift, hwf_tx'', hty, ?_, hp', this⟩
+        rw [hp', ← htx'']
+        have hnl : ∀ b, tx.liftBoolTypes.toExpr ≠ .lit (.bool b) := by
+          intro b h
+          apply hlit
+          revert h
+          cases tx.liftBoolTypes <;> simp [TypedExpr.toExpr]
+          intro h; subst h; cases b <;> simp
+        have hand : ∀ y : Expr, (∀ b, y ≠ .lit (.bool b)) →
+            Expr.mkAnd (.lit (.bool true)) y = .and (.lit (.bool true)) y := by
+          intro y hy
+          cases y with
+          | lit p =>
+            cases p with
+            | bool b => exact absurd rfl (hy b)
+            | _ => rfl
+          | _ => rfl
+        rw [hand _ hnl]
+        simp only [Expr.mkAnd, TypedExpr.toExpr]
     · contradiction
   · contradiction
 
@@ -287,17 +311,12 @@ theorem wellTypedPolicy_preserves_valid_refs
   (hswf : entities.ValidRefsFor p.toExpr) :
   entities.ValidRefsFor p'.toExpr
 := by
-  have ⟨tx, tx', _, _, _, hty, heq_p', heq_tx'⟩ := wellTypedPolicy_ok_implies_exists_typed_exprs hwt
-  simp only [
-    heq_tx', TypedExpr.toExpr,
-    ←type_lifting_preserves_expr tx,
-  ] at heq_p'
-  simp only [heq_p']
-  repeat
-    constructor
-    repeat constructor
-  rotate_left
-  repeat constructor
+  have ⟨tx, _, _, _, _, hty, _, heq_p', _⟩ := wellTypedPolicy_ok_implies_exists_typed_exprs hwt
+  simp only [heq_p', ←type_lifting_preserves_expr tx]
+  have ht : Prim.ValidRef (λ uid => entities.contains uid) (Prim.bool true) := by
+    simp only [Prim.ValidRef]
+  refine Expr.ValidRefs.mkAnd (.lit_valid ht) (Expr.ValidRefs.mkAnd (.lit_valid ht)
+    (Expr.ValidRefs.mkAnd (.lit_valid ht) ?_))
   apply typeOf_preserves_valid_refs entities hty
   have : Γ.reqty.action = request.action := by
     have ⟨_, ⟨_, h, _⟩, _⟩ := hinst
@@ -363,12 +382,9 @@ theorem wellTypedPolicy_preserves_evaluation
     = evaluate tx.toExpr request entities
   := type_of_preserves_evaluation_results (empty_capabilities_invariant _ _) hinst hty
   rw [heq]
+  simp only [heq_tx', ←type_lifting_preserves_expr tx, evaluate_mkAnd]
   simp only [
-    heq_p'_tx', heq_tx', TypedExpr.toExpr,
-    ←type_lifting_preserves_expr tx,
-  ]
-  simp only [
-    evaluate, Result.as,
+    evaluate, evaluate_mkAnd, Result.as,
     Coe.coe, Value.asBool,
     Bool.not_eq_eq_eq_not,
     Bool.not_true, bind_pure_comp,

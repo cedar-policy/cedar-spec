@@ -35,16 +35,17 @@ public inductive Ext where
   | datetime (dt : Ext.Datetime)
   | duration (dur: Duration)
 
-/-- Ordering on extension types: .decimal < .ipaddr < .datetime < .duration -/
+/-- Ordering on extension values: by value within a type, otherwise by type name
+(as in Rust): .datetime < .decimal < .duration < .ipaddr -/
 public def Ext.lt : Ext → Ext → Bool
   | .decimal d₁, .decimal d₂ => d₁ < d₂
   | .ipaddr ip₁, .ipaddr ip₂ => ip₁ < ip₂
   | .datetime d₁, .datetime d₂ => d₁ < d₂
   | .duration d₁, .duration d₂ => d₁ < d₂
-  | .decimal  _, _
-  | .ipaddr   _, .datetime _
-  | .ipaddr   _, .duration _
-  | .datetime _, .duration _  => true
+  | .datetime _, _
+  | .decimal  _, .duration _
+  | .decimal  _, .ipaddr _
+  | .duration _, .ipaddr _  => true
   | _ , _ => false
 
 ----- Derivations -----

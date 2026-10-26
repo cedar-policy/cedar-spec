@@ -119,6 +119,19 @@ private theorem compile_and_wf_option_bool {x₁ x₂ : Expr} {εnv : SymEnv} {t
   rw [hty₂] at h₃
   simp only [wf_ifSome_option hw₁ h₃.left h₃.right]
 
+private theorem compile_mkAnd_wf_option_bool {x₁ x₂ : Expr} {εnv : SymEnv} {t : Term} :
+  εnv.WellFormedFor (x₁.mkAnd x₂) →
+  compile (x₁.mkAnd x₂) εnv = .ok t →
+  (t.WellFormed εnv.entities ∧ t.typeOf = .option .bool)
+:= by
+  unfold Expr.mkAnd
+  split
+  · intro _ hok
+    simp only [compile, compilePrim, Factory.someOf, Except.ok.injEq] at hok
+    subst hok
+    exact ⟨Term.WellFormed.some_wf wf_bool, by simp only [typeOf_term_some, typeOf_bool]⟩
+  · exact compile_and_wf_option_bool
+
 theorem compile_policy_wf {p : Policy} {εnv : SymEnv} {t : Term} :
   εnv.WellFormedFor p.toExpr →
   compile p.toExpr εnv = .ok t →
@@ -126,7 +139,7 @@ theorem compile_policy_wf {p : Policy} {εnv : SymEnv} {t : Term} :
 := by
   intro hwε hok
   simp only [Policy.toExpr] at hwε hok
-  exact compile_and_wf_option_bool hwε hok
+  exact compile_mkAnd_wf_option_bool hwε hok
 
 theorem satisfiedPolicies_ok_implies {effect : Effect} {ps : Policies} {εnv : SymEnv} {t : Term} :
   satisfiedPolicies effect ps εnv = .ok t →

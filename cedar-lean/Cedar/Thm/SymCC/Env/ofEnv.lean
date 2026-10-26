@@ -1344,7 +1344,8 @@ theorem wellTypedPolicy_ok_implies_valid_refs
     Policy.toExpr, Conditions.toExpr,
     List.foldl, List.reverse, List.reverseAux,
   ]
-  repeat constructor
+  refine Expr.ValidRefs.mkAnd (by repeat constructor) (Expr.ValidRefs.mkAnd (by repeat constructor)
+    (Expr.ValidRefs.mkAnd (by repeat constructor) ?_))
   simp only [Condition.toExpr]
   simp only [typecheckPolicy] at hwt
   split at hwt

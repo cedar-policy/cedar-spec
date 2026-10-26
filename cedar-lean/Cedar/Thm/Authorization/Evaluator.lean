@@ -203,6 +203,28 @@ theorem and_produces_bool_or_error (e₁ e₂ : Expr) (request : Request) (entit
         · split at h <;> simp only [Except.bind_ok, Except.bind_err, Except.ok.injEq, reduceCtorEq] at h
         · simp only [Except.bind_err, reduceCtorEq] at h
 
+/-- `Expr.mkAnd` evaluates like `.and`. -/
+theorem evaluate_mkAnd (x₁ x₂ : Expr) (request : Request) (entities : Entities) :
+  evaluate (x₁.mkAnd x₂) request entities = evaluate (.and x₁ x₂) request entities
+:= by
+  unfold Expr.mkAnd
+  split
+  · rename_i b₁ b₂
+    cases b₁ <;> cases b₂ <;> simp [evaluate, Result.as, Coe.coe, Value.asBool]
+  · rfl
+
+/-- `Policy.toExpr` evaluates like the unfolded `.and` chain. -/
+theorem evaluate_policy_toExpr (p : Policy) (request : Request) (entities : Entities) :
+  evaluate p.toExpr request entities =
+  evaluate
+    (.and p.principalScope.toExpr
+      (.and p.actionScope.toExpr
+        (.and p.resourceScope.toExpr p.condition.toExpr)))
+    request entities
+:= by
+  simp only [Policy.toExpr, evaluate_mkAnd]
+  simp only [evaluate, evaluate_mkAnd]
+
 /--
   Corollary of the above:
   Evaluating a policy produces either .ok bool or .error
@@ -214,6 +236,7 @@ theorem policy_produces_bool_or_error (p : Policy) (request : Request) (entities
   | _ => false
 := by
   unfold Policy.toExpr
+  rw [evaluate_mkAnd]
   apply and_produces_bool_or_error
 
 /--

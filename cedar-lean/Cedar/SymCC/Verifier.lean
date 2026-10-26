@@ -158,13 +158,7 @@ where
     resourceScope  := .resourceScope .any,
     condition      := [{
       kind := .when,
-      body := Expr.and
-        (.lit (.bool true))
-        (Expr.and
-          (.lit (.bool true))
-          (Expr.and
-            (.lit (.bool true))
-            (.lit (.bool true))))
+      body := .lit (.bool true)
     }]
   }
 

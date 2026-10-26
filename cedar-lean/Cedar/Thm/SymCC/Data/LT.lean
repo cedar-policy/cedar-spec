@@ -28,6 +28,7 @@ import Cedar.Thm.Data.Control
 import all Cedar.Spec.Wildcard
 import all Cedar.SymCC.Op
 import all Cedar.SymCC.Term
+import all Cedar.Spec.Ext
 import all Cedar.SymCC.TermType
 
 /-!
@@ -708,6 +709,32 @@ public instance TermVar.strictLT : StrictLT TermVar where
   transitive a b c := by exact TermVar.lt_trans a b c
   connected  a b   := by exact TermVar.lt_conn
 
+----- `Ext.symccLt` is strict -----
+
+theorem Ext.symccLt_irrefl (a : Ext) : Ext.symccLt a a = false := by
+  have h := StrictLT.irreflexive (α := Ext) a
+  cases a <;> exact (Bool.not_eq_true _).mp h
+
+theorem Ext.symccLt_trans (a b c : Ext) :
+  Ext.symccLt a b → Ext.symccLt b c → Ext.symccLt a c
+:= by
+  intro h₁ h₂
+  have h := Ext.strictLT.transitive a b c
+  cases a <;> cases b <;> cases c <;>
+  first
+  | exact h h₁ h₂
+  | simp [Ext.symccLt] at h₁ h₂ ⊢
+
+theorem Ext.symccLt_conn (a b : Ext) :
+  a ≠ b → (Ext.symccLt a b ∨ Ext.symccLt b a)
+:= by
+  intro h₁
+  have h := Ext.strictLT.connected a b h₁
+  cases a <;> cases b <;>
+  first
+  | exact h
+  | simp [Ext.symccLt]
+
 ----- `<` is strict on `TermPrim` -----
 
 theorem TermPrim.lt_irrefl (a : TermPrim) :
@@ -717,6 +744,7 @@ theorem TermPrim.lt_irrefl (a : TermPrim) :
   cases a
   case bitvec =>
     simp only [Nat.lt_irrefl, decide_false, decide_true, Bool.and_false, Bool.or_self]
+  case ext x => exact Ext.symccLt_irrefl x
   all_goals {
     simp only [decide_eq_false_iff_not]
     apply StrictLT.irreflexive
@@ -742,6 +770,9 @@ theorem TermPrim.lt_trans (a b c : TermPrim) :
     · simp only [h₂.left] at h₁
       have h₃ := Nat.lt_trans h₁.right h₂.right
       exact Or.inr (And.intro h₁.left h₃)
+  case ext =>
+    simp only [TermPrim.lt] at *
+    exact Ext.symccLt_trans _ _ _ h₁ h₂
   all_goals {
     by_contra
     simp only [TermPrim.lt, decide_eq_true_eq] at *
@@ -766,7 +797,7 @@ theorem TermPrim.lt_conn {a b : TermPrim} :
     exact StrictLT.connected _ _ h₁
   case ext =>
     simp only [TermPrim.ext.injEq] at h₁
-    exact StrictLT.connected _ _ h₁
+    exact Ext.symccLt_conn _ _ h₁
   case bitvec n₁ bv₁ n₂ bv₂ =>
     simp only [Bool.or_eq_true, decide_eq_true_eq, Bool.and_eq_true]
     simp only [TermPrim.bitvec.injEq, not_and] at h₁

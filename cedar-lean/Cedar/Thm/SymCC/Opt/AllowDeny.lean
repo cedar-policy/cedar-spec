@@ -41,8 +41,8 @@ theorem wellTypedPolicies_allowAll (Γ : Validation.TypeEnv) :
 := by
   simp [wellTypedPolicies, wellTypedPolicy]
   simp [Validation.typecheckPolicy, Policy.allowAll, verifyAlwaysAllows.allowAll]
-  simp [Policy.toExpr, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr]
-  simp [Validation.typeOf, Validation.substituteAction, Validation.mapOnVars, Validation.typeOfLit, Validation.ok, Validation.typeOfAnd, Validation.TypedExpr.typeOf, Validation.TypedExpr.toExpr, Validation.subty, Validation.lub?, Validation.lubBool]
+  simp [Policy.toExpr, Expr.mkAnd, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr]
+  simp [Validation.typeOf, Validation.substituteAction, Validation.mapOnVars, Validation.typeOfLit, Validation.ok, Validation.TypedExpr.typeOf, Validation.TypedExpr.toExpr, Validation.subty, Validation.lub?, Validation.lubBool]
 
 /--
 `SymCC.isAuthorized` on the empty policy set
@@ -59,9 +59,8 @@ private theorem compile_allowAll (εnv : SymEnv) :
   SymCC.compile verifyAlwaysAllows.allowAll.toExpr εnv = .ok (⊙true)
 := by
   simp [verifyAlwaysAllows.allowAll]
-  simp [Policy.toExpr, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr, Condition.toExpr]
-  simp [compile, compilePrim, compileAnd]
-  simp [pe_ite_true, pe_ifSome_some, pe_option_get_some, Factory.someOf, typeOf_bool]
+  simp [Policy.toExpr, Expr.mkAnd, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr, Condition.toExpr]
+  simp [compile, compilePrim]
 
 /--
 `SymCC.compile` on a literal bool
@@ -87,5 +86,5 @@ theorem footprint_allowAll (εnv : SymEnv) :
   SymCC.footprint verifyAlwaysAllows.allowAll.toExpr εnv = Data.Set.empty
 := by
   simp [verifyAlwaysAllows.allowAll]
-  simp [Policy.toExpr, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr, Condition.toExpr]
-  simp [footprint, footprint.ofBranch, footprint.ofEntity, compile_bool, Factory.someOf, TermType.isOptionEntityType, typeOf_bool]
+  simp [Policy.toExpr, Expr.mkAnd, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr, Condition.toExpr]
+  simp [footprint, footprint.ofEntity, compile_bool, Factory.someOf, TermType.isOptionEntityType, typeOf_bool]

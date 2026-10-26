@@ -188,6 +188,15 @@ public def Env.WellFormed (env : Env) : Prop :=
 public abbrev Entities.ValidRefsFor (es : Entities) (x : Expr) : Prop :=
   x.ValidRefs (λ uid => es.contains uid)
 
+public theorem Expr.ValidRefs.mkAnd {validRef : EntityUID → Prop} {x₁ x₂ : Expr}
+  (h₁ : x₁.ValidRefs validRef) (h₂ : x₂.ValidRefs validRef) :
+  (x₁.mkAnd x₂).ValidRefs validRef
+:= by
+  unfold Expr.mkAnd
+  split
+  · exact .lit_valid (by simp [Prim.ValidRef])
+  · exact .and_valid h₁ h₂
+
 @[expose]
 public def Env.WellFormedFor (env : Env) (x : Expr) : Prop :=
   env.WellFormed ∧ env.entities.ValidRefsFor x
