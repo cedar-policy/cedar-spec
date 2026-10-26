@@ -15,6 +15,7 @@
 -/
 
 import Cedar.Thm.Data.LT
+import Cedar.Thm.Authorization.Evaluator
 import Cedar.Thm.Validation.Typechecker.Basic
 
 /-!
@@ -340,29 +341,6 @@ theorem mapM'_eval_lits_eq_prims {ps : List Prim} {vs : List Value} {request : R
     constructor
     · simp [evaluate] at h₂ ; simp [h₂]
     · exact mapM'_eval_lits_eq_prims h₃
-
-theorem mapM'_asEntityUID_eq_entities {vs : List Value} {euids : List EntityUID}
-  (h₁ : List.mapM' Value.asEntityUID vs = Except.ok euids) :
-  vs = List.map (Value.prim ∘ Prim.entityUID) euids
-:= by
-  cases vs
-  case nil =>
-    simp only [List.mapM', pure, Except.pure, Except.ok.injEq, List.nil_eq] at h₁
-    subst h₁
-    simp only [List.map_nil]
-  case cons hd tl =>
-    simp only [List.mapM', bind_pure_comp] at h₁
-    cases h₂ : Value.asEntityUID hd <;> simp [h₂] at h₁
-    cases h₃ : List.mapM' Value.asEntityUID tl <;> simp [h₃] at h₁
-    rename_i vhd vtl
-    subst h₁
-    simp only [List.map, Function.comp_apply, List.cons.injEq]
-    constructor
-    · simp only [Value.asEntityUID] at h₂
-      split at h₂ <;> simp at h₂
-      rw [eq_comm] at h₂ ; subst h₂
-      rfl
-    · exact mapM'_asEntityUID_eq_entities h₃
 
 theorem evaluate_entity_set_eqv {vs : List Value} {euids euids' : List EntityUID} {request : Request} {entities : Entities}
   (h₁ : evaluate (Expr.set (List.map (Expr.lit ∘ Prim.entityUID) euids')) request entities =
