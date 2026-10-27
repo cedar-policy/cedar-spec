@@ -1551,7 +1551,7 @@ public theorem wf_ifTrue {εs : SymEntities} {g t : Term} :
     h₃ (by simp)
   simp [h₄]
 
-theorem wf_foldl {α} {εs : SymEntities}
+public theorem wf_foldl {α} {εs : SymEntities}
   {xs : List α} {t : Term} {f : Term → α → Term}
   (h₁ : Term.WellFormed εs t)
   (h₂ : ∀ x t', x ∈ xs → t'.WellFormed εs → t'.typeOf = t.typeOf →
@@ -1569,6 +1569,32 @@ theorem wf_foldl {α} {εs : SymEntities}
     apply ih
     intro t' t'' h₄ h₅ h₆
     exact h₂ _ _ (by simp only [List.mem_cons, h₄, or_true]) h₅ h₆
+
+/--
+Folding `ifSome` guards over an option-typed body preserves well-formedness and the
+body's option type. Used for the variadic `isInRange` compilation, which guards the
+result on every argument being `some`.
+-/
+public theorem wf_foldr_ifSome {εs : SymEntities} {ts : List Term} {body : Term} {ty : TermType}
+  (hbody : body.WellFormed εs) (hbodyty : body.typeOf = .option ty)
+  (hts : ∀ tᵢ ∈ ts, tᵢ.WellFormed εs) :
+  (ts.foldr (fun tᵢ acc => ifSome tᵢ acc) body).WellFormed εs ∧
+  (ts.foldr (fun tᵢ acc => ifSome tᵢ acc) body).typeOf = .option ty
+:= by
+  induction ts with
+  | nil => exact ⟨hbody, hbodyty⟩
+  | cons t rest ih =>
+    have ⟨ihwf, ihty⟩ := ih (fun tᵢ h => hts tᵢ (List.mem_cons_of_mem _ h))
+    exact wf_ifSome_option (hts t (by simp)) ihwf ihty
+
+/-- Folding `ifSome` guards over an option-typed body preserves the body's option type. -/
+public theorem typeOf_foldr_ifSome {ts : List Term} {P : Term} {ty : TermType}
+  (hP : P.typeOf = .option ty) :
+  (ts.foldr (fun tᵢ acc => ifSome tᵢ acc) P).typeOf = .option ty
+:= by
+  induction ts with
+  | nil => exact hP
+  | cons t rest ih => exact typeOf_ifSome_option ih
 
 public theorem wf_anyTrue {εs : SymEntities} {f : Term → Term} {ts : List Term} :
   (∀ t ∈ ts, (f t).WellFormed εs ∧ (f t).typeOf = .bool) →
@@ -1796,6 +1822,41 @@ public theorem wf_ipaddr_isInRange {εs : SymEntities} {t₁ t₂ : Term}
   simp only [IPAddr.isInRange]
   have h₃ := wf_ipaddr_inRangeV (wf_ipaddr_rangeV4 h₁) (wf_ipaddr_rangeV4 h₂) (wf_ipaddr_isIpv4 h₁) (wf_ipaddr_isIpv4 h₂)
   have h₄ := wf_ipaddr_inRangeV (wf_ipaddr_rangeV6 h₁) (wf_ipaddr_rangeV6 h₂) (wf_ipaddr_isIpv6 h₁) (wf_ipaddr_isIpv6 h₂)
+  exact wf_or h₃.left h₄.left h₃.right h₄.right
+
+public theorem wf_ipaddr_inRangeVs {εs : SymEntities} {w : Nat} {isIp : Term → Term} {range : Term → Term × Term} {t : Term} {ts : List Term}
+  (hrt : WFIPRange εs (range t) w)
+  (hit : (isIp t).WellFormed εs ∧ (isIp t).typeOf = .bool)
+  (hrs : ∀ t₂ ∈ ts, WFIPRange εs (range t₂) w)
+  (his : ∀ t₂ ∈ ts, (isIp t₂).WellFormed εs ∧ (isIp t₂).typeOf = .bool) :
+  (IPAddr.inRangeVs isIp range t ts).WellFormed εs ∧
+  (IPAddr.inRangeVs isIp range t ts).typeOf = .bool
+:= by
+  simp only [IPAddr.inRangeVs]
+  have hfold :
+      (List.foldl (fun acc t₂ => or acc (and (isIp t₂) (IPAddr.inRange range t t₂))) (false : Term) ts).WellFormed εs ∧
+      (List.foldl (fun acc t₂ => or acc (and (isIp t₂) (IPAddr.inRange range t t₂))) (false : Term) ts).typeOf = .bool := by
+    rw [← @typeOf_bool false]
+    apply wf_foldl wf_bool
+    intro t₂ acc hin hw hty
+    simp only [typeOf_bool] at *
+    have hir := wf_ipaddr_inRange hrt (hrs t₂ hin)
+    have hand := wf_and (his t₂ hin).left hir.left (his t₂ hin).right hir.right
+    exact wf_or hw hand.left hty hand.right
+  exact wf_and hit.left hfold.left hit.right hfold.right
+
+public theorem wf_ipaddr_isInRangeV {εs : SymEntities} {t₁ : Term} {ts : List Term}
+  (h₁ : t₁.WellFormed εs ∧ t₁.typeOf = .ext .ipAddr)
+  (h₂ : ∀ t ∈ ts, t.WellFormed εs ∧ t.typeOf = .ext .ipAddr) :
+  (IPAddr.isInRangeV t₁ ts).WellFormed εs ∧ (IPAddr.isInRangeV t₁ ts).typeOf = .bool
+:= by
+  simp only [IPAddr.isInRangeV]
+  have h₃ := wf_ipaddr_inRangeVs (isIp := IPAddr.isIpv4) (range := IPAddr.rangeV4)
+    (wf_ipaddr_rangeV4 h₁) (wf_ipaddr_isIpv4 h₁)
+    (fun t ht => wf_ipaddr_rangeV4 (h₂ t ht)) (fun t ht => wf_ipaddr_isIpv4 (h₂ t ht))
+  have h₄ := wf_ipaddr_inRangeVs (isIp := IPAddr.isIpv6) (range := IPAddr.rangeV6)
+    (wf_ipaddr_rangeV6 h₁) (wf_ipaddr_isIpv6 h₁)
+    (fun t ht => wf_ipaddr_rangeV6 (h₂ t ht)) (fun t ht => wf_ipaddr_isIpv6 (h₂ t ht))
   exact wf_or h₃.left h₄.left h₃.right h₄.right
 
 public theorem wf_ipaddr_ipTerm (εs : SymEntities) (ip : IPAddr) :

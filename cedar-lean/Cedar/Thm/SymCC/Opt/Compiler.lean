@@ -215,6 +215,29 @@ private theorem Opt.compileCall₂.correctness (xty : ExtType) (enc : Term → T
   rw [Opt.compileCallWithError₂.correctness]
 
 /--
+Correctness lemma for `Opt.compileCallₙ`, at least as to the `term`:
+`Opt.compileCallₙ` produces the same `term` as `SymCC.compileCallₙ`
+-/
+private theorem Opt.compileCallₙ.correctness (xty : ExtType) (enc : Term → List Term → Term) (arg₁ : Opt.CompileResult) (args : List Opt.CompileResult) :
+  Opt.compileCallₙ xty enc arg₁ args =
+  (do let term ← SymCC.compileCallₙ xty enc arg₁.term (args.map Opt.CompileResult.term) ;
+      .ok { term, footprint := args.foldl (λ acc a => acc ∪ a.footprint) arg₁.footprint })
+:= by
+  simp only [Opt.compileCallₙ, SymCC.compileCallₙ, List.forall_mem_map]
+  split <;> simp [List.foldr_map, List.map_map, Function.comp_def]
+
+/--
+The footprint accumulated by `Opt.compileCallₙ` is the `mapUnion` of all the
+arguments' footprints.
+-/
+private theorem Opt.compileCallₙ.footprint_eq_mapUnion {arg₁ : Opt.CompileResult} {args : List Opt.CompileResult} :
+  args.foldl (λ acc a => acc ∪ a.footprint) arg₁.footprint =
+  (arg₁ :: args).mapUnion Opt.CompileResult.footprint
+:= by
+  simp only [List.mapUnion, List.foldl_cons, EmptyCollection.emptyCollection]
+  rw [Data.Set.union_empty_left]
+
+/--
 Correctness lemma for `Opt.compileCall`, at least as to the `term`:
 `Opt.compileCall` produces the same `term` as `SymCC.compileCall`
 -/
@@ -223,9 +246,9 @@ private theorem Opt.compileCall.correctness (xfn : ExtFun) (ress : List Opt.Comp
   (do let term ← SymCC.compileCall xfn (ress.map Opt.CompileResult.term) ; .ok { term, footprint := ress.mapUnion Opt.CompileResult.footprint })
 := by
   simp only [Opt.compileCall, SymCC.compileCall]
-  split <;> try simp only [Opt.compileCall₀.correctness, Opt.compileCall₁.correctness, Opt.compileCall₂.correctness, List.map_cons, List.map_nil]
+  split <;> try simp only [Opt.compileCall₀.correctness, Opt.compileCall₁.correctness, Opt.compileCall₂.correctness, Opt.compileCallₙ.correctness, List.map_cons, List.map_nil]
   all_goals first
-  | simp only [Opt.compileCall₀.correctness] | simp only [Opt.compileCall₁.correctness] | simp only [Opt.compileCall₂.correctness] | simp only [Opt.compileCallWithError₁.correctness] | simp only [Opt.compileCallWithError₂.correctness] | symm
+  | simp only [Opt.compileCall₀.correctness] | simp only [Opt.compileCall₁.correctness] | simp only [Opt.compileCall₂.correctness] | simp only [Opt.compileCallₙ.correctness] | simp only [Opt.compileCallWithError₁.correctness] | simp only [Opt.compileCallWithError₂.correctness] | symm
   · rename_i res ; simp_do_let SymCC.compileCall₀ Ext.Decimal.decimal res.term
     rw [List.mapUnion_singleton]
   · rename_i res₁ res₂ ; simp_do_let SymCC.compileCall₂ _ Decimal.lessThan res₁.term res₂.term
@@ -246,8 +269,7 @@ private theorem Opt.compileCall.correctness (xfn : ExtFun) (ress : List Opt.Comp
     rw [List.mapUnion_singleton]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ IPAddr.isMulticast res.term
     rw [List.mapUnion_singleton]
-  · rename_i res₁ res₂ ; simp_do_let SymCC.compileCall₂ _ IPAddr.isInRange res₁.term res₂.term
-    rw [List.mapUnion_pair]
+  · rw [Opt.compileCallₙ.footprint_eq_mapUnion]
   · rename_i res ; simp_do_let SymCC.compileCall₀ Ext.Datetime.datetime res.term
     rw [List.mapUnion_singleton]
   · rename_i res ; simp_do_let SymCC.compileCall₀ Ext.Datetime.duration res.term
@@ -272,11 +294,18 @@ private theorem Opt.compileCall.correctness (xfn : ExtFun) (ress : List Opt.Comp
     rw [List.mapUnion_singleton]
   · rw [do_error]
     split <;> simp_all
-    all_goals {
-      rename_i t₁ t₂ h₁ h₂
-      have ⟨res₁, res₂, hres⟩ := List.map_eq_doubleton h₁
-      specialize h₂ res₁ res₂ ; contradiction
-    }
+    all_goals first
+      | (rename_i _ _ h₁ h₂
+         have ⟨res₁, res₂, _⟩ := List.map_eq_doubleton h₁
+         specialize h₂ res₁ res₂ ; contradiction)
+      -- variadic isInRange arm: the mapped list has ≥ 2 elements, so `ress` does too
+      | (rename_i _ _ _ h₁ h₂
+         cases ress with
+         | nil => simp at h₁
+         | cons r₁ rest =>
+           cases rest with
+           | nil => simp at h₁
+           | cons r₂ rest' => exact absurd rfl (h₂ r₁ r₂ rest'))
 
 /--
 Lemma pulled out from the below `mutual` block so that we can prove it on its own by induction
