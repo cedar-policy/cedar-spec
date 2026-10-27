@@ -41,8 +41,7 @@ fuzz_target!(|input: (String, String, String)| {
 
     let rust_result =
         is_authorized_str::rust_authorize_from_strings(&policy_text, &entities_json, &request_json);
-    let lean_result =
-        lean_engine.is_authorized_str(&policy_text, &entities_json, &request_json);
+    let lean_result = lean_engine.is_authorized_str(&policy_text, &entities_json, &request_json);
 
     match (rust_result, lean_result) {
         (Some(rust_response), Ok(lean_response)) => {
