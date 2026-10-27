@@ -128,7 +128,7 @@ theorem steps_monotone
         simp only [↓reduceDIte]
         show state.snd ≤ state.snd + 1
         omega
-      · rw [dif_neg hj]
+      · simp only [hj, ↓reduceDIte]
         have hjlt : j < pattern.length := Nat.lt_of_le_of_ne h₂ hj
         by_cases hi : i = text.length
         · subst hi
@@ -149,7 +149,7 @@ theorem steps_monotone
           | .justChar _ =>
             show state.snd ≤ state.snd + 1
             omega
-        · rw [dif_neg hi]
+        · simp only [hi, ↓reduceDIte]
           match hd : pattern.get ⟨j, hjlt⟩ with
           | .multiStar =>
             have ih_j := ih3 hj hi (state.1, state.2 + 1)
@@ -202,7 +202,7 @@ theorem cache_size_monotone
         simp only [↓reduceDIte]
         show state.1.size ≤ (state.1.insert (i, pattern.length) (decide (i = text.length))).size
         exact Std.HashMap.size_le_size_insert
-      · rw [dif_neg hj]
+      · simp only [hj, ↓reduceDIte]
         have hjlt : j < pattern.length := Nat.lt_of_le_of_ne h₂ hj
         by_cases hi : i = text.length
         · subst hi
@@ -223,7 +223,7 @@ theorem cache_size_monotone
           | .justChar _ =>
             show state.1.size ≤ (state.1.insert (text.length, j) false).size
             exact Std.HashMap.size_le_size_insert
-        · rw [dif_neg hi]
+        · simp only [hi, ↓reduceDIte]
           match hd : pattern.get ⟨j, hjlt⟩ with
           | .multiStar =>
             have ih_j := ih3 hj hi (state.1, state.2 + 1)
@@ -320,14 +320,14 @@ private theorem wildcardMatchDelimitedIdx_preserves_bounded
                modifyGet, MonadStateOf.modifyGet, StateT.modifyGet, pure]
     have hcache' : CacheKeysBounded text pattern (state.1, state.2 + 1).1 := hcache
     rcases hget : state.1.get? (i, j) with _ | b
-    · simp only [hget]
+    · simp only
       by_cases hj : j = pattern.length
       · subst hj
         simp only [↓reduceDIte]
         show CacheKeysBounded text pattern
           (state.1.insert (i, pattern.length) (decide (i = text.length)))
         exact hcache.insert ⟨h₁, Nat.le_refl _⟩
-      · rw [dif_neg hj]
+      · simp only [hj, ↓reduceDIte]
         have hjlt : j < pattern.length := Nat.lt_of_le_of_ne h₂ hj
         by_cases hi : i = text.length
         · subst hi
@@ -349,7 +349,7 @@ private theorem wildcardMatchDelimitedIdx_preserves_bounded
             show CacheKeysBounded text pattern
               (state.1.insert (text.length, j) false)
             exact hcache.insert ⟨Nat.le_refl _, Nat.le_of_lt hjlt⟩
-        · rw [dif_neg hi]
+        · simp only [hi, ↓reduceDIte]
           have hilt : i < text.length := Nat.lt_of_le_of_ne h₁ hi
           match hd : pattern.get ⟨j, hjlt⟩ with
           | .multiStar =>
@@ -420,7 +420,7 @@ private theorem wildcardMatchDelimitedIdx_preserves_absent
         rw [Std.HashMap.contains_insert]
         simp only [beq_iff_eq, Bool.or_eq_true, not_or]
         exact ⟨fun heq => hne heq, habsent⟩
-      · rw [dif_neg hj]
+      · simp only [hj, ↓reduceDIte]
         have hjlt : j' < pattern.length := Nat.lt_of_le_of_ne h₂' hj
         by_cases hi : i' = text.length
         · subst hi
@@ -453,7 +453,7 @@ private theorem wildcardMatchDelimitedIdx_preserves_absent
             rw [Std.HashMap.contains_insert]
             simp only [beq_iff_eq, Bool.or_eq_true, not_or]
             exact ⟨fun heq => hne heq, habsent⟩
-        · rw [dif_neg hi]
+        · simp only [hi, ↓reduceDIte]
           match hd : pattern.get ⟨j', hjlt⟩ with
           | .multiStar =>
             have hbound_j : i < i' ∨ j < j' + 1 := by
@@ -536,9 +536,9 @@ theorem steps_le_growth
           (decide (i = text.length))).size - state.1.size) + 1
         rw [Std.HashMap.size_insert]
         have hnin : ¬ (i, pattern.length) ∈ state.1 := habsent
-        simp only [hnin, if_false]
+        simp only [hnin, ite_false]
         omega
-      · rw [dif_neg hj]
+      · simp only [hj, ↓reduceDIte]
         have hjlt : j < pattern.length := Nat.lt_of_le_of_ne h₂ hj
         by_cases hi : i = text.length
         · subst hi
@@ -562,7 +562,7 @@ theorem steps_le_growth
             have hnin : ¬ (text.length, j) ∈ (wildcardMatchDelimitedIdx text pattern text.length
               (j + 1) h₁ (by omega) delim (state.1, state.2 + 1)).2.1 :=
                 habsent_intermediate_multiStar
-            simp only [hnin, if_false]
+            simp only [hnin, ite_false]
             simp only at ih hmono_c
             omega
           | .star =>
@@ -582,7 +582,7 @@ theorem steps_le_growth
                 (state.1, state.2 + 1)).2.2 ≤
               state.2 + 3 * (((wildcardMatchDelimitedIdx text pattern text.length (j + 1) h₁ (by omega) delim
                 (state.1, state.2 + 1)).2.1.insert (text.length, j) _).size - state.1.size) + 1
-            rw [Std.HashMap.size_insert, if_neg hnin]
+            rw [Std.HashMap.size_insert, ite_eq_right_of_eq_false _ _ (eq_false hnin)]
             simp only at ih hmono_c
             omega
           | .justChar _ =>
@@ -590,9 +590,9 @@ theorem steps_le_growth
               - state.1.size) + 1
             rw [Std.HashMap.size_insert]
             have hnin : ¬ (text.length, j) ∈ state.1 := habsent
-            simp only [hnin, if_false]
+            simp only [hnin, ite_false]
             omega
-        · rw [dif_neg hi]
+        · simp only [hi, ↓reduceDIte]
           match hd : pattern.get ⟨j, hjlt⟩ with
           | .multiStar =>
             have habsent_after_j :
@@ -627,7 +627,7 @@ theorem steps_le_growth
               state.2 + 3 * (((wildcardMatchDelimitedIdx text pattern (i + 1) j (by omega) h₂ delim
                 (wildcardMatchDelimitedIdx text pattern i (j + 1) h₁ (by omega) delim
                   (state.1, state.2 + 1)).snd).2.1.insert (i, j) _).size - state.1.size) + 1
-            rw [Std.HashMap.size_insert, if_neg hnin]
+            rw [Std.HashMap.size_insert, ite_eq_right_of_eq_false _ _ (eq_false hnin)]
             simp only at ih_j ih_i hmono_c_j hmono_c_i
             omega
           | .star =>
@@ -663,7 +663,7 @@ theorem steps_le_growth
               state.2 + 3 * (((wildcardMatchDelimitedIdx text pattern (i + 1) j (by omega) h₂ delim
                 (wildcardMatchDelimitedIdx text pattern i (j + 1) h₁ (by omega) delim
                   (state.1, state.2 + 1)).snd).2.1.insert (i, j) _).size - state.1.size) + 1
-            rw [Std.HashMap.size_insert, if_neg hnin]
+            rw [Std.HashMap.size_insert, ite_eq_right_of_eq_false _ _ (eq_false hnin)]
             simp only at ih_j ih_i hmono_c_j hmono_c_i
             omega
           | .justChar k =>
@@ -683,7 +683,7 @@ theorem steps_le_growth
                 (state.1, state.2 + 1)).2.2 ≤
               state.2 + 3 * (((wildcardMatchDelimitedIdx text pattern (i + 1) (j + 1) (by omega) (by omega) delim
                 (state.1, state.2 + 1)).2.1.insert (i, j) _).size - state.1.size) + 1
-            rw [Std.HashMap.size_insert, if_neg hnin]
+            rw [Std.HashMap.size_insert, ite_eq_right_of_eq_false _ _ (eq_false hnin)]
             simp only at ih hmono_c
             omega
     ·
