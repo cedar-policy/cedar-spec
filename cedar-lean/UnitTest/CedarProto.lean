@@ -633,6 +633,16 @@ def tests := [
     test "LikeDelimited: missing delim is a parse error" ⟨λ () =>
       checkEq (isError (Proto.Message.interpret? (α := Cedar.Spec.Expr) (likeDelimitedBytes []))) true
     ⟩,
+    test "LikeDelimited: `*` delim is a parse error" ⟨λ () =>
+      checkEq (isError (Proto.Message.interpret? (α := Cedar.Spec.Expr) (likeDelimitedBytes [26, 1, 42]))) true
+    ⟩,
+    test "LikeDelimited: U+2FFFF delim is accepted" ⟨λ () =>
+      checkEq (Proto.Message.interpret? (α := Cedar.Spec.Expr) (likeDelimitedBytes [26, 4, 240, 175, 191, 191]))
+        (.ok (Cedar.Spec.Expr.unaryApp (.likeDelimited [.multiStar, .justChar '.', .star] (Char.ofNat 0x2FFFF)) (.var .context)))
+    ⟩,
+    test "LikeDelimited: delim above U+2FFFF is a parse error" ⟨λ () =>
+      checkEq (isError (Proto.Message.interpret? (α := Cedar.Spec.Expr) (likeDelimitedBytes [26, 4, 240, 176, 128, 128]))) true
+    ⟩,
   ]
 ]
 

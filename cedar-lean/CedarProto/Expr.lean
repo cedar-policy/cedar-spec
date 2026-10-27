@@ -717,7 +717,13 @@ def merge (x1 x2 : ExprKind.LikeDelimited) : ExprKind.LikeDelimited :=
 
 def toExpr (m : ExprKind.LikeDelimited) : Except String Expr :=
   match m.delim.toList with
-  | [d] => .ok (.unaryApp (.likeDelimited m.pattern.toList d) m.expr)
+  | [d] =>
+    if d == '*' then
+      .error "LikeDelimited: `delim` must not be the wildcard `*`"
+    else if d.val > 0x2FFFF then
+      .error "LikeDelimited: `delim` must be at most U+2FFFF"
+    else
+      .ok (.unaryApp (.likeDelimited m.pattern.toList d) m.expr)
   | _   => .error "LikeDelimited: expected `delim` to be exactly one character"
 
 -- parseField relies on mutual recursion and can be found at the end of the file
