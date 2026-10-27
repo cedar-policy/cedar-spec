@@ -127,6 +127,55 @@ pub fn arbitrary_pst_pattern_elem(u: &mut Unstructured<'_>) -> Result<pst::Patte
     )
 }
 
+/// Weight of the delimiter-aware `like` case in `arbitrary_pst_expr`
+const PST_LIKE_DELIMITED_WEIGHT: u8 = if cfg!(feature = "extended-like") {
+    1
+} else {
+    0
+};
+
+/// Generate an arbitrary `pst::Expr::LikeDelimited` (requires `max_depth > 0`)
+#[cfg(feature = "extended-like")]
+fn arbitrary_pst_like_delimited(
+    hierarchy: &Hierarchy,
+    max_depth: usize,
+    max_width: usize,
+    u: &mut Unstructured<'_>,
+) -> Result<pst::Expr> {
+    let expr = Arc::new(arbitrary_pst_expr(hierarchy, max_depth - 1, max_width, u)?);
+    let delim: ast::LikeDelimiter = gen!(u,
+        4 => ast::LikeDelimiter::new(*u.choose(&crate::abac::LIKE_DELIMITERS)?)
+            .expect("valid delimiter"),
+        1 => u.arbitrary()?
+    );
+    let mut pattern = vec![];
+    u.arbitrary_loop(Some(0), Some(max_width as u32), |u| {
+        pattern.push(gen!(u,
+            2 => pst::DelimPatternElem::Char(u.arbitrary()?),
+            2 => pst::DelimPatternElem::Char(delim.as_char()),
+            1 => pst::DelimPatternElem::Wildcard,
+            1 => pst::DelimPatternElem::MultiWildcard
+        ));
+        Ok(std::ops::ControlFlow::Continue(()))
+    })?;
+    Ok(pst::Expr::LikeDelimited {
+        expr,
+        pattern,
+        delim: delim.into(),
+    })
+}
+
+/// Unreachable without the `extended-like` feature
+#[cfg(not(feature = "extended-like"))]
+fn arbitrary_pst_like_delimited(
+    _hierarchy: &Hierarchy,
+    _max_depth: usize,
+    _max_width: usize,
+    _u: &mut Unstructured<'_>,
+) -> Result<pst::Expr> {
+    Err(crate::err::Error::LikeDisabled)
+}
+
 /// Generate an arbitrary `pst::Expr` with bounded depth.
 pub fn arbitrary_pst_expr(
     hierarchy: &Hierarchy,
@@ -185,6 +234,9 @@ pub fn arbitrary_pst_expr(
                 })?;
                 Ok(pst::Expr::Like { expr, pattern })
             },
+            // delimiter-aware like; weight 0 (never chosen, other choices
+            // unaffected) without the `extended-like` feature
+            PST_LIKE_DELIMITED_WEIGHT => arbitrary_pst_like_delimited(hierarchy, max_depth, max_width, u),
             1 => {
                 let expr = Arc::new(arbitrary_pst_expr(hierarchy, max_depth - 1, max_width, u)?);
                 let entity_type = arbitrary_pst_entity_type(hierarchy, u)?;

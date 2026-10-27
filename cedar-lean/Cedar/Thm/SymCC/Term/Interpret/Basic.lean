@@ -287,6 +287,12 @@ public theorem interpret_term_app_string_like {I : Interpretation} {p : Pattern}
 := by simp_interpret_term_app
 
 @[simp]
+public theorem interpret_term_app_string_likeExtended {I : Interpretation} {p : DelimPattern} {d : Char} {t₁ : Term} {ty : TermType} :
+  (Term.app (Op.string.likeExtended p d) [t₁] ty).interpret I =
+  Factory.string.likeExtended (t₁.interpret I) p d
+:= by simp_interpret_term_app
+
+@[simp]
 public theorem interpret_term_app_ext_decimal_val {I : Interpretation} {t₁ : Term} {ty : TermType} :
   (Term.app (.ext ExtOp.decimal.val) [t₁] ty).interpret I =
   Factory.ext.decimal.val (t₁.interpret I)

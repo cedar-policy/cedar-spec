@@ -128,6 +128,19 @@ message Pattern {
     repeated PatElem pattern = 1;
 }
 
+message DelimPatElem {
+    oneof elem {
+        bool star = 1;
+        uint32 char = 2;
+        bool multi_star = 3;
+    }
+}
+
+message DelimPattern {
+    repeated DelimPatElem pattern = 1;
+    uint32 delim = 2;
+}
+
 message Op {
     oneof op {
         BaseOp base_op = 1;
@@ -136,6 +149,7 @@ message Op {
         string record_get = 4;
         Pattern string_like = 5;
         ExtOp ext_op = 6;
+        DelimPattern string_like_extended = 7;
     }
 
     enum BaseOp {
@@ -362,6 +376,8 @@ message Residual {
     cedar_policy_core.Name fn_name = 11;
     repeated cedar_policy_core.Expr.Like.PatternElem pattern = 12;
     cedar_policy_core.Name entity_type = 13;
+    string delim = 14;
+    repeated cedar_policy_core.Expr.LikeDelimited.PatternElem delim_pattern = 15;
 
     enum Kind {
         VAL = 0;
@@ -380,6 +396,7 @@ message Residual {
         ERROR = 13;
         LIKE = 14;
         IS = 15;
+        LIKE_DELIMITED = 16;
     }
 }
 

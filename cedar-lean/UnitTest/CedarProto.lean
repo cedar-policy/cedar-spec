@@ -78,6 +78,23 @@ def testDeserializeProtodata [Inhabited α] [DecidableEq α] [Repr α] [Proto.Me
   (filename : String) (expected : α) : TestCase IO :=
   testDeserializeProtodata' filename pure expected
 
+/--
+  Hand-encoded `Expr { likeDelimited (17) = LikeDelimited { expr = context,
+  pattern = [MultiWildcard, c ".", Wildcard], <delimField> } }`.
+-/
+private def likeDelimitedBytes (delimField : List UInt8) : ByteArray :=
+  let body : List UInt8 :=
+    [10, 2, 16, 3] ++        -- expr: Expr { var = context }
+    [18, 2, 24, 0] ++        -- pattern: multi_wildcard
+    [18, 3, 18, 1, 46] ++    -- pattern: c = "."
+    [18, 2, 8, 0] ++         -- pattern: wildcard
+    delimField
+  ByteArray.mk ([138, 1, body.length.toUInt8] ++ body).toArray
+
+private def isError : Except String α → Bool
+  | .error _ => true
+  | .ok _    => false
+
 private def mkUid (path : List String) (ty : String) (eid : String) : Cedar.Spec.EntityUID :=
   { ty := { path, id := ty }, eid }
 
@@ -604,6 +621,28 @@ def tests := [
         ]
         acts := Map.empty
       }
+  ],
+  suite (m := IO) "Cedar Protobuf LikeDelimited deserialization tests" [
+    test "LikeDelimited: well-formed" ⟨λ () =>
+      checkEq (Proto.Message.interpret? (α := Cedar.Spec.Expr) (likeDelimitedBytes [26, 1, 46]))
+        (.ok (Cedar.Spec.Expr.unaryApp (.likeDelimited [.multiStar, .justChar '.', .star] '.') (.var .context)))
+    ⟩,
+    test "LikeDelimited: multi-character delim is a parse error" ⟨λ () =>
+      checkEq (isError (Proto.Message.interpret? (α := Cedar.Spec.Expr) (likeDelimitedBytes [26, 2, 97, 98]))) true
+    ⟩,
+    test "LikeDelimited: missing delim is a parse error" ⟨λ () =>
+      checkEq (isError (Proto.Message.interpret? (α := Cedar.Spec.Expr) (likeDelimitedBytes []))) true
+    ⟩,
+    test "LikeDelimited: `*` delim is a parse error" ⟨λ () =>
+      checkEq (isError (Proto.Message.interpret? (α := Cedar.Spec.Expr) (likeDelimitedBytes [26, 1, 42]))) true
+    ⟩,
+    test "LikeDelimited: U+2FFFF delim is accepted" ⟨λ () =>
+      checkEq (Proto.Message.interpret? (α := Cedar.Spec.Expr) (likeDelimitedBytes [26, 4, 240, 175, 191, 191]))
+        (.ok (Cedar.Spec.Expr.unaryApp (.likeDelimited [.multiStar, .justChar '.', .star] (Char.ofNat 0x2FFFF)) (.var .context)))
+    ⟩,
+    test "LikeDelimited: delim above U+2FFFF is a parse error" ⟨λ () =>
+      checkEq (isError (Proto.Message.interpret? (α := Cedar.Spec.Expr) (likeDelimitedBytes [26, 4, 240, 176, 128, 128]))) true
+    ⟩,
   ]
 ]
 

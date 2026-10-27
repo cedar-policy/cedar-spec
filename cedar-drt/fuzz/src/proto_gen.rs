@@ -206,7 +206,13 @@ impl ModelGenerator {
             });
         }
 
-        let choice: u8 = u.int_in_range(0..=14)?;
+        // Without `extended-like`, choice 15 (delimited `like`) is never made
+        let max_choice: u8 = if cfg!(feature = "extended-like") {
+            15
+        } else {
+            14
+        };
+        let choice: u8 = u.int_in_range(0..=max_choice)?;
         let d = max_depth - 1;
         let expr_kind = match choice {
             0 => {
@@ -281,6 +287,35 @@ impl ModelGenerator {
                 expr::ExprKind::Like(Box::new(expr::Like {
                     expr: Some(Box::new(self.arbitrary_model_expr(u, d)?)),
                     pattern,
+                }))
+            }
+            15 => {
+                use expr::like_delimited::{PatternElem, pattern_elem::Data};
+                // Usually a single-char delimiter (including the invalid `*`);
+                // sometimes an arbitrary (possibly invalid) string.
+                let delim = if u.ratio(7, 8)? {
+                    let c: char =
+                        *u.choose(&['.', '/', ':', '\\', '-', '*', '\u{0}', '\u{2ffff}'])?;
+                    c.to_string()
+                } else {
+                    self.pick_string(u)?
+                };
+                let num_elems: usize = u.int_in_range(0..=self.max_list_elems)?;
+                let pattern = (0..num_elems)
+                    .map(|_| {
+                        let data = match u.int_in_range(0..=3)? {
+                            0 => Data::Wildcard(0),
+                            1 => Data::MultiWildcard(0),
+                            2 => Data::C(delim.clone()),
+                            _ => Data::C(self.pick_string(u)?),
+                        };
+                        Ok(PatternElem { data: Some(data) })
+                    })
+                    .collect::<arbitrary::Result<Vec<_>>>()?;
+                expr::ExprKind::LikeDelimited(Box::new(expr::LikeDelimited {
+                    expr: Some(Box::new(self.arbitrary_model_expr(u, d)?)),
+                    pattern,
+                    delim,
                 }))
             }
             12 => expr::ExprKind::Is(Box::new(expr::Is {

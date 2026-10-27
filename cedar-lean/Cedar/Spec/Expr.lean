@@ -20,6 +20,7 @@ public import Cedar.Data
 import Cedar.Data.SizeOf
 public import Cedar.Spec.ExtFun
 public import Cedar.Spec.Wildcard
+public import Cedar.Spec.WildcardDelimited
 
 /-! This file defines abstract syntax for Cedar expressions. -/
 
@@ -40,6 +41,9 @@ public inductive UnaryOp where
   | neg
   | isEmpty
   | like (p : Pattern)
+  /-- Experimental: delimiter-aware `like`, gated in the Rust implementation
+      behind the `extended-like` cargo feature (RFC: delimiter-aware `like`). -/
+  | likeDelimited (p : DelimPattern) (d : Char)
   | is (ety : EntityType)
 
 public inductive BinaryOp where

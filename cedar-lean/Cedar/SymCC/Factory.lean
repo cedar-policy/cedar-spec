@@ -289,6 +289,11 @@ public def string.like (t : Term) (p : Pattern) : Term :=
   | .prim (.string s) => wildcardMatch s p
   | _                 => .app (Op.string.like p) [t] .bool
 
+public def string.likeExtended (t : Term) (p : DelimPattern) (d : Char) : Term :=
+  match t with
+  | .prim (.string s) => wildcardMatchDelimited s p d
+  | _                 => .app (Op.string.likeExtended p d) [t] .bool
+
 ---------- Extension ADT operators with a trusted mapping to SMT ----------
 
 public def ext.decimal.val : Term → Term

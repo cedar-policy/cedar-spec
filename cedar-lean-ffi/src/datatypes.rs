@@ -322,6 +322,17 @@ pub enum PatElem {
     Char { c: u32 },
 }
 
+#[cfg(feature = "extended-like")]
+#[derive(Debug, Clone, Deserialize)]
+pub enum DelimPatElem {
+    #[serde(rename = "star")]
+    Star,
+    #[serde(rename = "justChar")]
+    Char { c: u32 },
+    #[serde(rename = "multiStar")]
+    MultiStar,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Op {
@@ -363,6 +374,12 @@ pub enum Op {
     RecordGet(SmolStr),
     #[serde(rename = "string.like")]
     StringLike(Vec<PatElem>),
+    #[cfg(feature = "extended-like")]
+    #[serde(rename = "string.likeExtended")]
+    StringLikeExtended {
+        pattern: Vec<DelimPatElem>,
+        delim: u32,
+    },
     Ext(ExtOp),
 }
 
@@ -731,6 +748,9 @@ pub enum TermConversionError {
     ZeroWidthBV,
     #[error("bitvec had unexpected width")]
     UnexpectedWidth,
+    #[cfg(feature = "extended-like")]
+    #[error(transparent)]
+    InvalidLikeDelimiter(#[from] ast::InvalidLikeDelimiterError),
 }
 
 impl TryFrom<PatElem> for ast::PatternElem {
@@ -740,6 +760,19 @@ impl TryFrom<PatElem> for ast::PatternElem {
         Ok(match value {
             PatElem::Char { c } => Self::Char(c.try_into()?),
             PatElem::Star => Self::Wildcard,
+        })
+    }
+}
+
+#[cfg(feature = "extended-like")]
+impl TryFrom<DelimPatElem> for ast::DelimPatternElem {
+    type Error = TermConversionError;
+
+    fn try_from(value: DelimPatElem) -> Result<Self, Self::Error> {
+        Ok(match value {
+            DelimPatElem::Char { c } => Self::Char(c.try_into()?),
+            DelimPatElem::Star => Self::Wildcard,
+            DelimPatElem::MultiStar => Self::MultiWildcard,
         })
     }
 }
@@ -804,6 +837,17 @@ impl TryFrom<Op> for cedar_policy_symcc::op::Op {
                 >>(
                 )?)
                 .into(),
+            ),
+            #[cfg(feature = "extended-like")]
+            Op::StringLikeExtended { pattern, delim } => Self::StringLikeExtended(
+                ast::DelimPattern::from_iter(
+                    pattern
+                        .into_iter()
+                        .map(TryInto::try_into)
+                        .collect::<Result<Vec<_>, _>>()?,
+                )
+                .into(),
+                ast::LikeDelimiter::new(char::try_from(delim)?)?,
             ),
             Op::Ext(op) => Self::Ext(op.into()),
         })
@@ -1084,6 +1128,17 @@ impl From<ast::PatternElem> for PatElem {
     }
 }
 
+#[cfg(feature = "extended-like")]
+impl From<ast::DelimPatternElem> for DelimPatElem {
+    fn from(value: ast::DelimPatternElem) -> Self {
+        match value {
+            ast::DelimPatternElem::Char(c) => Self::Char { c: c.into() },
+            ast::DelimPatternElem::Wildcard => Self::Star,
+            ast::DelimPatternElem::MultiWildcard => Self::MultiStar,
+        }
+    }
+}
+
 impl From<cedar_policy_symcc::op::Op> for Op {
     fn from(value: cedar_policy_symcc::op::Op) -> Self {
         match value {
@@ -1120,6 +1175,13 @@ impl From<cedar_policy_symcc::op::Op> for Op {
             cedar_policy_symcc::op::Op::ZeroExtend(u) => Self::ZeroExtend(u.try_into().unwrap()),
             cedar_policy_symcc::op::Op::StringLike(pat) => {
                 Self::StringLike(pat.get_elems().iter().map(|p| (*p).into()).collect())
+            }
+            #[cfg(feature = "extended-like")]
+            cedar_policy_symcc::op::Op::StringLikeExtended(pat, delim) => {
+                Self::StringLikeExtended {
+                    pattern: pat.get_elems().iter().map(|p| (*p).into()).collect(),
+                    delim: delim.as_char().into(),
+                }
             }
             cedar_policy_symcc::op::Op::Ext(op) => Self::Ext(op.into()),
         }

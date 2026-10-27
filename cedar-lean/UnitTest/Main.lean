@@ -23,6 +23,7 @@ import UnitTest.Linker
 import UnitTest.PartialSchema
 import UnitTest.Proto
 import UnitTest.Wildcard
+import UnitTest.WildcardDelimited
 import UnitTest.TPE
 import UnitTest.Levels
 
@@ -36,6 +37,7 @@ def tests :=
   Linker.tests ++
   PartialSchema.tests ++
   Wildcard.tests ++
+  WildcardDelimited.tests ++
   Proto.tests ++
   CedarProto.tests ++
   TPE.tests ++

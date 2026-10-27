@@ -372,6 +372,20 @@ pub mod tpe {
                             .collect();
                         out.children = vec![child(expr)];
                     }
+                    #[cfg(feature = "extended-like")]
+                    K::LikeDelimited {
+                        expr,
+                        pattern,
+                        delim,
+                    } => {
+                        out.set_kind(Kind::LikeDelimited);
+                        out.delim_pattern = pattern
+                            .iter()
+                            .map(cedar_policy::proto::models::expr::like_delimited::PatternElem::from)
+                            .collect();
+                        out.delim = delim.to_string();
+                        out.children = vec![child(expr)];
+                    }
                     K::Is { expr, entity_type } => {
                         out.set_kind(Kind::Is);
                         out.entity_type =
@@ -665,6 +679,18 @@ impl proto::Pattern {
     }
 }
 
+#[cfg(feature = "extended-like")]
+impl proto::DelimPatElem {
+    pub(crate) fn new(elem: &datatypes::DelimPatElem) -> Self {
+        let elem = match elem {
+            datatypes::DelimPatElem::Star => proto::delim_pat_elem::Elem::Star(true),
+            datatypes::DelimPatElem::Char { c } => proto::delim_pat_elem::Elem::Char(*c),
+            datatypes::DelimPatElem::MultiStar => proto::delim_pat_elem::Elem::MultiStar(true),
+        };
+        Self { elem: Some(elem) }
+    }
+}
+
 impl proto::Op {
     pub(crate) fn new(op: &datatypes::Op) -> Self {
         let op = match op {
@@ -673,6 +699,13 @@ impl proto::Op {
             datatypes::Op::RecordGet(attr) => proto::op::Op::RecordGet(attr.to_string()),
             datatypes::Op::StringLike(pattern) => {
                 proto::op::Op::StringLike(proto::Pattern::new(pattern))
+            }
+            #[cfg(feature = "extended-like")]
+            datatypes::Op::StringLikeExtended { pattern, delim } => {
+                proto::op::Op::StringLikeExtended(proto::DelimPattern {
+                    pattern: pattern.iter().map(proto::DelimPatElem::new).collect(),
+                    delim: *delim,
+                })
             }
             datatypes::Op::Ext(ext_op) => proto::op::Op::ExtOp(proto::ExtOp::new(ext_op).into()),
             _ => proto::op::Op::BaseOp(proto::op::BaseOp::new(op).into()),

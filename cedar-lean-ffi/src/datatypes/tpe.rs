@@ -104,6 +104,11 @@ pub enum UnaryOp {
     Like {
         p: Vec<PatElem>,
     },
+    #[cfg(feature = "extended-like")]
+    LikeDelimited {
+        p: Vec<super::DelimPatElem>,
+        d: u32,
+    },
     Is {
         #[serde(deserialize_with = "deserialize_entity_type")]
         ety: EntityTypeName,
@@ -315,6 +320,9 @@ mod convert {
         InvalidChar(u32),
         #[error("unsupported extension function with {0} args")]
         UnsupportedExtArity(usize),
+        #[cfg(feature = "extended-like")]
+        #[error("invalid `like` delimiter: codepoint {0}")]
+        InvalidLikeDelimiter(u32),
     }
 
     fn entity_type_name_to_pst_name(etn: &cedar_policy::EntityTypeName) -> pst::Name {
@@ -355,6 +363,21 @@ mod convert {
                 super::super::PatElem::Star => Ok(pst::PatternElem::Wildcard),
                 super::super::PatElem::Char { c } => char::try_from(c)
                     .map(pst::PatternElem::Char)
+                    .map_err(|_| ResidualConversionError::InvalidChar(c)),
+            })
+            .collect()
+    }
+
+    #[cfg(feature = "extended-like")]
+    fn convert_delim_pattern(
+        p: Vec<super::super::DelimPatElem>,
+    ) -> Result<Vec<pst::DelimPatternElem>, ResidualConversionError> {
+        p.into_iter()
+            .map(|e| match e {
+                super::super::DelimPatElem::Star => Ok(pst::DelimPatternElem::Wildcard),
+                super::super::DelimPatElem::MultiStar => Ok(pst::DelimPatternElem::MultiWildcard),
+                super::super::DelimPatElem::Char { c } => char::try_from(c)
+                    .map(pst::DelimPatternElem::Char)
                     .map_err(|_| ResidualConversionError::InvalidChar(c)),
             })
             .collect()
@@ -471,6 +494,19 @@ mod convert {
             } => Ok(pst::Expr::Like {
                 expr: Arc::new(convert_residual(*expr)?),
                 pattern: convert_pattern(p)?,
+            }),
+            #[cfg(feature = "extended-like")]
+            Residual::UnaryApp {
+                op: UnaryOp::LikeDelimited { p, d },
+                expr,
+                ..
+            } => Ok(pst::Expr::LikeDelimited {
+                expr: Arc::new(convert_residual(*expr)?),
+                pattern: convert_delim_pattern(p)?,
+                delim: pst::LikeDelimiter::new(
+                    char::try_from(d).map_err(|_| ResidualConversionError::InvalidChar(d))?,
+                )
+                .map_err(|_| ResidualConversionError::InvalidLikeDelimiter(d))?,
             }),
             Residual::UnaryApp {
                 op: UnaryOp::Is { ety },

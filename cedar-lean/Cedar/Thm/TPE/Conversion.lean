@@ -265,6 +265,10 @@ theorem conversion_preserves_typedness:
           apply UnaryResidualWellTyped.like
           rw [←conversion_preserves_typeof x₁]
           exact h₂
+        | likeDelimited h₂ =>
+          apply UnaryResidualWellTyped.likeDelimited
+          rw [←conversion_preserves_typeof x₁]
+          exact h₂
         | is h₂ =>
           apply UnaryResidualWellTyped.is
           rw [←conversion_preserves_typeof x₁]

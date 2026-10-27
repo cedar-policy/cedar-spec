@@ -55,6 +55,56 @@ impl<'a> ExprGenerator<'a> {
 }
 
 impl ExprGenerator<'_> {
+    /// Weight of the delimiter-aware `like` case in the expression generators.
+    /// Always 0 without the `extended-like` feature, so generation is exactly
+    /// as if the case did not exist.
+    fn like_delimited_weight(&self) -> u8 {
+        if cfg!(feature = "extended-like")
+            && self.settings.enable_like
+            && self.settings.enable_like_delimited
+        {
+            2
+        } else {
+            0
+        }
+    }
+
+    /// Generate `e like(pattern, delim)`. If `typed`, the operand `e` is
+    /// String-typed. The operand is sometimes a string literal derived from
+    /// the pattern, so that it (nearly) matches.
+    #[cfg(feature = "extended-like")]
+    fn generate_like_delimited(
+        &self,
+        max_depth: usize,
+        typed: bool,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::Expr> {
+        let (pattern, delim) = self.constant_pool.arbitrary_delim_pattern_literal(u)?;
+        let operand = if u.ratio(1, 4)? {
+            ast::Expr::val(
+                self.constant_pool
+                    .arbitrary_delim_pattern_witness(&pattern, delim, u)?,
+            )
+        } else if typed {
+            self.generate_expr_for_type(&Type::string(), max_depth - 1, u)?
+        } else {
+            self.generate_expr(max_depth - 1, u)?
+        };
+        Ok(ast::Expr::like_delimited(operand, pattern, delim))
+    }
+
+    /// Without the `extended-like` feature this is unreachable, since
+    /// `like_delimited_weight()` is 0.
+    #[cfg(not(feature = "extended-like"))]
+    fn generate_like_delimited(
+        &self,
+        _max_depth: usize,
+        _typed: bool,
+        _u: &mut Unstructured<'_>,
+    ) -> Result<ast::Expr> {
+        Err(Error::LikeDisabled)
+    }
+
     /// get a (fully general) arbitrary expression conforming to the schema, but
     /// no attempt to match types.
     ///
@@ -159,6 +209,10 @@ impl ExprGenerator<'_> {
                             Err(Error::LikeDisabled)
                         }
                     },
+                    // delimiter-aware like; weight is 0 (so this is never
+                    // chosen, and the choice of other cases is unaffected)
+                    // unless the `extended-like` feature is enabled
+                    self.like_delimited_weight() => self.generate_like_delimited(max_depth, false, u),
                     1 => {
                             Ok(ast::Expr::is_entity_type(
                                 self.generate_expr(max_depth - 1, u)?,
@@ -486,6 +540,9 @@ impl ExprGenerator<'_> {
                                 Err(Error::LikeDisabled)
                             }
                         },
+                        // delimiter-aware like; weight is 0 unless the
+                        // `extended-like` feature is enabled
+                        self.like_delimited_weight() => self.generate_like_delimited(max_depth, true, u),
                         // is
                         2 => {
                             let ety_l = self.schema.arbitrary_entity_type(u)?;
@@ -1499,5 +1556,156 @@ mod tests {
                  arities {arities:?}"
             );
         }
+    }
+}
+
+#[cfg(all(test, feature = "extended-like"))]
+mod like_delimited_tests {
+    use crate::schema::Schema;
+    use crate::schema_gen::SchemaGen;
+    use crate::settings::ABACSettings;
+    use arbitrary::Unstructured;
+    use cedar_policy_core::ast::{DelimPatternElem, ExprKind, StaticPolicy};
+    use cedar_policy_core::parser::parse_policy;
+    use rand::{rngs::StdRng, Rng, SeedableRng};
+    use std::collections::BTreeMap;
+
+    const ITERATIONS: u64 = 2000;
+    const BYTES: usize = 16384;
+
+    #[derive(Default, Debug)]
+    struct Stats {
+        policies: usize,
+        like_delimited: usize,
+        multi_wildcard: usize,
+        wildcard_run: usize,
+        delim_in_pattern: usize,
+        literal_operand_with_delim: usize,
+        delims: BTreeMap<char, usize>,
+    }
+
+    fn count(p: &StaticPolicy) -> usize {
+        p.condition()
+            .subexpressions()
+            .filter(|e| matches!(e.expr_kind(), ExprKind::LikeDelimited { .. }))
+            .count()
+    }
+
+    fn collect(p: &StaticPolicy, stats: &mut Stats) {
+        for e in p.condition().subexpressions() {
+            if let ExprKind::LikeDelimited {
+                expr,
+                pattern,
+                delim,
+            } = e.expr_kind()
+            {
+                let d = delim.as_char();
+                stats.like_delimited += 1;
+                *stats.delims.entry(d).or_default() += 1;
+                let elems = pattern.get_elems();
+                if elems.contains(&DelimPatternElem::MultiWildcard) {
+                    stats.multi_wildcard += 1;
+                }
+                if elems.windows(2).any(|w| {
+                    !matches!(w[0], DelimPatternElem::Char(_))
+                        && !matches!(w[1], DelimPatternElem::Char(_))
+                }) {
+                    stats.wildcard_run += 1;
+                }
+                if elems.contains(&DelimPatternElem::Char(d)) {
+                    stats.delim_in_pattern += 1;
+                }
+                if let ExprKind::Lit(cedar_policy_core::ast::Literal::String(s)) = expr.expr_kind()
+                {
+                    if s.contains(d) {
+                        stats.literal_operand_with_delim += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    fn run(settings: ABACSettings, seed_base: u64) -> Stats {
+        let mut stats = Stats::default();
+        for i in 0..ITERATIONS {
+            let mut rng = StdRng::seed_from_u64(seed_base + i);
+            let mut bytes = vec![0u8; BYTES];
+            rng.fill_bytes(&mut bytes);
+            let mut u = Unstructured::new(&bytes);
+            let Ok(schema) = Schema::arbitrary(settings.clone(), &mut u) else {
+                continue;
+            };
+            let Ok(hierarchy) = schema.arbitrary_hierarchy(&mut u) else {
+                continue;
+            };
+            // Generation fails on some inputs (e.g., an empty `.choose()`),
+            // as in the fuzz targets; skip those.
+            let Ok(policy) = schema.arbitrary_static_policy(&hierarchy, &mut u) else {
+                continue;
+            };
+            let policy = StaticPolicy::from(policy.0);
+            stats.policies += 1;
+            collect(&policy, &mut stats);
+            let text = policy.to_string();
+            let parsed = parse_policy(None, &text)
+                .unwrap_or_else(|e| panic!("failed to parse printed policy:\n{text}\n{e:?}"));
+            assert_eq!(
+                count(&policy),
+                count(&parsed),
+                "number of delimited `like`s changed after parsing:\n{text}"
+            );
+        }
+        println!("{stats:?}");
+        stats
+    }
+
+    fn check(stats: &Stats) {
+        assert!(stats.policies >= 100, "too few policies generated");
+        assert!(stats.like_delimited > 0, "no delimited `like` generated");
+        assert!(stats.multi_wildcard > 0, "no `**` generated");
+        assert!(stats.wildcard_run > 0, "no runs of wildcards generated");
+        assert!(
+            stats.delim_in_pattern > 0,
+            "no pattern contains its delimiter"
+        );
+        assert!(
+            stats.literal_operand_with_delim > 0,
+            "no literal operand contains the delimiter"
+        );
+    }
+
+    #[test]
+    fn like_delimited_type_directed() {
+        let settings = ABACSettings {
+            max_depth: 3,
+            max_width: 3,
+            enable_arbitrary_func_call: false,
+            ..ABACSettings::type_directed()
+        };
+        assert!(settings.enable_like_delimited);
+        check(&run(settings, 0));
+    }
+
+    #[test]
+    fn like_delimited_undirected() {
+        let settings = ABACSettings {
+            max_depth: 3,
+            max_width: 3,
+            enable_arbitrary_func_call: false,
+            ..ABACSettings::undirected()
+        };
+        check(&run(settings, 10_000));
+    }
+
+    #[test]
+    fn like_delimited_disabled() {
+        let settings = ABACSettings {
+            max_depth: 3,
+            max_width: 3,
+            enable_like_delimited: false,
+            ..ABACSettings::type_directed()
+        };
+        let stats = run(settings, 20_000);
+        assert_eq!(stats.like_delimited, 0);
     }
 }

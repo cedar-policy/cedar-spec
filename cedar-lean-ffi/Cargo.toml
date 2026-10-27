@@ -6,6 +6,11 @@ publish = false
 
 [features]
 integration-testing = []
+extended-like = [
+    "cedar-policy/extended-like",
+    "cedar-policy-core/extended-like",
+    "cedar-policy-symcc/extended-like",
+]
 
 [dependencies]
 cedar-policy = { version = "*", path = "../cedar/cedar-policy", features = ["protobufs", "tpe"] }

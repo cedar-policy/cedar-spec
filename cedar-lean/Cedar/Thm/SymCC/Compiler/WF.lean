@@ -440,11 +440,15 @@ public theorem compileApp₁_wf_types {op₁ : UnaryOp} {t t₁: Term} {εs : Sy
     have hwf := @wf_string_like εs t₁ p hw₁ hok.left
     simp only [hok.right, typeOf_term_some, hwf.right, and_true]
     exact Term.WellFormed.some_wf hwf.left
-  case h_4 =>
+  case h_4 p d _ =>
+    have hwf := @wf_string_likeExtended εs t₁ p d hw₁ hok.left
+    simp only [hok.right, typeOf_term_some, hwf.right, and_true]
+    exact Term.WellFormed.some_wf hwf.left
+  case h_5 =>
     replace ⟨_, hok⟩ := hok
     simp only [hok.right, typeOf_term_some, typeOf_bool, and_true]
     exact Term.WellFormed.some_wf wf_bool
-  case h_5 =>
+  case h_6 =>
     replace ⟨⟨_, hty⟩, hok⟩ := hok
     have hwf := wf_set_isEmpty hw₁ hty
     simp only [hok, typeOf_term_some, hwf.right, and_true]
@@ -1196,7 +1200,7 @@ private theorem evaluate_unaryApp_wf {op : UnaryOp} {x : Expr} {env : Env} {v : 
   simp_do_let (evaluate x env.request env.entities) at hok
   simp only [apply₁] at hok
   split at hok <;> (try simp only [Except.ok.injEq, reduceCtorEq] at hok)
-  case h_1 | h_3 | h_4 | h_5 =>
+  case h_1 | h_3 | h_4 | h_5 | h_6 =>
     subst hok
     exact value_bool_wf
   case h_2 =>

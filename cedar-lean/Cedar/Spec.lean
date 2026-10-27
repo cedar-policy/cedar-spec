@@ -28,3 +28,4 @@ public import Cedar.Spec.Slice
 public import Cedar.Spec.Template
 public import Cedar.Spec.Value
 public import Cedar.Spec.Wildcard
+public import Cedar.Spec.WildcardDelimited

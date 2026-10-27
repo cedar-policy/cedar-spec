@@ -636,6 +636,14 @@ theorem compile_well_typed_unaryApp
     exact (wf_string_like (εs := εnv.entities)
       hwf_get_comp_expr
       hty_get_comp_expr).right
+  case likeDelimited _ _ hty_expr =>
+    simp only [hty_expr, TermType.ofType] at hty_comp_expr hty_get_comp_expr
+    simp only [hty_expr, TermType.ofType, Factory.someOf, Except.bind_ok, Except.ok.injEq, exists_eq_left']
+    rw [typeOf_ifSome_option]
+    simp only [Term.typeOf, TypedExpr.typeOf, TermType.ofType, TermType.option.injEq]
+    exact (wf_string_likeExtended (εs := εnv.entities)
+      hwf_get_comp_expr
+      hty_get_comp_expr).right
 
 /--
 Similar to `compileApp₂_wf_types`, but for `compile`

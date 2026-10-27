@@ -131,6 +131,7 @@ public def typeOfUnaryApp (op : UnaryOp) (ty : TypedExpr) : ResultType :=
   | .neg, .int             => ok .int
   | .isEmpty, .set _       => ok (.bool .anyBool)
   | .like _, .string       => ok (.bool .anyBool)
+  | .likeDelimited _ _, .string => ok (.bool .anyBool)
   | .is ety₁, .entity ety₂ => ok (.bool (if ety₁ = ety₂ then .tt else .ff))
   | _, _                   => err (.unexpectedType ty.typeOf)
 

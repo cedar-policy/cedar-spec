@@ -40,6 +40,7 @@ public def apply₁ : UnaryOp → Value → Result Value
   | .neg,     .prim (.int i)         => intOrErr i.neg?
   | .isEmpty, .set s                 => .ok s.isEmpty
   | .like p,  .prim (.string s)      => .ok (wildcardMatch s p)
+  | .likeDelimited p d, .prim (.string s) => .ok (wildcardMatchDelimited s p d)
   | .is ety,  .prim (.entityUID uid) => .ok (ety == uid.ty)
   | _, _                             => .error .typeError
 

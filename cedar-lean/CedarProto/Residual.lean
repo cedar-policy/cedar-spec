@@ -36,6 +36,7 @@ open _root_.Proto
 inductive ResidualKind where
   | val | var | ite | and | or | unaryApp | binaryApp
   | getAttr | hasAttr | extHasAttr | set | record | call | error | like | is
+  | likeDelimited
 deriving Inhabited, Repr
 
 namespace ResidualKind
@@ -57,6 +58,7 @@ def fromInt : Int → Except String ResidualKind
   | 13 => .ok .error
   | 14 => .ok .like
   | 15 => .ok .is
+  | 16 => .ok .likeDelimited
   | n  => .error s!"Field {n} does not exist in Residual.Kind"
 
 instance : ProtoEnum ResidualKind := { fromInt := fromInt }
@@ -77,6 +79,8 @@ structure ProtoResidual where
   fnName     : Option Spec.Proto.Name := none
   pattern    : Array PatElem := #[]
   entityType : Option EntityType := none
+  delim      : String := ""
+  delimPattern : Array DelimPatElem := #[]
 
 instance : Inhabited ProtoResidual where
   default := {}
@@ -99,7 +103,9 @@ def merge (r₁ r₂ : ProtoResidual) : ProtoResidual :=
     binaryOp   := r₂.binaryOp
     fnName     := r₂.fnName.orElse (λ _ => r₁.fnName)
     pattern    := r₁.pattern ++ r₂.pattern
-    entityType := r₂.entityType.orElse (λ _ => r₁.entityType) }
+    entityType := r₂.entityType.orElse (λ _ => r₁.entityType)
+    delim      := Field.merge r₁.delim r₂.delim
+    delimPattern := r₁.delimPattern ++ r₂.delimPattern }
 
 partial def parseField (t : _root_.Proto.Tag) : BParsec (MergeFn ProtoResidual) := do
   have : Message ProtoResidual := ⟨parseField, merge⟩
@@ -137,6 +143,10 @@ partial def parseField (t : _root_.Proto.Tag) : BParsec (MergeFn ProtoResidual) 
   | 13 =>
     let x : EntityType ← Field.guardedParse t
     pureMergeFn (λ r => { r with entityType := some x })
+  | 14 =>
+    let x : String ← Field.guardedParse t
+    pureMergeFn (λ r => { r with delim := Field.merge r.delim x })
+  | 15 => parseRepeatedFieldElement t (·.delimPattern) (update delimPattern)
   | _ =>
     t.wireType.skip
     pure ignore
@@ -224,6 +234,10 @@ partial def toResidual (r : ProtoResidual) : Except String Residual := do
     | [] => .error "Residual: EXT_HAS_ATTR with empty `attrs`"
     | hd :: tl => .ok (.extHasAttr a hd tl ty)
   | .like, [a] => .ok (.unaryApp (.like r.pattern.toList) a ty)
+  | .likeDelimited, [a] =>
+    match r.delim.toList with
+    | [d] => .ok (.unaryApp (.likeDelimited r.delimPattern.toList d) a ty)
+    | _   => .error "Residual: LIKE_DELIMITED `delim` must be exactly one character"
   | .is, [a] => do
     let some ety := r.entityType | .error "Residual: IS without `entity_type`"
     .ok (.unaryApp (.is ety) a ty)
@@ -239,7 +253,8 @@ partial def toResidual (r : ProtoResidual) : Except String Residual := do
   -- Wrong number of children for the kind; `arity` produces the message.
   | .ite, _ => do arity 3; .error "unreachable"
   | .and, _ | .or, _ | .binaryApp, _ => do arity 2; .error "unreachable"
-  | .unaryApp, _ | .getAttr, _ | .hasAttr, _ | .extHasAttr, _ | .like, _ | .is, _ => do
+  | .unaryApp, _ | .getAttr, _ | .hasAttr, _ | .extHasAttr, _ | .like, _
+  | .likeDelimited, _ | .is, _ => do
     arity 1; .error "unreachable"
 
 end ProtoResidual

@@ -2076,6 +2076,59 @@ mod test {
         assert!(!res, "check_evaluate returned wrong result: Expected false");
     }
 
+    #[cfg(feature = "extended-like")]
+    #[test]
+    fn test_check_evaluate_like_delimited() {
+        let entities = Entities::empty();
+        let req = request(
+            "Identity::\"Alice\"",
+            "Action::\"view\"",
+            "Thing::\"Thing1\"",
+        );
+        // `**` crosses the delimiter and `*` does not, so this is true only if
+        // the delimited form reaches Lean intact.
+        let input_expr =
+            Expression::from_str(r#""a.b.c" like("**.c", ".") && !("a.b.c" like("*.c", "."))"#)
+                .expect("Failed to parse expression");
+        let eval_expr = Expression::from_str("true").expect("Failed to parse expression");
+
+        let ffi = CedarLeanFfi::new();
+
+        let res = ffi
+            .check_evaluate(&input_expr, &entities, &req, Some(&eval_expr))
+            .expect("Lean call unexpectedly failed for check_evaluate");
+        assert!(res, "check_evaluate returned wrong result: Expected true");
+    }
+
+    #[cfg(feature = "extended-like")]
+    #[test]
+    fn test_check_always_allows_like_delimited() {
+        let pset = PolicySet::from_str(
+            r#"permit(principal, action, resource) when { context.n1 like("**", ".") };"#,
+        )
+        .expect("Failed to parse policy set");
+        let ffi = CedarLeanFfi::new();
+        let schema = ffi.load_lean_schema_object(&example_schema()).unwrap();
+        let req_env = request_env("Identity", "Action::\"view\"", "Thing");
+
+        let res = ffi
+            .run_check_always_allows(&pset, schema.clone(), &req_env)
+            .expect("Lean call unexpectedly failed for run_check_always_allows");
+        assert!(
+            res,
+            "run_check_always_allows returned wrong result. Expected: true"
+        );
+
+        ffi.smtlib_of_check_always_allows(&pset, schema.clone(), &req_env)
+            .expect("Lean call unexpectedly failed for smtlib_of_check_always_allows");
+
+        ffi.asserts_of_check_always_allows(&pset, schema.clone(), &req_env)
+            .expect("Lean call unexpectedly failed for asserts_of_check_always_allows")
+            .expect(
+                "Lean SymCC unexpectedly failed to encode term for asserts_of_check_always_allows",
+            );
+    }
+
     #[test]
     fn test_validate() {
         let always_allows_pset = PolicySet::from_str("permit(principal, action, resource);")

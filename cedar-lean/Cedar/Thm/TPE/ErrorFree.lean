@@ -344,22 +344,29 @@ theorem error_free_evaluate_ok {r : Residual} :
     case neg =>
       rename_i hop
       exact False.elim (hop (by constructor))
-    case not | isEmpty | like pattern | is ty =>
+    case not | isEmpty | like pattern | likeDelimited pattern delim | is ty =>
       split <;> try trivial
-      rename_i h_not_bool h_not_int h_not_set h_not_string h_not_entity
+      rename_i h_not_bool h_not_int h_not_set h_not_string h_not_delimited h_not_entity
       cases hwt
       rename_i hty₁
       have hty₁' := residual_well_typed_is_sound hwf hwt₁ ih₁.choose_spec
       rw [hty₁] at hty₁'
       first
-        | have ⟨_, h_val⟩ := instance_of_anyBool_is_bool hty₁'
-          simp [h_val] at h_not_bool
-        | have ⟨_, h_val⟩ := instance_of_set_type_is_set hty₁'
-          simp [h_val] at h_not_set
-        | have ⟨_, h_val⟩ := instance_of_string_is_string hty₁'
-          simp [h_val] at h_not_string
-        | have ⟨_, h_val⟩ := instance_of_entity_type_is_entity hty₁'
-          simp [h_val] at h_not_entity
+        | (have ⟨_, h_val⟩ := instance_of_anyBool_is_bool hty₁'
+           simp [h_val] at h_not_bool
+           done)
+        | (have ⟨_, h_val⟩ := instance_of_set_type_is_set hty₁'
+           simp [h_val] at h_not_set
+           done)
+        | (have ⟨_, h_val⟩ := instance_of_string_is_string hty₁'
+           simp [h_val] at h_not_string
+           done)
+        | (have ⟨_, h_val⟩ := instance_of_string_is_string hty₁'
+           simp [h_val] at h_not_delimited
+           done)
+        | (have ⟨_, h_val⟩ := instance_of_entity_type_is_entity hty₁'
+           simp [h_val] at h_not_entity
+           done)
   case binary =>
     rename_i op _ _ _ _
     simp only [Residual.evaluate]

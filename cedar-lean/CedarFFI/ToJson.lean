@@ -52,6 +52,7 @@ deriving instance Lean.ToJson for TermPrimType
 deriving instance Lean.ToJson for TermType
 deriving instance Lean.ToJson for UUF
 deriving instance Lean.ToJson for PatElem
+deriving instance Lean.ToJson for DelimPatElem
 
 /- Don't deriving default implementatation which serializes compound constructors
    (e.g., .decimal.val) as the final constructor element (e.g., Lean.Json.str ".val")
@@ -110,6 +111,9 @@ instance : Lean.ToJson Op where
   | Op.option.get => Lean.Json.str "option.get"
   | Op.record.get attr => Lean.Json.mkObj [("record.get", Lean.Json.str attr)]
   | Op.string.like pattern => Lean.Json.mkObj [("string.like", Lean.toJson pattern)]
+  | Op.string.likeExtended pattern delim =>
+    Lean.Json.mkObj [("string.likeExtended",
+      Lean.Json.mkObj [("pattern", Lean.toJson pattern), ("delim", Lean.toJson delim)])]
   ---------- Extension ADT operators with a trusted mapping to SMT ----------
   | .ext xop => Lean.Json.mkObj [("ext", Lean.toJson xop)]
 

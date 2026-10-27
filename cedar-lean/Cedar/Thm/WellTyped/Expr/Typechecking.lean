@@ -316,6 +316,9 @@ theorem typechecked_is_well_typed_after_lifting_unary_app
     case _ heq _ =>
       constructor
       simp only [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes]
+    case _ heq _ =>
+      constructor
+      simp only [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes]
     case _ ety₁ ety₂ heq _ =>
       apply @UnaryOp.WellTyped.is _ ety₁ ety₂
       simp only [type_of_after_lifted_is_lifted, heq, CedarType.liftBoolTypes]

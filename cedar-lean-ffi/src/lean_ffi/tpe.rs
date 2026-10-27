@@ -672,6 +672,76 @@ mod test {
         assert!(!lean_resp.residuals.is_empty());
     }
 
+    /// Partial authorization with unknown context: expect a delimited `like` residual
+    #[cfg(feature = "extended-like")]
+    #[test]
+    fn test_is_authorized_partial_like_delimited() {
+        let schema = tpe_schema();
+        let policies = PolicySet::from_str(
+            r#"
+            permit(principal, action == Action::"transfer", resource)
+            when { context.memo like("rent.**", ".") };
+            "#,
+        )
+        .unwrap();
+
+        let principal =
+            PartialEntityUid::from_concrete(EntityUid::from_str(r#"User::"alice""#).unwrap());
+        let action = EntityUid::from_str(r#"Action::"transfer""#).unwrap();
+        let resource =
+            PartialEntityUid::from_concrete(EntityUid::from_str(r#"Account::"checking""#).unwrap());
+        // No context → unknown
+        let request = PartialRequest::new(principal, action, resource, None, &schema).unwrap();
+
+        let account = PartialEntity::new(
+            EntityUid::from_str(r#"Account::"checking""#).unwrap(),
+            Some(BTreeMap::from([
+                ("balance".into(), RestrictedExpression::new_long(10000)),
+                (
+                    "owner".into(),
+                    RestrictedExpression::new_string("alice".into()),
+                ),
+            ])),
+            Some(HashSet::new()),
+            Some(BTreeMap::new()),
+            &schema,
+        )
+        .unwrap();
+        let user = PartialEntity::new(
+            EntityUid::from_str(r#"User::"alice""#).unwrap(),
+            Some(BTreeMap::from([
+                (
+                    "name".into(),
+                    RestrictedExpression::new_string("Alice".into()),
+                ),
+                ("age".into(), RestrictedExpression::new_long(30)),
+            ])),
+            Some(HashSet::from([EntityUid::from_str(
+                r#"Account::"checking""#,
+            )
+            .unwrap()])),
+            Some(BTreeMap::new()),
+            &schema,
+        )
+        .unwrap();
+        let entities = PartialEntities::from_partial_entities([account, user], &schema).unwrap();
+
+        let rust_resp = policies
+            .tpe(&request, &entities, &schema)
+            .expect("Rust TPE call failed");
+
+        let ffi = CedarLeanFfi::new();
+        let lean_resp = ffi
+            .is_authorized_partial(&policies, &request, &entities, &schema)
+            .expect("FFI call failed");
+
+        assert_tpe_responses_match(&rust_resp, &lean_resp);
+        // Unknown context → can't evaluate context.memo → residual
+        assert_eq!(lean_resp.decision, None);
+        assert!(!lean_resp.residual_permits.is_empty());
+        assert!(!lean_resp.residuals.is_empty());
+    }
+
     /// Partial authorization: forbid always satisfied → definite Deny even with unknowns
     #[test]
     fn test_is_authorized_partial_definite_deny() {

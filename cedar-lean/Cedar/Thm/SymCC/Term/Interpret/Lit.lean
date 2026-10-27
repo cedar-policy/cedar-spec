@@ -280,6 +280,8 @@ private theorem interpret_term_app_lit {εs : SymEntities} {I : Interpretation} 
     simp only [interpret_term_app_record_get, pe_record_get_wfl ht.left ht.right h₂]
   case string.like_wt t _ h₁ =>
     show_interpret_term_app_unary_lit t hI hwf h₁ ih interpret_term_app_string_like pe_string_like_wfl
+  case string.likeExtended_wt t _ _ h₁ =>
+    show_interpret_term_app_unary_lit t hI hwf h₁ ih interpret_term_app_string_likeExtended pe_string_likeExtended_wfl
   case ext_wt h₁ =>
     exact interpret_term_app_ext_lit hI hwf h₁ ih
 

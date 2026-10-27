@@ -91,7 +91,7 @@ theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : 
             rw [← heq]
             cases h_op
             exact well_typed_int
-        case h_6 =>
+        case h_7 =>
           contradiction
     case h_2 =>
       apply Residual.WellTyped.unaryApp h_expr_wt
@@ -102,6 +102,7 @@ theorem partial_eval_well_typed_unaryApp {env : TypeEnv} {op : UnaryOp} {expr : 
         | apply UnaryResidualWellTyped.neg
         | apply UnaryResidualWellTyped.isEmpty
         | apply UnaryResidualWellTyped.like
+        | apply UnaryResidualWellTyped.likeDelimited
         | apply UnaryResidualWellTyped.is
         rw [partial_eval_preserves_typeof _ h_expr]
         assumption
