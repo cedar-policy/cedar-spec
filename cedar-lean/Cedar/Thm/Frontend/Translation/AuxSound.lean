@@ -1,9 +1,35 @@
-import Cedar.Spec
-import Cedar.Frontend.Cst
-import Cedar.Frontend.Cst.Semantics
-import Cedar.Frontend.Cst.ToAst
-import Cedar.Thm.Data.List.Lemmas
-import Cedar.Thm.Frontend.StringParsing
+/-
+ Copyright Cedar Contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
+module
+
+public import Cedar.Spec
+public import Cedar.Frontend.Cst
+public import Cedar.Frontend.Cst.Semantics
+public import Cedar.Frontend.Cst.ToAst
+public import Cedar.Thm.Data.List.Lemmas
+public import Cedar.Thm.Frontend.StringParsing
+import all Cedar.Data.Int64
+import all Cedar.Frontend.Cst.Authorizer
+import all Cedar.Frontend.Cst.Common
+import all Cedar.Frontend.Cst.Semantics
+import all Cedar.Frontend.Cst.ToAst
+import all Cedar.Frontend.StringParsing
+
+public section
 
 namespace Cedar.Thm
 
@@ -352,7 +378,7 @@ theorem constructExprRel_applyRelOp_eq
 
 /-- Collapse the `String ⊕ List String` shape from the translator's `toHasRhs?`
     into a flat `List String`, treating `.inl f` as the singleton `[f]`. -/
-def hasRhsToList : String ⊕ List String → List String
+@[expose] def hasRhsToList : String ⊕ List String → List String
   | .inl f => [f]
   | .inr fs => fs
 
@@ -630,7 +656,8 @@ theorem hasRhsToList_nonempty {rhs : String ⊕ List String}
 
 /-- Reduction: with no accessors, `memberAux` returns the head unchanged. -/
 theorem memberAux_nil (ieos : Cst.ExprOrSpecial) :
-    Cst.memberAux ieos [] = some ieos := rfl
+    Cst.memberAux ieos [] = some ieos := by
+  simp [Cst.memberAux, Cst.memberAuxA]
 
 /-- Reduction: feeding an `.expr e` head through `memberAux` is the same as
     running `memberAuxB` on `e` and wrapping the result back up as an `.expr`. -/
@@ -2100,7 +2127,7 @@ theorem toAddExpr_toAExpr (e : Cst.Expr) :
     expression: a `Primary`/`Expr` that `toMultipleEntityUID?` reads as a single
     UID (or list of UIDs) translates (via `toAExpr?`) to the corresponding entity
     literal (or set of entity literals). -/
-def memToExpr : EntityUID ⊕ List EntityUID → Expr
+@[expose] def memToExpr : EntityUID ⊕ List EntityUID → Expr
   | .inl uid  => .lit (.entityUID uid)
   | .inr uids => .set (uids.map (fun u => .lit (.entityUID u)))
 
