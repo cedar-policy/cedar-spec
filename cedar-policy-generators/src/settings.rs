@@ -17,6 +17,10 @@
 /// Maximum length of a pattern string
 pub const MAX_PATTERN_LEN: usize = 6;
 
+/// Maximum length (in bytes) of the string a delimited pattern is derived from
+#[cfg(feature = "extended-like")]
+pub const MAX_DELIM_PATTERN_LEN: usize = 10;
+
 /// Settings controlling the generation of ABAC hierarchies/policies/requests
 #[derive(Debug, Clone)]
 pub struct ABACSettings {
@@ -69,6 +73,12 @@ pub struct ABACSettings {
     /// Flag to globally enable/disable generation of expressions containing the
     /// `like` operator.
     pub enable_like: bool,
+    /// Flag to enable/disable generation of expressions containing the
+    /// delimiter-aware `like(pattern, delim)` operator. Only has an effect
+    /// when the `extended-like` feature is enabled (and `enable_like` is
+    /// true); without the feature, the generator never produces it,
+    /// regardless of this flag.
+    pub enable_like_delimited: bool,
     /// Flag to enable/disable generating actions in groups and declaring
     /// attributes on entity types.
     pub enable_action_groups_and_attrs: bool,
@@ -99,6 +109,7 @@ impl ABACSettings {
             max_width: 7,
             enable_additional_attributes: false,
             enable_like: true,
+            enable_like_delimited: cfg!(feature = "extended-like"),
             enable_action_groups_and_attrs: true,
             enable_arbitrary_func_call: true,
             enable_action_in_constraints: true,

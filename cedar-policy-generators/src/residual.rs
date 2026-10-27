@@ -103,6 +103,16 @@ fn residual_of_expr(e: Expr, u: &mut Unstructured<'_>) -> Result<Residual> {
             expr: Arc::new(residual_of_expr(Arc::unwrap_or_clone(expr), u)?),
             pattern: pattern.clone(),
         },
+        #[cfg(feature = "extended-like")]
+        ExprKind::LikeDelimited {
+            expr,
+            pattern,
+            delim,
+        } => ResidualKind::LikeDelimited {
+            expr: Arc::new(residual_of_expr(Arc::unwrap_or_clone(expr), u)?),
+            pattern,
+            delim,
+        },
         ExprKind::Is { expr, entity_type } => ResidualKind::Is {
             expr: Arc::new(residual_of_expr(Arc::unwrap_or_clone(expr), u)?),
             entity_type: entity_type.clone(),

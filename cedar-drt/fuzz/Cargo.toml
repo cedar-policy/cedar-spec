@@ -50,6 +50,15 @@ libc = "0.2.177"
 
 [features]
 input-generation = []
+extended-like = [
+    "cedar-drt/extended-like",
+    "cedar-lean-ffi/extended-like",
+    "cedar-policy/extended-like",
+    "cedar-policy-core/extended-like",
+    "cedar-policy-formatter/extended-like",
+    "cedar-policy-symcc/extended-like",
+    "cedar-policy-generators/extended-like",
+]
 
 [patch.crates-io]
 cedar-policy = { path = "../../cedar/cedar-policy" }

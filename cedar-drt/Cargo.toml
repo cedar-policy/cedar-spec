@@ -28,6 +28,13 @@ overflow-checks = true
 
 [features]
 integration-testing = []
+extended-like = [
+    "cedar-lean-ffi/extended-like",
+    "cedar-policy/extended-like",
+    "cedar-policy-core/extended-like",
+    "cedar-policy-formatter/extended-like",
+    "cedar-policy-generators/extended-like",
+]
 
 [dev-dependencies]
 statrs = "0.19.0"

@@ -320,6 +320,9 @@ mod convert {
         InvalidChar(u32),
         #[error("unsupported extension function with {0} args")]
         UnsupportedExtArity(usize),
+        #[cfg(feature = "extended-like")]
+        #[error("invalid `like` delimiter: codepoint {0}")]
+        InvalidLikeDelimiter(u32),
     }
 
     fn entity_type_name_to_pst_name(etn: &cedar_policy::EntityTypeName) -> pst::Name {
@@ -500,7 +503,10 @@ mod convert {
             } => Ok(pst::Expr::LikeDelimited {
                 expr: Arc::new(convert_residual(*expr)?),
                 pattern: convert_delim_pattern(p)?,
-                delim: char::try_from(d).map_err(|_| ResidualConversionError::InvalidChar(d))?,
+                delim: pst::LikeDelimiter::new(
+                    char::try_from(d).map_err(|_| ResidualConversionError::InvalidChar(d))?,
+                )
+                .map_err(|_| ResidualConversionError::InvalidLikeDelimiter(d))?,
             }),
             Residual::UnaryApp {
                 op: UnaryOp::Is { ety },

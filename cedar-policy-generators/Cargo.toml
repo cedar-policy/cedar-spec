@@ -26,3 +26,4 @@ variadic-is-in-range = [
     "cedar-policy-core/variadic-is-in-range",
     "cedar-policy?/variadic-is-in-range",
 ]
+extended-like = ["cedar-policy-core/extended-like", "cedar-policy?/extended-like"]

@@ -69,6 +69,47 @@ fn mutate_str(u: &mut Unstructured<'_>, s: &str) -> Result<String> {
     Ok(res.into_iter().collect())
 }
 
+/// Common delimiters for `like(pattern, delim)`
+#[cfg(feature = "extended-like")]
+pub const LIKE_DELIMITERS: [char; 5] = ['.', '/', ':', '\\', '-'];
+
+/// Edge-case delimiters for `like(pattern, delim)`: control chars, chars that
+/// need escaping, Unicode plane/surrogate boundaries, and the largest
+/// allowed delimiter.
+#[cfg(feature = "extended-like")]
+const SPECIAL_LIKE_DELIMITERS: [char; 12] = [
+    '\u{0}',
+    ' ',
+    '"',
+    '\n',
+    'a',
+    '\u{e9}',
+    '\u{d7ff}',
+    '\u{e000}',
+    '\u{ffff}',
+    '\u{10000}',
+    '\u{2fffe}',
+    '\u{2ffff}',
+];
+
+/// A string of short segments joined by delimiters from [`LIKE_DELIMITERS`],
+/// e.g. `a.b`, `/ab//`, `a:b-*`.
+#[cfg(feature = "extended-like")]
+fn arbitrary_delimited_string(u: &mut Unstructured<'_>) -> arbitrary::Result<String> {
+    const SEGMENTS: [&str; 7] = ["", "a", "b", "ab", "abc", "*", "a\\"];
+    let d1 = *u.choose(&LIKE_DELIMITERS)?;
+    let d2 = *u.choose(&LIKE_DELIMITERS)?;
+    let n = u.int_in_range(1..=4)?;
+    let mut s = String::new();
+    for i in 0..n {
+        if i > 0 {
+            s.push(if u.ratio(1, 4)? { d2 } else { d1 });
+        }
+        s.push_str(u.choose(&SEGMENTS)?);
+    }
+    Ok(s)
+}
+
 /// Pool of integer and string constants
 #[derive(Debug, Clone)]
 pub struct ConstantPool {
@@ -115,11 +156,23 @@ impl From<BiasedI64> for i64 {
 impl<'a> Arbitrary<'a> for ConstantPool {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let sc: Vec<String> = u.arbitrary()?;
-        Ok(Self {
+        #[allow(unused_mut)]
+        let mut pool = Self {
             int_constants: <Vec<BiasedI64> as Arbitrary>::arbitrary(u)
                 .map(|bis| bis.into_iter().map(|bi| bi.into()).collect::<Vec<i64>>())?,
             string_constants: sc.iter().map(|s| s.into()).collect(),
-        })
+        };
+        // Strings drawn from raw bytes rarely contain the delimiters used by
+        // `like(pattern, delim)`, so `*` and `**` would almost never behave
+        // differently. Add a few strings made of short segments joined by
+        // common delimiters.
+        #[cfg(feature = "extended-like")]
+        u.arbitrary_loop(Some(0), Some(4), |u| {
+            pool.string_constants
+                .push(SmolStr::new(arbitrary_delimited_string(u)?));
+            Ok(std::ops::ControlFlow::Continue(()))
+        })?;
+        Ok(pool)
     }
     fn size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
@@ -201,6 +254,127 @@ impl ConstantPool {
             )
         }
         Ok(ast::Pattern::from(pattern))
+    }
+
+    /// Get an arbitrary delimiter for `like(pattern, delim)`. Usually one of
+    /// [`LIKE_DELIMITERS`], preferring one that occurs in `source` (the string
+    /// the pattern is derived from); occasionally an edge-case or a fully
+    /// arbitrary (valid) delimiter.
+    #[cfg(feature = "extended-like")]
+    pub fn arbitrary_like_delimiter(
+        &self,
+        source: &str,
+        u: &mut Unstructured<'_>,
+    ) -> Result<ast::LikeDelimiter> {
+        let in_source: Vec<char> = LIKE_DELIMITERS
+            .iter()
+            .copied()
+            .filter(|d| source.contains(*d))
+            .collect();
+        let c = gen!(u,
+            4 => match u.choose(&in_source) {
+                Ok(c) => *c,
+                Err(_) => *u.choose(&LIKE_DELIMITERS)?,
+            },
+            4 => *u.choose(&LIKE_DELIMITERS)?,
+            1 => *u.choose(&SPECIAL_LIKE_DELIMITERS)?,
+            1 => return Ok(u.arbitrary::<ast::LikeDelimiter>()?)
+        );
+        Ok(ast::LikeDelimiter::new(c).expect("delimiter constants should be valid"))
+    }
+
+    /// Produce a pattern for `like(pattern, delim)` together with its
+    /// delimiter.
+    /// Most of the time it's derived from a string constant in the pool (as
+    /// for `arbitrary_pattern_literal`), replacing characters by `*`, `**`,
+    /// runs of wildcards, or the delimiter. Sometimes it's built purely from
+    /// the delimiter, wildcards and a few other characters.
+    #[cfg(feature = "extended-like")]
+    pub fn arbitrary_delim_pattern_literal(
+        &self,
+        u: &mut Unstructured<'_>,
+    ) -> Result<(ast::DelimPattern, ast::LikeDelimiter)> {
+        use ast::DelimPatternElem as E;
+        let source = self.arbitrary_string_constant_bounded(u, MAX_DELIM_PATTERN_LEN)?;
+        let delim = self.arbitrary_like_delimiter(&source, u)?;
+        let d = delim.as_char();
+        let mut pattern = Vec::new();
+        if u.ratio(1, 5)? {
+            // structural pattern over a tiny alphabet
+            u.arbitrary_loop(Some(0), Some(MAX_PATTERN_LEN as u32), |u| {
+                pattern.push(gen!(u,
+                    3 => E::Char(d),
+                    3 => E::Wildcard,
+                    3 => E::MultiWildcard,
+                    2 => E::Char('a'),
+                    1 => E::Char('b'),
+                    1 => E::Char('*'),
+                    1 => E::Char('\\')
+                ));
+                Ok(std::ops::ControlFlow::Continue(()))
+            })?;
+        } else {
+            for c in source.chars() {
+                gen!(u,
+                    4 => pattern.push(E::Char(c)),
+                    2 => pattern.push(E::Wildcard),
+                    2 => pattern.push(E::MultiWildcard),
+                    1 => pattern.extend([E::Char(c), E::Wildcard]),
+                    1 => pattern.extend([E::Wildcard, E::Char(c)]),
+                    1 => pattern.extend([E::Char(c), E::MultiWildcard]),
+                    1 => pattern.extend([E::MultiWildcard, E::Char(c)]),
+                    1 => pattern.push(E::Char(d)),
+                    1 => pattern.extend([E::Char(d), E::Char(c)]),
+                    1 => pattern.extend([E::Wildcard, E::Char(d), E::Wildcard]),
+                    1 => pattern.extend(uniform!(u,
+                        vec![E::Wildcard, E::Wildcard],
+                        vec![E::Wildcard, E::MultiWildcard],
+                        vec![E::MultiWildcard, E::Wildcard],
+                        vec![E::MultiWildcard, E::MultiWildcard],
+                        vec![E::Wildcard, E::Wildcard, E::Wildcard]
+                    )),
+                    1 => {}
+                )
+            }
+        }
+        Ok((ast::DelimPattern::from(pattern), delim))
+    }
+
+    /// Produce a string that (usually) matches `pattern` under delimiter
+    /// `delim`, by instantiating each wildcard. Sometimes a `*` is
+    /// instantiated with a run containing the delimiter, and the result may be
+    /// mutated, so that the string doesn't match.
+    #[cfg(feature = "extended-like")]
+    pub fn arbitrary_delim_pattern_witness(
+        &self,
+        pattern: &ast::DelimPattern,
+        delim: ast::LikeDelimiter,
+        u: &mut Unstructured<'_>,
+    ) -> Result<SmolStr> {
+        let d = delim.as_char();
+        let mut s = String::new();
+        for elem in pattern.iter() {
+            match elem {
+                ast::DelimPatternElem::Char(c) => s.push(*c),
+                ast::DelimPatternElem::Wildcard => gen!(u,
+                    2 => {},
+                    2 => s.push('a'),
+                    1 => s.push_str("ab"),
+                    1 => { s.push('a'); s.push(d); s.push('b'); }
+                ),
+                ast::DelimPatternElem::MultiWildcard => gen!(u,
+                    1 => {},
+                    1 => s.push('a'),
+                    2 => s.push(d),
+                    2 => { s.push('a'); s.push(d); s.push('b'); s.push(d); }
+                ),
+            }
+        }
+        if u.ratio(1, 4)? {
+            Ok(SmolStr::new(mutate_str(u, &s)?))
+        } else {
+            Ok(SmolStr::new(s))
+        }
     }
 
     // Generate a valid IPv4 net representation

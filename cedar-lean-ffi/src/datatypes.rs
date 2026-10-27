@@ -748,6 +748,9 @@ pub enum TermConversionError {
     ZeroWidthBV,
     #[error("bitvec had unexpected width")]
     UnexpectedWidth,
+    #[cfg(feature = "extended-like")]
+    #[error(transparent)]
+    InvalidLikeDelimiter(#[from] ast::InvalidLikeDelimiterError),
 }
 
 impl TryFrom<PatElem> for ast::PatternElem {
@@ -844,7 +847,7 @@ impl TryFrom<Op> for cedar_policy_symcc::op::Op {
                         .collect::<Result<Vec<_>, _>>()?,
                 )
                 .into(),
-                delim.try_into()?,
+                ast::LikeDelimiter::new(char::try_from(delim)?)?,
             ),
             Op::Ext(op) => Self::Ext(op.into()),
         })
@@ -1177,7 +1180,7 @@ impl From<cedar_policy_symcc::op::Op> for Op {
             cedar_policy_symcc::op::Op::StringLikeExtended(pat, delim) => {
                 Self::StringLikeExtended {
                     pattern: pat.get_elems().iter().map(|p| (*p).into()).collect(),
-                    delim: delim.into(),
+                    delim: delim.as_char().into(),
                 }
             }
             cedar_policy_symcc::op::Op::Ext(op) => Self::Ext(op.into()),
