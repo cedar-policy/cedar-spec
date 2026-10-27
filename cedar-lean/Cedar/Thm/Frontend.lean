@@ -14,31 +14,41 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Frontend.Cst
-import Cedar.Frontend.Cst.Semantics
-import Cedar.Frontend.Cst.ToAst
-import Cedar.Thm.Frontend.Translation.AuxSound
-import Cedar.Thm.Frontend.Translation.ExprTranslation
-import Cedar.Thm.Frontend.Translation.PolicyToExpr
-import Cedar.Thm.Frontend.Translation.Completeness
-import Cedar.Thm.Frontend.StringParsing
-import Cedar.Thm.Frontend.CstSlice
-import Cedar.Thm.Frontend.Authorizer
-import Cedar.Thm.Validation
+module
+
+public import Cedar.Spec
+public import Cedar.Frontend.Cst
+public import Cedar.Frontend.Cst.Semantics
+public import Cedar.Frontend.Cst.ToAst
+public import Cedar.Thm.Frontend.Translation.AuxSound
+public import Cedar.Thm.Frontend.Translation.ExprTranslation
+public import Cedar.Thm.Frontend.Translation.PolicyToExpr
+public import Cedar.Thm.Frontend.Translation.Completeness
+public import Cedar.Thm.Frontend.StringParsing
+public import Cedar.Thm.Frontend.CstSlice
+public import Cedar.Thm.Frontend.Authorizer
+public import Cedar.Thm.PolicySlice
+import all Cedar.Frontend.Cst.Authorizer
+import all Cedar.Frontend.Cst.ErrorCollectingSemantics
+import all Cedar.Frontend.Cst.ToAst
+import all Cedar.Spec.Authorizer
+import all Cedar.Frontend.Cst.Semantics
+
+public section
+
 namespace Cedar.Thm
 
 open Cedar.Data
 open Cedar.Spec
 open Cedar.Frontend
-open Cedar.Validation
 
 /-!
 Main correctness results for the Cedar CST frontend. `translation_is_sound` says
 that successful CST-to-AST translation preserves authorization. The corresponding
 `translation_is_strongly_complete` result says that a policy store translates when
 the comprehensive CST error collector reports no translation error. This file also
-lifts AST slicing and validation results to successfully translated CST policies.
+lifts AST slicing results to successfully translated CST policies; the validation
+results are in `Cedar.Thm.Frontend.Validation`.
 -/
 
 
@@ -326,51 +336,5 @@ theorem Cst.isAuthorized_eq_for_scope_based_policy_slice
   rw [translation_is_sound _ _ request entities hslice,
       _root_.Cedar.Thm.isAuthorized_eq_for_scope_based_policy_slice request entities aps,
       ← translation_is_sound _ _ request entities htrans']
-
-
-/-- If a translated CST expression is well-typed, evaluating the CST expression
-never throws a `typeError`. -/
-theorem validated_no_type_error
-    {cst : Cst.Expr} {ast : Spec.Expr} {c₁ c₂ : Capabilities} {ty : TypedExpr}
-    {env : TypeEnv} {request : Request} {entities : Entities}
-    (htrans : cst.toAExpr? = some ast)
-    (hcap : CapabilitiesInvariant c₁ request entities)
-    (hwf : InstanceOfWellFormedEnvironment request entities env)
-    (hwt : typeOf ast c₁ env = .ok (ty, c₂)) :
-    cst.evaluate request entities ≠ .error .typeError := by
-  intro hcontra
-  obtain ⟨_, v, hev, _⟩ := type_of_is_sound hcap hwf hwt
-  have hast : evaluate ast request entities = .error .typeError := by
-    rw [expr_to_expr_sound htrans, hcontra]
-  simp [EvaluatesTo, hast] at hev
-
-/--
-**CST validation soundness (policy-set level).** The CST counterpart of
-`validation_is_sound`: if a set of CST policies translates to a set of AST
-policies that is validated with respect to the schema, and the request
-and entities are consistent with the schema, then evaluating each CST policy's
-expression never throws a `typeError`. -/
-theorem cst_validation_is_sound (cps : Cst.Policies) (aps : Policies)
-    (schema : Schema) (request : Request) (entities : Entities) :
-    cps.toPolicies? = some aps →
-    schema.validateWellFormed = .ok () →
-    validate aps schema = .ok () →
-    validateRequest schema request = .ok () →
-    validateEntities schema entities = .ok () →
-    ∀ cp ∈ cps.ps, cp.toExpr.evaluate request entities ≠ .error .typeError := by
-  intro htrans hwf hval hreq hent cp hcp
-  have hbool := validation_is_sound aps schema request entities hwf hval hreq hent
-  obtain ⟨ap, hap_mem, hcp_ap⟩ :=
-    List.forall₂_implies_all_left (toPolicies?_forall₂ htrans) cp hcp
-  obtain ⟨_, hev⟩ := hbool ap hap_mem
-  obtain ⟨ae, hae⟩ := toPolicy?_implies_toAExpr? hcp_ap
-  have h1 : evaluate ae request entities = cp.toExpr.evaluate request entities :=
-    expr_to_expr_sound hae
-  have h2 : evaluate ae request entities = evaluate ap.toExpr request entities :=
-    policy_to_expr_sound cp ap cp.toExpr ae request entities hcp_ap rfl hae
-  intro hcontra
-  have hap_te : evaluate ap.toExpr request entities = .error .typeError := by
-    rw [← h2, h1]; exact hcontra
-  simp [EvaluatesTo, hap_te] at hev
 
 end Cedar.Thm

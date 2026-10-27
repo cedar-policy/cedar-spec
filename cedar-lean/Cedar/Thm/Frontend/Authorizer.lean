@@ -14,10 +14,15 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Frontend.Cst
-import Cedar.Frontend.Cst.Semantics
-import Cedar.Thm.Data.Set
+module
+
+public import Cedar.Spec
+public import Cedar.Frontend.Cst
+public import Cedar.Frontend.Cst.Semantics
+public import Cedar.Thm.Data.Set
+import all Cedar.Frontend.Cst.Authorizer
+
+public section
 
 namespace Cedar.Thm.Cst
 

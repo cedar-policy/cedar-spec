@@ -14,8 +14,15 @@
  limitations under the License.
 -/
 
-import Cedar.Frontend.Cst
-import Cedar.Frontend.StringParsing
+module
+
+public import Cedar.Frontend.Cst
+public import Cedar.Frontend.StringParsing
+import all Cedar.Frontend.Cst.Common
+import all Cedar.Frontend.StringParsing
+import all Init.Data.Repr
+
+public section
 
 /-!
 Roundtrip and injectivity results for hexadecimal strings and CST identifiers.
