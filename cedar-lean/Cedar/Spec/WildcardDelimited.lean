@@ -132,19 +132,6 @@ private theorem cacheCorrect_insert
   · simp [hk] at hget
     exact h k l b' hget
 
-private theorem StateT_pure_apply_bool {σ : Type} (a : Bool) (s : σ) :
-    (StateT.pure a : StateM σ Bool) s = (a, s) := rfl
-
-private theorem StateT_bind_apply_bool {σ : Type} (m : StateM σ Bool) (f : Bool → StateM σ Bool)
-    (s : σ) :
-    (StateT.bind m f : StateM σ Bool) s = f (m s).1 (m s).2 := rfl
-
-private theorem StateT_modifyGet_apply_bool {σ : Type} (f : σ → Bool × σ) (s : σ) :
-    (StateT.modifyGet f : StateM σ Bool) s = f s := rfl
-
-private theorem run'_eq_fst {σ α : Type} (m : StateM σ α) (s : σ) :
-    m.run' s = (m s).1 := rfl
-
 private theorem matchesDelimited_drop_empty_pattern
     (text : List Char) (i : Nat) (h₁ : i ≤ text.length) (delim : Char) :
     matchesDelimited (text.drop i) [] delim = decide (i = text.length) := by
@@ -159,14 +146,12 @@ private theorem matchesDelimited_drop_empty_pattern
 private theorem pattern_drop_cons (pattern : DelimPattern) (j : Nat)
     (hj : j < pattern.length) :
     pattern.drop j = pattern.get ⟨j, hj⟩ :: pattern.drop (j+1) := by
-  have := List.drop_eq_getElem_cons hj
-  simpa using this
+  exact List.drop_eq_getElem_cons hj
 
 private theorem text_drop_cons (text : List Char) (i : Nat)
     (hi : i < text.length) :
     text.drop i = text.get ⟨i, hi⟩ :: text.drop (i+1) := by
-  have := List.drop_eq_getElem_cons hi
-  simpa using this
+  exact List.drop_eq_getElem_cons hi
 
 private theorem matchesDelimited_empty_multiStar (pattern : DelimPattern) (delim : Char) :
     matchesDelimited [] (DelimPatElem.multiStar :: pattern) delim =
@@ -216,7 +201,7 @@ private theorem wildcardMatchDelimitedIdx_run_correct
     rw [wildcardMatchDelimitedIdx.eq_def]
     rcases hget : cache.get? (i, j) with _ | b
     all_goals simp only [bind, get, getThe, MonadStateOf.get, StateT.get, pure, StateT.pure,
-                          modifyGet, MonadStateOf.modifyGet, StateT.modifyGet, StateT.bind, hget]
+                          modifyGet, MonadStateOf.modifyGet, StateT.bind, hget]
     · by_cases hj : j = pattern.length
       · subst hj
         simp only [↓reduceDIte]
@@ -226,7 +211,7 @@ private theorem wildcardMatchDelimitedIdx_run_correct
         · apply cacheCorrect_insert hcache
           rw [List.drop_length]
           exact (matchesDelimited_drop_empty_pattern text i h₁ delim).symm
-      · rw [dif_neg hj]
+      · simp only [hj, ↓reduceDIte]
         have hjlt : j < pattern.length := Nat.lt_of_le_of_ne h₂ hj
         rw [pattern_drop_cons pattern j hjlt]
         by_cases hi : i = text.length
@@ -259,7 +244,7 @@ private theorem wildcardMatchDelimitedIdx_run_correct
             · apply cacheCorrect_insert hcache
               rw [List.drop_length, pattern_drop_cons pattern j hjlt, hd,
                   matchesDelimited_empty_justChar]
-        · rw [dif_neg hi]
+        · simp only [hi, ↓reduceDIte]
           have hilt : i < text.length := Nat.lt_of_le_of_ne h₁ hi
           rw [text_drop_cons text i hilt]
           match hd : pattern.get ⟨j, hjlt⟩ with
