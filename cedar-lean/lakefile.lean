@@ -22,42 +22,14 @@ require "leanprover" / "doc-gen4" @ git "v4.35.0"
 
 require "leanprover-community" / "batteries" @ git "v4.35.0"
 
+require LeanParserGenerator from git
+  "https://github.com/cedar-policy/lean-parser-generator" @ "24fe7e32e2c4f50aadf6a684f1bfe92db5162493"
+
 package Cedar
 
 @[default_target]
 lean_lib Cedar where
-  -- Fold only the `LeanParserGenerator` runtime the generated parser/lexer
-  -- actually import (`Lexer.*` and `Runtime.*`) into this lib, so they share
-  -- one archive the FFI links. Do NOT sweep in the rest of the generator tree
-  -- (`LSP`, `Frontend`, `Emit`, `Construct`, `IR`): the LSP server defines a
-  -- top-level `main`, and folding it in here makes it the linked binary's
-  -- entry point, so the FFI-linked fuzz/test binaries launch the stdio LSP
-  -- server and block reading stdin instead of running.
-  globs := #[
-    Glob.one `Cedar,
-    Glob.submodules `LeanParserGenerator.Lexer,
-    Glob.submodules `LeanParserGenerator.Runtime
-  ]
   defaultFacets := #[LeanLib.staticFacet]
-
--- The rest of the LeanParserGenerator tooling (grammar frontend, codegen, and
--- the `.lig` LSP server). Not a default target and not linked by the FFI; build
--- it explicitly with `lake build LeanParserGenerator` when working on the
--- generator itself.
-lean_lib LeanParserGenerator where
-  globs := #[
-    Glob.submodules `LeanParserGenerator.Frontend,
-    Glob.submodules `LeanParserGenerator.Emit,
-    Glob.submodules `LeanParserGenerator.Construct,
-    Glob.submodules `LeanParserGenerator.IR,
-    Glob.submodules `LeanParserGenerator.LSP
-  ]
-  defaultFacets := #[LeanLib.staticFacet]
-
--- Standalone `.lig` language server. Its `main` lives in a dedicated root
--- module so no library that the FFI links can ever contribute a program entry.
-lean_exe LigLsp where
-  root := `LeanParserGenerator.LSP.Main
 
 @[default_target]
 lean_lib SymCC where
