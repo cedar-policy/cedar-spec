@@ -1,6 +1,30 @@
-import Cedar.Frontend.Cst.ErrorCollectingSemantics
-import Cedar.Thm.Data.Set
-import Cedar.Thm.Frontend.Translation.AuxSound
+/-
+ Copyright Cedar Contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
+module
+
+public import Cedar.Frontend.Cst.ErrorCollectingSemantics
+public import Cedar.Thm.Data.Set
+public import Cedar.Thm.Frontend.Translation.AuxSound
+import all Cedar.Frontend.Cst.Common
+import all Cedar.Frontend.Cst.ErrorCollectingSemantics
+import all Cedar.Frontend.Cst.ToAst
+import all Cedar.Frontend.Cst.Semantics
+
+public section
 
 /-!
 Completeness of CST-to-AST translation. The comprehensive CST error collector
@@ -343,7 +367,7 @@ theorem Cst.Primary.collect_complete {e : Cst.Primary} {req : Request} {es : Ent
       | none =>
         exfalso
         have := hev (.cstError .stringError)
-          (by simp [Cst.Primary.evaluate, Cst.Str.toUnescapedString, hs])
+          (by simp [bind, Except.bind, Cst.Primary.evaluate, Cst.Str.toUnescapedString, hs])
         simp [Error.isCstError] at this
       | some s' =>
         refine ⟨.strLit s, .lit (.string s'),
@@ -377,14 +401,14 @@ theorem Cst.Primary.collect_complete {e : Cst.Primary} {req : Request} {es : Ent
         | none =>
           exfalso
           have := hev (.cstError .stringError)
-            (by simp [Cst.Primary.evaluate, Cst.Str.toUnescapedString, hs])
+            (by simp [bind, Except.bind, Cst.Primary.evaluate, Cst.Str.toUnescapedString, hs])
           simp [Error.isCstError] at this
         | some s' =>
           cases hty : Name.toAName? path with
           | none =>
             exfalso
             have := hev (.cstError .unsupportedError)
-              (by simp [Cst.Primary.evaluate, Cst.Str.toUnescapedString, hs, hty])
+              (by simp [bind, Except.bind, Cst.Primary.evaluate, Cst.Str.toUnescapedString, hs, hty])
             simp [Error.isCstError] at this
           | some ty =>
             refine ⟨.expr (.lit (.entityUID ⟨ty, s'⟩)), .lit (.entityUID ⟨ty, s'⟩), ?_,

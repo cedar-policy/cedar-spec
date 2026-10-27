@@ -14,11 +14,17 @@
  limitations under the License.
 -/
 
-import Cedar.Slice.PolicySlice
-import Cedar.Frontend.Cst.Slice
-import Cedar.Thm.Authorization.Authorizer
-import Cedar.Thm.Frontend.Translation.AuxSound
-import Cedar.Thm.PolicySlice
+module
+
+public import Cedar.Slice.PolicySlice
+public import Cedar.Frontend.Cst.Slice
+public import Cedar.Thm.Authorization.Authorizer
+public import Cedar.Thm.Frontend.Translation.AuxSound
+import all Cedar.Frontend.Cst.Slice
+import all Cedar.Frontend.Cst.ToAst
+import all Cedar.Spec.Policy
+
+public section
 
 namespace Cedar.Thm
 open Cedar.Spec Cedar.Slice Cedar.Data
@@ -237,7 +243,7 @@ theorem translation_preserves_scopeAnalysis'
   | [_, _], hsc => simp [extractScope?] at hsc
   | _ :: _ :: _ :: _ :: _, hsc => simp [extractScope?] at hsc
 
-def Cst.IsSoundPolicySlice (req : Request) (entities : Entities) (slice policies : Cst.Policies) : Prop :=
+@[expose] def Cst.IsSoundPolicySlice (req : Request) (entities : Entities) (slice policies : Cst.Policies) : Prop :=
   slice.ps ⊆ policies.ps ∧
   ∀ policy ∈ policies.ps,
     policy ∉ slice.ps →
@@ -257,12 +263,12 @@ theorem Cst.sound_slice_transitive :
     case neg =>
       exact h_slice₁_sound p h_mem_ps h_mem_slice₁
 
-def Cst.IsSoundPolicyBound (bound : PolicyBound) (policy : Cst.Policy) : Prop :=
+@[expose] def Cst.IsSoundPolicyBound (bound : PolicyBound) (policy : Cst.Policy) : Prop :=
   ∀ (req : Request) (entities : Entities),
   (Cst.satisfied policy req entities → satisfiedBound bound req entities) ∧
   (Cst.hasError policy req entities → satisfiedBound bound req entities)
 
-def Cst.IsSoundBoundAnalysis (ba : Cst.BoundAnalysis) : Prop :=
+@[expose] def Cst.IsSoundBoundAnalysis (ba : Cst.BoundAnalysis) : Prop :=
   ∀ (policy : Cst.Policy) (h : (prVars? policy).isSome),
     (policy.toPolicy?).isSome → Cst.IsSoundPolicyBound (ba policy h) policy
 

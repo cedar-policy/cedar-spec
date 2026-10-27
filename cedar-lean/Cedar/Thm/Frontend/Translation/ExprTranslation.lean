@@ -1,9 +1,33 @@
-import Cedar.Spec
-import Cedar.Frontend.Cst
-import Cedar.Frontend.Cst.Semantics
-import Cedar.Frontend.Cst.ToAst
-import Cedar.Thm.Frontend.Translation.AuxSound
-import Cedar.Thm.Data.List.Lemmas
+/-
+ Copyright Cedar Contributors
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-/
+
+module
+
+public import Cedar.Spec
+public import Cedar.Frontend.Cst
+public import Cedar.Frontend.Cst.Semantics
+public import Cedar.Frontend.Cst.ToAst
+public import Cedar.Thm.Frontend.Translation.AuxSound
+public import Cedar.Thm.Data.List.Lemmas
+import all Cedar.Frontend.Cst.ToAst
+import all Cedar.Frontend.Cst.Semantics
+import all Cedar.Frontend.Cst.Common
+import all Cedar.Data.Int64
+
+public section
 
 namespace Cedar.Thm
 
@@ -58,7 +82,7 @@ theorem Cst.Primary.toAExpr?_sound
     | liStr s =>
       simp at hprim; subst hprim
       simp [Cst.Primary.evaluate, Cst.Str.toUnescapedString]
-      cases hs : Cst.unescape? s <;> simp
+      cases hs : Cst.unescape? s <;> simp [bind, Except.bind]
   | ref r =>
     intro href aexp heos
     rw [Cst.ExprOrSpecial.toExpr?_sound req es heos]
