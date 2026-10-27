@@ -104,6 +104,11 @@ pub enum UnaryOp {
     Like {
         p: Vec<PatElem>,
     },
+    #[cfg(feature = "extended-like")]
+    LikeDelimited {
+        p: Vec<super::DelimPatElem>,
+        d: u32,
+    },
     Is {
         #[serde(deserialize_with = "deserialize_entity_type")]
         ety: EntityTypeName,
@@ -360,6 +365,21 @@ mod convert {
             .collect()
     }
 
+    #[cfg(feature = "extended-like")]
+    fn convert_delim_pattern(
+        p: Vec<super::super::DelimPatElem>,
+    ) -> Result<Vec<pst::DelimPatternElem>, ResidualConversionError> {
+        p.into_iter()
+            .map(|e| match e {
+                super::super::DelimPatElem::Star => Ok(pst::DelimPatternElem::Wildcard),
+                super::super::DelimPatElem::MultiStar => Ok(pst::DelimPatternElem::MultiWildcard),
+                super::super::DelimPatElem::Char { c } => char::try_from(c)
+                    .map(pst::DelimPatternElem::Char)
+                    .map_err(|_| ResidualConversionError::InvalidChar(c)),
+            })
+            .collect()
+    }
+
     fn convert_ext_fun(
         xfn: ExtFun,
         args: Vec<Residual>,
@@ -471,6 +491,16 @@ mod convert {
             } => Ok(pst::Expr::Like {
                 expr: Arc::new(convert_residual(*expr)?),
                 pattern: convert_pattern(p)?,
+            }),
+            #[cfg(feature = "extended-like")]
+            Residual::UnaryApp {
+                op: UnaryOp::LikeDelimited { p, d },
+                expr,
+                ..
+            } => Ok(pst::Expr::LikeDelimited {
+                expr: Arc::new(convert_residual(*expr)?),
+                pattern: convert_delim_pattern(p)?,
+                delim: char::try_from(d).map_err(|_| ResidualConversionError::InvalidChar(d))?,
             }),
             Residual::UnaryApp {
                 op: UnaryOp::Is { ety },

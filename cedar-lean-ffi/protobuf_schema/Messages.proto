@@ -121,7 +121,6 @@ message PatElem {
     oneof elem {
         bool star = 1;
         uint32 char = 2;
-        bool multi_star = 3;
     }
 }
 
@@ -129,9 +128,17 @@ message Pattern {
     repeated PatElem pattern = 1;
 }
 
+message DelimPatElem {
+    oneof elem {
+        bool star = 1;
+        uint32 char = 2;
+        bool multi_star = 3;
+    }
+}
+
 message DelimPattern {
-    repeated PatElem pattern = 1;
-    string delim = 2;
+    repeated DelimPatElem pattern = 1;
+    uint32 delim = 2;
 }
 
 message Op {
@@ -369,7 +376,8 @@ message Residual {
     cedar_policy_core.Name fn_name = 11;
     repeated cedar_policy_core.Expr.Like.PatternElem pattern = 12;
     cedar_policy_core.Name entity_type = 13;
-    optional string delim = 14;
+    string delim = 14;
+    repeated cedar_policy_core.Expr.LikeDelimited.PatternElem delim_pattern = 15;
 
     enum Kind {
         VAL = 0;

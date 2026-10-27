@@ -96,6 +96,8 @@ public inductive Op : Type where
   | option.get
   | record.get  : Attr → Op
   | string.like : Pattern → Op
+  /-- Experimental: SymCC lowering of `UnaryOp.likeDelimited`. Gated in the
+      Rust implementation behind the `extended-like` cargo feature. -/
   | string.likeExtended : DelimPattern → Char → Op
   ---------- Extension ADT operators with a trusted mapping to SMT ----------
   | ext : ExtOp → Op

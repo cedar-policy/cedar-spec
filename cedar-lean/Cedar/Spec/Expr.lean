@@ -41,6 +41,8 @@ public inductive UnaryOp where
   | neg
   | isEmpty
   | like (p : Pattern)
+  /-- Experimental: delimiter-aware `like`, gated in the Rust implementation
+      behind the `extended-like` cargo feature (RFC: delimiter-aware `like`). -/
   | likeDelimited (p : DelimPattern) (d : Char)
   | is (ety : EntityType)
 

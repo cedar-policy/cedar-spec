@@ -132,6 +132,50 @@ instance : ProtoEnum Wildcard where
   | 0 => .ok .star
   | n => .error s!"Field {n} does not exist in enum"
 
+@[inline]
+def mergeWildcard (_ : PatElem) (x : Wildcard) : PatElem :=
+  -- With enums we perform replacement
+  match x with
+  | .star => .star
+
+@[inline]
+def mergeC (_ : PatElem) (x2 : String) : PatElem :=
+  -- With a single character we'll perform replacement
+  match x2.toList with
+  | [c2] => .justChar c2
+  | _    => panic!("Only expected a single character in PatElem")
+
+@[inline]
+def merge (_ : PatElem) (y : PatElem) : PatElem :=
+  -- Each constructor of the sum type merges through
+  -- replacement, so we'll do the same here
+  y
+
+@[inline]
+def parseField (t : Proto.Tag) : BParsec (MergeFn PatElem) := do
+  match t.fieldNum with
+  | 1 =>
+    let x : Wildcard ← Field.guardedParse t
+    pureMergeFn (mergeWildcard · x)
+  | 2 =>
+    let x : String ← Field.guardedParse t
+    pureMergeFn (mergeC · x)
+  | _ =>
+    t.wireType.skip
+    pure ignore
+
+instance : Message PatElem where
+  parseField := parseField
+  merge      := merge
+
+instance : Field Pattern := Field.fromInterField (λ (elems : Repeated PatElem) => elems.toList) (· ++ ·)
+
+end PatElem
+
+-- Decodes `Expr.LikeDelimited.PatternElem`. Kept separate from `PatElem` so
+-- that a plain `Like` can never carry a `MultiWildcard`.
+namespace DelimPatElem
+
 inductive MultiWildcard where
   | starStar
 deriving Inhabited
@@ -141,72 +185,36 @@ instance : ProtoEnum MultiWildcard where
   | 0 => .ok .starStar
   | n => .error s!"Field {n} does not exist in enum"
 
--- Proto-level pattern element. `multiStar` is only valid under delimited
--- `like`; the choice between `like` and `likeDelimited` is made at merge
--- time based on presence of `delim`.
-inductive RawPatElem where
-  | star
-  | justChar (c : Char)
-  | multiStar
-deriving Inhabited
-
 @[inline]
-def RawPatElem.mergeWildcard (_ : RawPatElem) (x : Wildcard) : RawPatElem :=
-  match x with
-  | .star => .star
-
-@[inline]
-def RawPatElem.mergeMultiWildcard (_ : RawPatElem) (x : MultiWildcard) : RawPatElem :=
-  match x with
-  | .starStar => .multiStar
-
-@[inline]
-def RawPatElem.mergeC (_ : RawPatElem) (x2 : String) : RawPatElem :=
-  match x2.toList with
-  | [c2] => .justChar c2
-  | _    => panic!("Only expected a single character in PatElem")
-
-@[inline]
-def RawPatElem.merge (_ : RawPatElem) (y : RawPatElem) : RawPatElem :=
+def merge (_ : DelimPatElem) (y : DelimPatElem) : DelimPatElem :=
+  -- `oneof` fields merge by replacement
   y
 
 @[inline]
-def RawPatElem.parseField (t : Proto.Tag) : BParsec (MergeFn RawPatElem) := do
+def parseField (t : Proto.Tag) : BParsec (MergeFn DelimPatElem) := do
   match t.fieldNum with
   | 1 =>
-    let x : Wildcard ← Field.guardedParse t
-    pureMergeFn (RawPatElem.mergeWildcard · x)
+    let x : PatElem.Wildcard ← Field.guardedParse t
+    match x with
+    | .star => pureMergeFn (merge · .star)
   | 2 =>
     let x : String ← Field.guardedParse t
-    pureMergeFn (RawPatElem.mergeC · x)
+    match x.toList with
+    | [c] => pureMergeFn (merge · (.justChar c))
+    | _   => BParsec.fail "LikeDelimited.PatternElem: expected `c` to be exactly one character"
   | 3 =>
     let x : MultiWildcard ← Field.guardedParse t
-    pureMergeFn (RawPatElem.mergeMultiWildcard · x)
+    match x with
+    | .starStar => pureMergeFn (merge · .multiStar)
   | _ =>
     t.wireType.skip
     pure ignore
 
-instance : Message RawPatElem where
-  parseField := RawPatElem.parseField
-  merge      := RawPatElem.merge
+instance : Message DelimPatElem where
+  parseField := parseField
+  merge      := merge
 
-def RawPatElem.toPatElem : RawPatElem → PatElem
-  | .star       => .star
-  | .justChar c => .justChar c
-  | .multiStar  =>
-    panic!("PatElem.MultiWildcard is only valid in a delimited like(pattern, delim); the outer message must set delim")
-
-def RawPatElem.toDelimPatElem : RawPatElem → DelimPatElem
-  | .star       => .star
-  | .justChar c => .justChar c
-  | .multiStar  => .multiStar
-
-end PatElem
-
-instance : Field Pattern :=
-  Field.fromInterField
-    (λ (elems : Repeated PatElem.RawPatElem) => elems.toList.map PatElem.RawPatElem.toPatElem)
-    (· ++ ·)
+end DelimPatElem
 
 instance : ProtoEnum UnaryOp where
   fromInt
@@ -273,6 +281,15 @@ deriving Inhabited
 structure ExprKind.Like where
   pattern : Array PatElem
   expr : Expr
+deriving Inhabited
+
+/-- Intermediate parsing state for `Expr.LikeDelimited`. Like `ExprKind.Like`, the
+    pattern is accumulated in an `Array`. `delim` is kept as the raw string and
+    validated in `toExpr`. -/
+structure ExprKind.LikeDelimited where
+  expr    : Expr := default
+  pattern : Array DelimPatElem := #[]
+  delim   : String := ""
 deriving Inhabited
 
 def ExprKind.Is := ExprKind
@@ -675,6 +692,37 @@ def toExpr (x : ExprKind.Like) : Expr :=
 -- parseField relies on mutual recursion and can be found at the end of the file
 end Proto.ExprKind.Like
 
+namespace Proto.ExprKind.LikeDelimited
+
+@[inline]
+def mergeExpr (result : ExprKind.LikeDelimited) (e2 : Expr) : ExprKind.LikeDelimited :=
+  { result with expr := Expr.merge result.expr e2 }
+
+@[inline]
+def mergePattern (result : ExprKind.LikeDelimited) (pat2 : Array DelimPatElem) : ExprKind.LikeDelimited :=
+  let pattern := result.pattern
+  let result := { result with pattern := #[] }
+  { result with pattern := pattern ++ pat2 }
+
+@[inline]
+def mergeDelim (result : ExprKind.LikeDelimited) (s : String) : ExprKind.LikeDelimited :=
+  -- Proto scalar merge semantics: the later value wins
+  { result with delim := s }
+
+@[inline]
+def merge (x1 x2 : ExprKind.LikeDelimited) : ExprKind.LikeDelimited :=
+  { expr    := Expr.merge x1.expr x2.expr,
+    pattern := x1.pattern ++ x2.pattern,
+    delim   := if x2.delim.isEmpty then x1.delim else x2.delim }
+
+def toExpr (m : ExprKind.LikeDelimited) : Except String Expr :=
+  match m.delim.toList with
+  | [d] => .ok (.unaryApp (.likeDelimited m.pattern.toList d) m.expr)
+  | _   => .error "LikeDelimited: expected `delim` to be exactly one character"
+
+-- parseField relies on mutual recursion and can be found at the end of the file
+end Proto.ExprKind.LikeDelimited
+
 namespace Proto.ExprKind.Is
 
 @[inline]
@@ -805,6 +853,15 @@ def mergeLike (result : ExprKind) (x : ExprKind.Like) : ExprKind :=
   match result with
   | .unaryApp (.like _) _ => Expr.merge result x.toExpr
   | _                     => x.toExpr
+
+@[inline]
+def mergeLikeDelimited (result : ExprKind) (x : ExprKind.LikeDelimited) : Except String ExprKind :=
+  -- Fallible because `delim` must be exactly one character
+  match result with
+  | .unaryApp (.likeDelimited p d) e =>
+    ExprKind.LikeDelimited.toExpr
+      (ExprKind.LikeDelimited.merge { expr := e, pattern := p.toArray, delim := String.singleton d } x)
+  | _ => x.toExpr
 
 @[inline]
 def mergeIs (result : ExprKind) (x : ExprKind.Is) : ExprKind :=
@@ -966,11 +1023,24 @@ partial def Proto.ExprKind.Like.parseField (t : Proto.Tag) : BParsec (MergeFn Pr
     let x : Expr ← Field.guardedParse t
     pureMergeFn (Proto.ExprKind.Like.mergeExpr · x)
   | 2 =>
-    let x : Repeated PatElem.RawPatElem ← Field.guardedParse t
+    let x : Repeated PatElem ← Field.guardedParse t
     pureMergeFn (Proto.ExprKind.Like.mergePattern · x)
+  | _ =>
+    t.wireType.skip
+    pure ignore
+
+partial def Proto.ExprKind.LikeDelimited.parseField (t : Proto.Tag) : BParsec (MergeFn Proto.ExprKind.LikeDelimited) := do
+  have : Message Expr := { parseField := Expr.parseField, merge := Expr.merge }
+  match t.fieldNum with
+  | 1 =>
+    let x : Expr ← Field.guardedParse t
+    pureMergeFn (Proto.ExprKind.LikeDelimited.mergeExpr · x)
+  | 2 =>
+    let x : Repeated DelimPatElem ← Field.guardedParse t
+    pureMergeFn (Proto.ExprKind.LikeDelimited.mergePattern · x)
   | 3 =>
     let x : String ← Field.guardedParse t
-    pureMergeFn (Proto.ExprKind.Like.mergeDelim · x)
+    pureMergeFn (Proto.ExprKind.LikeDelimited.mergeDelim · x)
   | _ =>
     t.wireType.skip
     pure ignore
@@ -1019,6 +1089,7 @@ partial def Expr.parseField (t : Proto.Tag) : BParsec (MergeFn Expr) := do
   have : Message Proto.ExprKind.HasAttr := { parseField := Proto.ExprKind.HasAttr.parseField, merge := Proto.ExprKind.HasAttr.merge }
   have : Message Proto.ExprKind.ExtHasAttr := { parseField := Proto.ExprKind.ExtHasAttr.parseField, merge := Proto.ExprKind.ExtHasAttr.merge }
   have : Message Proto.ExprKind.Like := { parseField := Proto.ExprKind.Like.parseField, merge := Proto.ExprKind.Like.merge }
+  have : Message Proto.ExprKind.LikeDelimited := { parseField := Proto.ExprKind.LikeDelimited.parseField, merge := Proto.ExprKind.LikeDelimited.merge }
   have : Message Proto.ExprKind.Is := { parseField := Proto.ExprKind.Is.parseField, merge := Proto.ExprKind.Is.merge }
   have : Message Proto.ExprKind.Set := { parseField := Proto.ExprKind.Set.parseField, merge := Proto.ExprKind.Set.merge }
   have : Message Proto.ExprKind.Record := { parseField := Proto.ExprKind.Record.parseField, merge := Proto.ExprKind.Record.merge }
@@ -1068,6 +1139,9 @@ partial def Expr.parseField (t : Proto.Tag) : BParsec (MergeFn Expr) := do
   | 16 =>
     let x : Proto.ExprKind.ExtHasAttr ← Field.guardedParse t
     pureMergeFn (Proto.ExprKind.mergeExtHasAttr · x)
+  | 17 =>
+    let x : Proto.ExprKind.LikeDelimited ← Field.guardedParse t
+    pure (λ a => BParsec.ofExcept (Proto.ExprKind.mergeLikeDelimited a x))
   | _ =>
     t.wireType.skip
     pure ignore

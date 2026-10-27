@@ -672,6 +672,94 @@ mod test {
         assert!(!lean_resp.residuals.is_empty());
     }
 
+    #[cfg(feature = "extended-like")]
+    #[test]
+    fn test_is_authorized_partial_like_delimited() {
+        let schema = tpe_schema();
+        let policies = PolicySet::from_str(
+            r#"
+            permit(principal, action == Action::"transfer", resource)
+            when { context.memo like("rent.*", ".") };
+            forbid(principal, action == Action::"transfer", resource)
+            when { context.memo like("rent.**.late", ".") };
+            "#,
+        )
+        .unwrap();
+        let account = PartialEntity::new(
+            EntityUid::from_str(r#"Account::"checking""#).unwrap(),
+            Some(BTreeMap::from([
+                ("balance".into(), RestrictedExpression::new_long(10000)),
+                (
+                    "owner".into(),
+                    RestrictedExpression::new_string("alice".into()),
+                ),
+            ])),
+            Some(HashSet::new()),
+            Some(BTreeMap::new()),
+            &schema,
+        )
+        .unwrap();
+        let user = PartialEntity::new(
+            EntityUid::from_str(r#"User::"alice""#).unwrap(),
+            Some(BTreeMap::from([
+                (
+                    "name".into(),
+                    RestrictedExpression::new_string("Alice".into()),
+                ),
+                ("age".into(), RestrictedExpression::new_long(30)),
+            ])),
+            Some(HashSet::from([EntityUid::from_str(
+                r#"Account::"checking""#,
+            )
+            .unwrap()])),
+            Some(BTreeMap::new()),
+            &schema,
+        )
+        .unwrap();
+        let entities = PartialEntities::from_partial_entities([account, user], &schema).unwrap();
+        let ffi = CedarLeanFfi::new();
+
+        // `None` memo leaves the context unknown, so both policies stay residual.
+        for (memo, expected) in [
+            (None, None),
+            (Some("rent.jan"), Some(cedar_policy::Decision::Allow)),
+            (
+                Some("rent.jan.feb.late"),
+                Some(cedar_policy::Decision::Deny),
+            ),
+            (Some("rent.jan.feb"), Some(cedar_policy::Decision::Deny)),
+        ] {
+            let context = memo.map(|m| {
+                Context::from_pairs([
+                    ("amount".into(), RestrictedExpression::new_long(500)),
+                    ("memo".into(), RestrictedExpression::new_string(m.into())),
+                ])
+                .unwrap()
+            });
+            let request = PartialRequest::new(
+                PartialEntityUid::from_concrete(EntityUid::from_str(r#"User::"alice""#).unwrap()),
+                EntityUid::from_str(r#"Action::"transfer""#).unwrap(),
+                PartialEntityUid::from_concrete(
+                    EntityUid::from_str(r#"Account::"checking""#).unwrap(),
+                ),
+                context,
+                &schema,
+            )
+            .unwrap();
+            let rust_resp = policies
+                .tpe(&request, &entities, &schema)
+                .expect("Rust TPE call failed");
+            let lean_resp = ffi
+                .is_authorized_partial(&policies, &request, &entities, &schema)
+                .expect("FFI call failed");
+            assert_tpe_responses_match(&rust_resp, &lean_resp);
+            assert_eq!(lean_resp.decision, expected, "memo {memo:?}");
+            if memo.is_none() {
+                assert_eq!(lean_resp.residuals.len(), 2);
+            }
+        }
+    }
+
     /// Partial authorization: forbid always satisfied → definite Deny even with unknowns
     #[test]
     fn test_is_authorized_partial_definite_deny() {
