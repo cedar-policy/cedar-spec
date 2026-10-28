@@ -3,6 +3,10 @@ name: Build and Test DRT
 on:
   workflow_call:
     inputs:
+      run_fuzz_smoke:
+        required: false
+        default: false
+        type: boolean
       cedar_spec_repository:
         required: false
         default: cedar-policy/cedar-spec
@@ -43,6 +47,10 @@ jobs:
           repository: cedar-policy/cedar
           path: ./cedar-spec/cedar
           ref: ${{ inputs.cedar_policy_ref }}
+      - name: Verify smoke runner behavior
+        if: inputs.run_fuzz_smoke
+        working-directory: ./cedar-spec/cedar-drt
+        run: python3 -m unittest discover -s . -p test_smoke_fuzz.py -v
       - name: Install Lean
         shell: bash
         run: |
@@ -50,6 +58,9 @@ jobs:
               bash elan-init.sh -y
       - name: Install protoc
         run: sudo apt-get update && sudo apt-get install protobuf-compiler
+      - name: Install smoke runtime dependencies
+        if: inputs.run_fuzz_smoke
+        run: sudo apt-get install -y uuid-runtime
       - name: Prepare Rust build
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }} && rustup component add rustfmt
       - name: cargo fmt (cedar-policy-generators)
@@ -80,3 +91,39 @@ jobs:
       - name: cargo test (cedar-drt/fuzz/)
         working-directory: ./cedar-spec/cedar-drt/fuzz
         run: source ~/.profile && source ../set_env_vars.sh && cargo test -- --nocapture
+      - name: Install cargo-fuzz
+        if: inputs.run_fuzz_smoke
+        run: cargo install cargo-fuzz --version 0.13.2 --locked
+      - name: Install cvc5 for SymCC fuzz targets
+        if: inputs.run_fuzz_smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then
+            ARCH_NAME="x86_64"
+          elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+            ARCH_NAME="arm64"
+          else
+            echo "Unsupported architecture: $ARCH" >&2
+            exit 1
+          fi
+          wget "https://github.com/cvc5/cvc5/releases/download/cvc5-1.2.1/cvc5-Linux-${ARCH_NAME}-static.zip"
+          unzip "cvc5-Linux-${ARCH_NAME}-static.zip"
+          chmod +x "cvc5-Linux-${ARCH_NAME}-static/bin/cvc5"
+          echo "CVC5=$GITHUB_WORKSPACE/cvc5-Linux-${ARCH_NAME}-static/bin/cvc5" >> "$GITHUB_ENV"
+      - name: Build fuzz targets with all features
+        if: inputs.run_fuzz_smoke
+        shell: bash
+        working-directory: ./cedar-spec/cedar-drt
+        run: source ~/.profile && source set_env_vars.sh && cargo fuzz build -s none --all-features
+      - name: Initialize fuzz corpora
+        if: inputs.run_fuzz_smoke
+        shell: bash
+        working-directory: ./cedar-spec/cedar-drt
+        run: source ~/.profile && ./initialize_corpus.sh --all
+      - name: Smoke-test every fuzz target
+        if: inputs.run_fuzz_smoke
+        shell: bash
+        working-directory: ./cedar-spec/cedar-drt
+        run: source ~/.profile && source set_env_vars.sh && python3 smoke_fuzz.py
