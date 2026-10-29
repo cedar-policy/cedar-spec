@@ -108,6 +108,22 @@ def tests := [
       (Field.interpret? (α := Int64) (ByteArray.mk #[254, 255, 255, 255, 255, 255, 255, 255, 255, 1]))
       (.ok (-2))
     ⟩,
+    UnitTest.test "Int32" ⟨λ () => UnitTest.checkEq
+      (Field.interpret? (α := Int32) (ByteArray.mk #[128, 128, 128, 128, 248, 255, 255, 255, 255, 1]))
+      (.ok (-2147483648))
+    ⟩,
+    UnitTest.test "UInt32 truncates" ⟨λ () => UnitTest.checkEq
+      (Field.interpret? (α := UInt32) (ByteArray.mk #[129, 128, 128, 128, 128, 1]))
+      (.ok 1)
+    ⟩,
+    UnitTest.test "Truncated varint" ⟨λ () => UnitTest.checkEq
+      (Field.interpret? (α := UInt64) (ByteArray.mk #[128, 128]))
+      (.error "offset 3: Expected more bytes")
+    ⟩,
+    UnitTest.test "Varint too long" ⟨λ () => UnitTest.checkEq
+      (Field.interpret? (α := UInt64) (ByteArray.mk #[128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 1]))
+      (.error "offset 10: Too many bytes in this varint")
+    ⟩,
     UnitTest.test "Packed Int64" ⟨λ () => UnitTest.checkEq
       (Field.interpret? (α := Packed Int64) (ByteArray.mk #[06, 03, 142, 02, 158, 167, 05]))
       (.ok #[3, 270, 86942])
@@ -130,6 +146,10 @@ def tests := [
     ⟩,
     UnitTest.test "HardCodeStruct" ⟨λ () => UnitTest.checkEq
       (Message.interpret? (α := HardCodeStruct) (ByteArray.mk #[50, 06, 03, 142, 02, 158, 167, 05]))
+      (.ok (HardCodeStruct.mk #[3, 270, 86942]))
+    ⟩,
+    UnitTest.test "HardCodeStruct skips unknown varint" ⟨λ () => UnitTest.checkEq
+      (Message.interpret? (α := HardCodeStruct) (ByteArray.mk #[08, 150, 01, 50, 06, 03, 142, 02, 158, 167, 05]))
       (.ok (HardCodeStruct.mk #[3, 270, 86942]))
     ⟩,
     UnitTest.test "Enum" ⟨λ () => UnitTest.checkEq
