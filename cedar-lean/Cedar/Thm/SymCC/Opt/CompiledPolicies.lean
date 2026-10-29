@@ -60,10 +60,7 @@ theorem intoCompiledPolicySet_correctness {p : Policy} {s : CompiledSchema} {req
   all_goals {
     simp_do_let Opt.compile p'.toExpr (s.symEnv reqty) as h
     simp only [Except.ok.injEq, CompiledPolicySet.mk.injEq, true_and]
-    have hwf := Opt.compile_footprint_wf h
-    simp [EmptyCollection.emptyCollection, Data.Set.union_empty_right List.mapUnion_wf, Data.Set.union_empty_left List.mapUnion_wf]
-    rw [List.mapUnion_singleton (by simp [hwf])]
-    simp
+    simp [EmptyCollection.emptyCollection, Data.Set.union_empty_right, Data.Set.union_empty_left]
   }
 
 /--

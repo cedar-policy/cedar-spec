@@ -78,9 +78,6 @@ pub struct ABACSettings {
     /// rejects unknown extension function calls.
     pub enable_arbitrary_func_call: bool,
 
-    /// Flag to enable/disable generating unknowns, exercising partial evaluation
-    pub enable_unknowns: bool,
-
     /// Flag to enable/disable action constraints in forms of `in` operations
     pub enable_action_in_constraints: bool,
 
@@ -104,7 +101,6 @@ impl ABACSettings {
             enable_like: true,
             enable_action_groups_and_attrs: true,
             enable_arbitrary_func_call: true,
-            enable_unknowns: false,
             enable_action_in_constraints: true,
             total_action_request_env_limit: 1024,
             max_actions: 16,

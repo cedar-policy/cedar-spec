@@ -52,6 +52,21 @@ public def canonicalize [LT β] [DecidableLT β] (f : α → β) : List α → L
   | [] => []
   | hd :: tl => insertCanonical f hd (canonicalize f tl)
 
+/--
+Merge two lists. If the ordering relation < on α is strict and both inputs are
+canonical, then the result is canonical.
+-/
+public def mergeCanonical [LT α] [DecidableLT α] : List α → List α → List α
+  | [],      ys      => ys
+  | x :: xs, []      => x :: xs
+  | x :: xs, y :: ys =>
+    if x < y
+    then x :: mergeCanonical xs (y :: ys)
+    else if x > y
+    then y :: mergeCanonical (x :: xs) ys
+    else x :: mergeCanonical xs ys
+termination_by xs ys => xs.length + ys.length
+
 public theorem sizeOf_snd_lt_sizeOf_list {α : Type u} {β : Type v} [SizeOf α] [SizeOf β] {x : α × β} {xs : List (α × β)} :
   x ∈ xs → sizeOf x.snd < 1 + sizeOf xs
 := by

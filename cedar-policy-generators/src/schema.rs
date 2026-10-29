@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-use crate::abac::{
-    ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type, UnknownPool,
-};
+use crate::abac::{ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type};
 use crate::err::{while_doing, Error, Result};
 use crate::expr::ExprGenerator;
-use crate::hierarchy::Hierarchy;
+use crate::hierarchy::{should_add_edge, Hierarchy, TYPE_EDGE_BUDGET};
 use crate::request::Request;
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
@@ -51,8 +49,6 @@ pub struct Schema {
     pub settings: ABACSettings,
     /// constant pool
     pub constant_pool: ConstantPool,
-    /// unknown pool
-    pub unknown_pool: UnknownPool,
     /// data on available extension functions
     ext_funcs: AvailableExtensionFunctions,
     /// list of all entity types that are declared in the schema. Note that this
@@ -558,11 +554,11 @@ impl Bindings {
         }
     }
 
-    // Replace types with common type references.
-    // We only replace smaller types in composite types like sets and records
-    // to avoid circularity.
-    // This function is a no-op for other types.
-    fn rewrite_type(
+    /// Replace the subterms of `ty` with common type references, leaving `ty` itself alone.
+    ///
+    /// This function (instead of `rewrite_type`) is called from `to_common_types` to avoid
+    /// producing cycles in common type definitions.
+    fn rewrite_type_subterms(
         &self,
         u: &mut Unstructured<'_>,
         ty: &json_schema::Type<ast::InternalName>,
@@ -576,15 +572,7 @@ impl Bindings {
                 loc,
             } => Ok(json_schema::Type::Type {
                 ty: json_schema::TypeVariant::Set {
-                    element: Box::new(if let Some(ids) = self.bindings.get(element) {
-                        json_schema::Type::CommonTypeRef {
-                            type_name: ast::Name::unqualified_name(u.choose(ids)?.clone().into())
-                                .into(),
-                            loc: element.loc().cloned(),
-                        }
-                    } else {
-                        self.rewrite_type(u, element)?
-                    }),
+                    element: Box::new(self.rewrite_type(u, element)?),
                 },
                 loc: loc.clone(),
             }),
@@ -628,6 +616,7 @@ impl Bindings {
     ) -> Result<json_schema::EntityType<ast::InternalName>> {
         match &et.kind {
             EntityTypeKind::Enum { .. } => Ok(et.clone()),
+            EntityTypeKind::Standard(_) if et.external => Ok(et.clone()),
             EntityTypeKind::Standard(StandardEntityType {
                 member_of_types,
                 shape,
@@ -635,17 +624,24 @@ impl Bindings {
             }) => Ok(json_schema::EntityType {
                 kind: EntityTypeKind::Standard(StandardEntityType {
                     member_of_types: member_of_types.clone(),
-                    shape: json_schema::AttributesOrContext(self.rewrite_record_type(u, &shape.0)?),
-                    tags: tags.clone(),
+                    shape: json_schema::AttributesOrContext(self.rewrite_type(u, &shape.0)?),
+                    tags: tags
+                        .as_ref()
+                        .map(|tags| self.rewrite_type(u, tags))
+                        .transpose()?,
                 }),
+                external: false,
                 annotations: et.annotations.clone(),
                 loc: et.loc.clone(),
             }),
         }
     }
 
-    /// Replace attribute types in a record type with common types
-    fn rewrite_record_type(
+    /// Replace `ty`, or its subterms, with common type references.
+    ///
+    /// If `ty` itself is bound to a common type, replace it with a reference to this type
+    /// otherwise recurse into its subterms with [`Self::rewrite_type_subterms`].
+    fn rewrite_type(
         &self,
         u: &mut Unstructured<'_>,
         ty: &json_schema::Type<ast::InternalName>,
@@ -656,7 +652,7 @@ impl Bindings {
                 loc: None,
             }
         } else {
-            self.rewrite_type(u, ty)?
+            self.rewrite_type_subterms(u, ty)?
         };
         Ok(new_ty)
     }
@@ -668,7 +664,7 @@ impl Bindings {
     // type id_1 = id_2;
     // type id_2 = id_3;
     // ...
-    // type id_n = rewrite_type(ty)
+    // type id_n = rewrite_type_subterms(ty)
     // ```
     fn to_common_types(
         &self,
@@ -677,7 +673,10 @@ impl Bindings {
         let mut common_types = BTreeMap::new();
         for (ty, ids) in &self.bindings {
             if ids.len() == 1 {
-                common_types.insert(ids.first().unwrap().clone(), self.rewrite_type(u, ty)?);
+                common_types.insert(
+                    ids.first().unwrap().clone(),
+                    self.rewrite_type_subterms(u, ty)?,
+                );
             } else if ids.len() > 1 {
                 // ids[0] -> ids[1] -> ... -> ids[n]
                 for i in 0..(ids.len() - 1) {
@@ -690,7 +689,10 @@ impl Bindings {
                         },
                     );
                 }
-                common_types.insert(ids[ids.len() - 1].clone(), self.rewrite_type(u, ty)?);
+                common_types.insert(
+                    ids[ids.len() - 1].clone(),
+                    self.rewrite_type_subterms(u, ty)?,
+                );
             }
         }
         Ok(common_types)
@@ -747,10 +749,10 @@ impl Schema {
                 match &shape.0 {
         json_schema::Type::CommonTypeRef { type_name, .. } => match lookup_common_type(&self.schema, type_name).unwrap_or_else(|| panic!("reference to undefined common type: {type_name}")) {
             json_schema::Type::CommonTypeRef { .. } => panic!("common type `{type_name}` refers to another common type, which is not allowed as of this writing?"),
-            json_schema::Type::Type { ty: json_schema::TypeVariant::Record(json_schema::RecordType { attributes, .. }), .. } => Ok(u.choose(&attributes.keys().cloned().collect::<Vec<_>>())?.clone()),
+            json_schema::Type::Type { ty: json_schema::TypeVariant::Record(json_schema::RecordType { attributes, .. }), .. } => Ok(u.choose_iter(attributes.keys())?.clone()),
             ty => panic!("expected attributes or context to be a record, got {ty:?}"),
         }
-        json_schema::Type::Type { ty: json_schema::TypeVariant::Record(json_schema::RecordType { attributes, .. }), .. } => Ok(u.choose(&attributes.keys().cloned().collect::<Vec<_>>())?.clone()),
+        json_schema::Type::Type { ty: json_schema::TypeVariant::Record(json_schema::RecordType { attributes, .. }), .. } => Ok(u.choose_iter(attributes.keys())?.clone()),
         ty => panic!("expected attributes or context to be a record, got {ty:?}")
             }}
         }
@@ -854,6 +856,14 @@ impl Schema {
         for (_, ty) in &self.attributes {
             bind_type(ty, u, &mut bindings)?;
         }
+        for et in self.schema.entity_types.values() {
+            if let EntityTypeKind::Standard(StandardEntityType {
+                tags: Some(tag_ty), ..
+            }) = &et.kind
+            {
+                bind_type(tag_ty, u, &mut bindings)?;
+            }
+        }
 
         let common_types = bindings.to_common_types(u)?;
         let entity_types: BTreeMap<UnreservedId, json_schema::EntityType<ast::InternalName>> =
@@ -875,12 +885,13 @@ impl Schema {
                             annotations: ty.annotations.clone(),
                             attributes: ty.attributes.to_owned(),
                             member_of: ty.member_of.clone(),
+                            external: ty.external,
                             applies_to: match &ty.applies_to {
                                 Some(applies) => Some(json_schema::ApplySpec {
                                     resource_types: applies.resource_types.clone(),
                                     principal_types: applies.principal_types.clone(),
                                     context: json_schema::AttributesOrContext(
-                                        bindings.rewrite_record_type(u, &applies.context.0)?,
+                                        bindings.rewrite_type(u, &applies.context.0)?,
                                     ),
                                 }),
                                 None => None,
@@ -1006,7 +1017,6 @@ impl Schema {
             constant_pool: u
                 .arbitrary()
                 .map_err(|e| while_doing("generating constant pool".into(), e))?,
-            unknown_pool: UnknownPool::default(),
             ext_funcs: AvailableExtensionFunctions::create(&settings),
             settings,
             entity_types: nsdef
@@ -1097,7 +1107,6 @@ impl Schema {
             schema: self,
             settings: &self.settings,
             constant_pool: &self.constant_pool,
-            unknown_pool: &self.unknown_pool,
             ext_funcs: &self.ext_funcs,
             hierarchy,
         }
@@ -1159,24 +1168,28 @@ impl Schema {
                                 )
                              })
                             ),
+                            // Schema is used for policy validation, so we do not produce `external`
+                            external: false,
                             annotations: u.arbitrary()?,
                             loc: None,
                         },
                     ))
                 })
                 .collect::<Result<Vec<_>>>()?;
-        // fill in member-relationships. WLOG we only make edges from entities
-        // earlier in the entity_types list to entities later in the list; this
-        // ensures we get a DAG
-        for i in 0..entity_types.len() {
-            let (_, ref mut entity_type) = entity_types[i];
-            match entity_type.kind.clone() {
+        // fill in member-relationships. This is the entity-type hierarchy, so cycles are allowed.
+        for (_, entity_type) in &mut entity_types {
+            match entity_type.kind {
                 EntityTypeKind::Standard(StandardEntityType {
                     ref mut member_of_types,
                     ..
                 }) => {
-                    for name in &entity_type_ids[(i + 1)..] {
-                        if u.ratio::<u8>(1, 2)? {
+                    for name in &entity_type_ids {
+                        // `should_add_edge` decays like `1 / n^2`, so the expected number of
+                        // `member_of` edges stays roughly constant rather than growing with the
+                        // number of entity types. This keeps the type graph's transitive closure
+                        // small, which bounds the allowed parent types per entity and keeps the
+                        // generated entity hierarchy sparse.
+                        if should_add_edge(u, entity_type_ids.len(), TYPE_EDGE_BUDGET)? {
                             let etype = ast::InternalName::from(ast::Name::from(name.clone()));
                             member_of_types.push(etype);
                         }
@@ -1250,6 +1263,8 @@ impl Schema {
                 Ok((
                     name.clone(),
                     json_schema::ActionType {
+                        // Schema is used for policy validation, so we do not produce `external`
+                        external: false,
                         applies_to: {
                             let mut picked_resource_types =
                                 pick_entity_types(&mut resource_types, u)?;
@@ -1297,7 +1312,7 @@ impl Schema {
         if settings.enable_action_groups_and_attrs {
             for i in 0..actions.len() {
                 for name in action_names[(i + 1)..].iter() {
-                    if u.ratio::<u8>(1, 2)? {
+                    if should_add_edge(u, action_names.len(), TYPE_EDGE_BUDGET)? {
                         actions[i]
                             .1
                             .member_of
@@ -1381,7 +1396,6 @@ impl Schema {
             constant_pool: u
                 .arbitrary()
                 .map_err(|e| while_doing("generating constant pool".into(), e))?,
-            unknown_pool: UnknownPool::default(),
             ext_funcs: AvailableExtensionFunctions::create(&settings),
             settings,
             entity_types: entity_type_names,
@@ -1831,6 +1845,7 @@ fn downgrade_entitytype_to_raw(
                 tags: tags.map(downgrade_schematype_to_raw),
             }),
         },
+        external: entitytype.external,
         annotations: entitytype.annotations,
         loc: entitytype.loc,
     }
@@ -1856,6 +1871,7 @@ fn downgrade_action_to_raw(
         member_of: action
             .member_of
             .map(|v| v.into_iter().map(downgrade_aeuid_to_raw).collect()),
+        external: action.external,
         annotations: action.annotations,
         loc: action.loc,
     }

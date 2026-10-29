@@ -185,6 +185,31 @@ public theorem pe_or_false_right {t : Term} :
 := by
   simp only [Factory.or, decide_true, Bool.or_true, ↓reduceIte]
 
+public theorem pe_or_bool {a b : Bool} :
+  Factory.or (.prim (.bool a)) (.prim (.bool b)) = .prim (.bool (a || b))
+:= by
+  cases a <;> cases b <;> simp only [pe_or_false_right, pe_or_true_right, Bool.or_self,
+    Bool.or_false, Bool.or_true]
+
+/--
+Left-folding `Factory.or` over a mapped list, where each element reduces (via `hstep`)
+to a boolean literal, yields the boolean literal of the disjunction accumulated over the
+list (`List.any`).
+-/
+public theorem pe_foldl_or {α} (g : α → Bool) (mk : α → Term) (st : Term → Term) (l : List α)
+  (hstep : ∀ a, st (mk a) = .prim (.bool (g a))) :
+  ∀ s : Bool,
+    List.foldl (fun acc t₂ => Factory.or acc (st t₂)) (.prim (.bool s)) (l.map mk)
+    = .prim (.bool (s || l.any g))
+:= by
+  induction l with
+  | nil => intro s; simp only [List.map_nil, List.foldl_nil, List.any_nil, Bool.or_false]
+  | cons a rest ih =>
+    intro s
+    simp only [List.map_cons, List.foldl_cons, hstep, pe_or_bool, List.any_cons]
+    rw [ih (s || g a)]
+    simp only [Bool.or_assoc]
+
 /-! ### PE for Factory.implies -/
 
 @[simp]
@@ -361,6 +386,26 @@ public theorem pe_ifSome_some {g t : Term} {tty : TermType} :
   intro h
   simp only [ifSome, h, pe_isNone_some, pe_ite_false, noneOf]
 
+/-- `ifSome` with a `none` body always reduces to that `none`. -/
+public theorem pe_ifSome_none_body {g : Term} {ty : TermType} :
+  ifSome g (Term.none ty) = Term.none ty
+:= by
+  simp only [ifSome, typeOf_term_none, noneOf, Factory.ite, Factory.ite.simplify, decide_true,
+    Bool.or_true, if_true]
+
+/-- If every guard is a `some`, folding `ifSome` collapses to the body. -/
+public theorem pe_foldr_ifSome_all_some {l : List Term} {P : Term} {ty : TermType}
+  (hP : P.typeOf = .option ty)
+  (hall : ∀ t ∈ l, ∃ g, t = Term.some g) :
+  l.foldr (fun tᵢ acc => ifSome tᵢ acc) P = P
+:= by
+  induction l with
+  | nil => rfl
+  | cons t rest ih =>
+    obtain ⟨g, rfl⟩ := hall t (by simp)
+    rw [List.foldr_cons, ih (fun t ht => hall t (List.mem_cons_of_mem _ ht))]
+    exact pe_ifSome_some hP
+
 public theorem pe_ifSome_get_eq_get' {εs : SymEntities} (I : Interpretation) {t : Term} {ty ty' : TermType} (f : Term → Term) :
   t.WellFormedLiteral εs →
   t.typeOf = .option ty →
@@ -408,6 +453,39 @@ public theorem pe_ifSome_get_eq_get'₂ {εs : SymEntities} (I : Interpretation)
     replace ⟨_, hwo₁, _⟩ := hwo₁ ; subst hwo₁
     replace ⟨_, hwo₂, _⟩ := hwo₂ ; subst hwo₂
     simp only [pe_isNone_some, pe_ite_false, pe_option_get_some, pe_option_get'_some]
+
+/--
+Under a `foldr ifSome` over well-formed-literal option guards, replacing
+`option.get` of each guard with `option.get' I` leaves the folded term unchanged
+(when a guard is `none` both sides collapse to `none`; when all guards are `some`
+the two `get`s agree).
+-/
+public theorem pe_foldr_ifSome_get_eq_get' {εs : SymEntities} (I : Interpretation) {ty : TermType} :
+  ∀ (gs : List Term) (F : List Term → Term),
+  (∀ g ∈ gs, g.WellFormedLiteral εs ∧ ∃ ty', g.typeOf = .option ty') →
+  (F (gs.map option.get)).typeOf = .option ty →
+  (F (gs.map (option.get' I))).typeOf = .option ty →
+  gs.foldr (fun tᵢ acc => ifSome tᵢ acc) (F (gs.map option.get)) =
+  gs.foldr (fun tᵢ acc => ifSome tᵢ acc) (F (gs.map (option.get' I)))
+:= by
+  intro gs
+  induction gs with
+  | nil => intro F _ _ _; simp only [List.foldr_nil, List.map_nil]
+  | cons g rest ih =>
+    intro F hwfl hty1 hty2
+    have hg := hwfl g (by simp)
+    obtain ⟨ty', hgty⟩ := hg.right
+    rcases wfl_of_type_option_is_option hg.left hgty with hnone | ⟨v, hsome, _⟩
+    · subst hnone
+      simp only [List.foldr_cons]
+      rw [pe_ifSome_none (typeOf_foldr_ifSome hty1), pe_ifSome_none (typeOf_foldr_ifSome hty2)]
+    · subst hsome
+      simp only [List.foldr_cons]
+      rw [pe_ifSome_some (typeOf_foldr_ifSome hty1), pe_ifSome_some (typeOf_foldr_ifSome hty2)]
+      simp only [List.map_cons, pe_option_get_some, pe_option_get'_some]
+      exact ih (fun vs => F (v :: vs)) (fun s hs => hwfl s (List.mem_cons_of_mem _ hs))
+        (by simp only [List.map_cons, pe_option_get_some] at hty1; exact hty1)
+        (by simp only [List.map_cons, pe_option_get'_some] at hty2; exact hty2)
 
 public theorem pe_ifSome_ok_get_eq_get' {εs : SymEntities} (I : Interpretation) {t₁ t₂ t₃ : Term} {ty₁ ty₂ : TermType} (f : Term → SymCC.Result Term)
   (hwφ₁ : Term.WellFormedLiteral εs t₁ ∧ Term.typeOf t₁ = TermType.option ty₁)

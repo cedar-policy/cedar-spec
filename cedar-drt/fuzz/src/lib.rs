@@ -18,11 +18,14 @@ pub use libfuzzer_sys::fuzz_target;
 
 pub mod abac;
 pub mod arbitrary_json;
+pub mod entity_graph;
+pub mod partial_schema;
 pub mod props;
 pub mod proto_gen;
 pub mod pst_equiv;
 pub mod pst_gen;
 pub mod roundtrip_entities;
+pub mod schema_link;
 pub mod schemas;
 pub mod symcc;
 pub mod tpe;

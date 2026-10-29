@@ -29,36 +29,6 @@ namespace Cedar.SymCC
 
 open Data Spec SymCC Factory
 
-theorem footprint_ofEntity_wf :
-  (footprint.ofEntity x εnv).WellFormed
-:= by
-  simp [footprint.ofEntity]
-  split
-  · split <;> simp [Set.singleton_wf, Set.empty_wf]
-  · exact Set.empty_wf
-
-theorem footprint_ofBranch_wf :
-  ft₂.WellFormed →
-  ft₃.WellFormed →
-  (footprint.ofBranch εnv x ft₁ ft₂ ft₃).WellFormed
-:= by
-  intro h₂ h₃
-  simp [footprint.ofBranch]
-  split <;> simp [h₂, h₃, Set.empty_wf, Set.union_wf]
-
-theorem footprint_wf (x : Expr) (εnv : SymEnv) :
-  (footprint x εnv).WellFormed
-:= by
-  cases x
-  all_goals simp [footprint, footprint_ofEntity_wf, footprint_ofBranch_wf, footprint_wf,
-    List.mapUnion₁_eq_mapUnion (footprint · εnv), List.mapUnion₂_eq_mapUnion (λ x => footprint x.snd εnv),
-    Set.empty_wf, List.mapUnion_wf, Set.union_wf]
-
-theorem footprints_wf (xs : List Expr) (εnv : SymEnv) :
-  (footprints xs εnv).WellFormed
-:= by
-  simp [footprints, List.mapUnion_wf]
-
 def SymEntities.SameOn (εs : SymEntities) (ft : Set Term) (I₁ I₂ : Interpretation) : Prop :=
   ∀ ety δ,
     εs.find? ety = some δ →
@@ -316,14 +286,13 @@ theorem footprints_empty {εnv : SymEnv} :
 theorem footprints_singleton {x : Expr} {εnv : SymEnv} :
   footprints [x] εnv = footprint x εnv
 := by
-  simp [SymCC.footprints, List.mapUnion_singleton (f := (footprint · εnv)) (by simp [footprint_wf])]
+  simp [SymCC.footprints, List.mapUnion_singleton (f := (footprint · εnv))]
 
 theorem footprints_append {xs₁ xs₂ : List Expr} {εnv : SymEnv} :
   footprints (xs₁ ++ xs₂) εnv = footprints xs₁ εnv ++ footprints xs₂ εnv
 := by
   simp [footprints]
-  apply List.mapUnion_append
-  intro x _ ; apply footprint_wf
+  exact List.mapUnion_append
 
 theorem footprint_subset_footprints {x : Expr} {xs : List Expr} {εnv : SymEnv} :
   x ∈ xs → footprint x εnv ⊆ footprints xs εnv

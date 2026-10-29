@@ -36,37 +36,6 @@ private theorem concretize?_entityData?_implies_fst {uid : EntityUID} {ed : Enti
   replace ⟨_, _, _, _, hs⟩ := concretize?_entityData?_some_eq hs
   simp only [← hs]
 
-private theorem concretize?_mapM_entityData?_wf_some_implies_sortedBy {eds : List (EntityUID × EntityData)} {uids : List EntityUID} {εs : SymEntities} :
-  uids.Sorted →
-  List.mapM (SymEntities.concretize?.entityData? εs) uids = some eds →
-  eds.SortedBy Prod.fst
-:= by
-  intro hsrt hs
-  induction hsrt generalizing eds
-  case nil =>
-    simp only [List.mapM_nil, Option.pure_def, Option.some.injEq] at hs
-    subst hs
-    exact List.SortedBy.nil
-  case cons_nil =>
-    simp only [List.mapM_cons, List.mapM_nil, Option.pure_def, Option.bind_some_fun,
-      Option.bind_eq_bind, Option.bind_eq_some_iff, Option.some.injEq] at hs
-    replace ⟨_, _, hs⟩ := hs
-    subst hs
-    exact List.SortedBy.cons_nil
-  case cons_cons uid₁ uid₂ tl hlt htl ih =>
-    simp only [List.mapM_cons, Option.pure_def, Option.bind_eq_bind, Option.bind_eq_some_iff,
-      Option.some.injEq] at hs
-    replace ⟨_, hs₁, _, ⟨_, hs₂, _, hs, heq⟩, heq'⟩ := hs
-    subst heq heq'
-    apply List.SortedBy.cons_cons
-    · replace hs₁ := concretize?_entityData?_implies_fst hs₁
-      replace hs₂ := concretize?_entityData?_implies_fst hs₂
-      subst hs₁ hs₂
-      simp only [id_eq] at hlt
-      exact hlt
-    · apply ih
-      simp only [List.mapM_cons, hs₂, hs, Option.pure_def, Option.bind_some_fun]
-
 private theorem concretize?_εs_some_implies_closed {uids : Set EntityUID} {εs : SymEntities} {es : Entities} :
   SymEntities.concretize? uids εs = some es →
   es.ClosedFor (uids ∪ εs.entityUIDs)
@@ -74,35 +43,14 @@ private theorem concretize?_εs_some_implies_closed {uids : Set EntityUID} {εs 
   intro hs uid hin
   replace ⟨eds, hs, heq⟩ := concretize?_εs_some_eq hs
   subst heq
-  simp only [Map.contains_iff_some_find?]
-  have hsrt : eds.SortedBy Prod.fst := by
-    apply concretize?_mapM_entityData?_wf_some_implies_sortedBy _ hs
-    simp [← Set.wf_iff_sorted]
-    apply Set.union_wf
-  simp only [Map.find?, Map.toList, Map.make, List.sortedBy_implies_canonicalize_eq hsrt]
-  have hin' : uid ∈ uids ∪ εs.entityUIDs := by
-    simp only [hin]
-  replace ⟨ed, hin', hs⟩ := List.mapM_some_implies_all_some hs uid hin'
+  simp only [Map.contains_iff_some_find?, Map.make_find?_eq_list_find?, Option.map_eq_some_iff]
+  replace ⟨ed, hin', hs⟩ := List.mapM_some_implies_all_some hs uid ((Set.mem_elts_iff_mem_set _ _).mpr hin)
   replace hs := concretize?_entityData?_implies_fst hs
-  subst hs
-  exists ed.snd
-  have hf := List.mem_of_sortedBy_implies_find? hin' hsrt
-  split
-  · rename_i heq
-    simp only [hf, Option.some.injEq] at heq
-    simp only [heq]
-  · rename_i hc
-    specialize hc ed.fst
-    simp only [imp_false] at hc
-    replace hc : List.find? (λ x => x.fst == ed.fst) eds = .none := by
-      rw [← List.not_find?_some_iff_find?_none]
-      intro ed' hin''
-      cases ed
-      specialize hc ed'.snd
-      cases ed'
-      simp only [hf, Option.some.injEq, Prod.mk.injEq, true_and] at hc
-      simp only [hf, hc, Option.some.injEq, Prod.mk.injEq, and_false, not_false_eq_true]
-    simp only [hc, reduceCtorEq] at hf
+  cases hf : List.find? (λ x => x.fst == uid) eds with
+  | none =>
+    have := List.find?_eq_none.mp hf ed hin'
+    simp [hs] at this
+  | some ed' => exact ⟨ed'.snd, ed', rfl, rfl⟩
 
 private theorem subset_implies_closed {uids₁ uids₂ : Set EntityUID} {es : Entities} :
   uids₁ ⊆ uids₂ → es.ClosedFor uids₂ → es.ClosedFor uids₁
@@ -326,13 +274,26 @@ private theorem term_setOfEntityUIDs?_some_value? {t : Term} {uids : Set EntityU
     · rw [Set.mem_elts_iff_mem_set, Set.mem_make]
       exact hin
 
+private theorem term_setOfEntityUIDs?_some_wf {t : Term} {uids : Set EntityUID} :
+  t.setOfEntityUIDs? = some uids → uids.WellFormed
+:= by
+  intro hs
+  simp only [Term.setOfEntityUIDs?, Option.bind_eq_bind] at hs
+  split at hs <;> simp only [Option.bind_eq_some_iff, Option.some.injEq, reduceCtorEq] at hs
+  replace ⟨_, _, heq⟩ := hs
+  subst heq
+  exact Set.make_wf _
+
 private theorem concretize?_δ_ancs_some_implies_entityUIDs {uid : EntityUID} {δ : SymEntityData} {ancs : List (Set EntityUID)} {εs : SymEntities}
   (hwu : Term.WellFormedLiteral εs (Term.entity uid))
   (hs : List.mapM (λ x => (app x.snd (Term.entity uid)).setOfEntityUIDs?) δ.ancestors.toList = some ancs) :
   (List.mapUnion id ancs).WellFormed ∧
   List.mapUnion id ancs ⊆ SymEntityData.entityUIDs.ancs δ
 := by
-  simp only [List.mapUnion_wf, SymEntityData.entityUIDs.ancs, true_and]
+  refine ⟨List.mapUnion_wf λ s hin => ?_, ?_⟩
+  · replace ⟨_, _, hs⟩ := List.mapM_some_implies_all_from_some hs s hin
+    exact term_setOfEntityUIDs?_some_wf hs
+  simp only [SymEntityData.entityUIDs.ancs]
   simp only [← List.mapM_some_eq_filterMap hs, List.mapUnion_filterMap, Set.subset_def]
   intro uid' hin
   rw [List.mem_mapUnion_iff_mem_exists] at hin

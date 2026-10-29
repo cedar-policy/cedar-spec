@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use crate::{
     abac::{
         self, ABACPolicy, ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType,
-        StaticABACPolicy, UnknownPool,
+        StaticABACPolicy,
     },
     err::{while_doing, Error, Result},
     expr::ExprGenerator,
@@ -74,7 +74,7 @@ impl From<types::Type> for abac::Type {
 /// A trait that specifies what methods other generators expect from a schema
 pub trait SchemaGen: std::fmt::Debug {
     /// Gen all entity types
-    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = EntityType> + '_>;
+    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = &EntityType> + '_>;
     /// Get an arbitrary entity type
     fn arbitrary_entity_type(&self, u: &mut Unstructured<'_>) -> Result<EntityType>;
     /// Get an arbitrary attribute
@@ -257,7 +257,7 @@ pub trait SchemaGen: std::fmt::Debug {
         if u.ratio(1, 5)? {
             Ok(PrincipalOrResourceConstraint::NoConstraint)
         } else {
-            let choose_ety = |u: &mut Unstructured<'_>| u.choose_iter(self.entity_types());
+            let choose_ety = |u: &mut Unstructured<'_>| u.choose_iter(self.entity_types()).cloned();
             // If slots are allowed, then generate a slot 50% of the time.
             if allow_slots && u.ratio(1, 2)? {
                 // 40% Eq, 40% In or IsIn.
@@ -326,7 +326,6 @@ pub struct ValidatorSchema<'a> {
     attributes_by_type: IndexMap<abac::Type, Vec<(ast::EntityType, SmolStr)>>,
     settings: &'a ABACSettings,
     constant_pool: ConstantPool,
-    unknown_pool: UnknownPool,
     ext_funcs: AvailableExtensionFunctions,
 }
 
@@ -354,7 +353,6 @@ impl<'a> ValidatorSchema<'a> {
             attributes_by_type,
             settings,
             constant_pool: u.arbitrary()?,
-            unknown_pool: UnknownPool::default(),
             ext_funcs: AvailableExtensionFunctions::create(settings),
         })
     }
@@ -459,10 +457,11 @@ impl SchemaGen for ValidatorSchema<'_> {
                     Some(choices)
                 }
                 cedar_policy_core::validator::ValidatorEntityTypeKind::Standard(_) => None,
+                cedar_policy_core::validator::ValidatorEntityTypeKind::External => None,
             })
     }
-    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = EntityType> + '_> {
-        Box::new(self.entity_types.clone().into_iter())
+    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = &EntityType> + '_> {
+        Box::new(self.entity_types.iter())
     }
     fn allowed_parent_typenames(
         &self,
@@ -513,7 +512,6 @@ impl SchemaGen for ValidatorSchema<'_> {
             schema: self,
             settings: self.settings,
             constant_pool: &self.constant_pool,
-            unknown_pool: &self.unknown_pool,
             ext_funcs: &self.ext_funcs,
             hierarchy,
         }
@@ -539,7 +537,12 @@ impl SchemaGen for ValidatorSchema<'_> {
         hierarchy: &Hierarchy,
         u: &mut Unstructured<'_>,
     ) -> Result<abac::ABACRequest> {
-        let actions: Vec<_> = self.core_schema.actions().cloned().collect();
+        let actions: Vec<_> = self
+            .core_schema
+            .action_ids()
+            .filter(|id| !id.is_external())
+            .map(|id| id.name().clone())
+            .collect();
         let action = u.choose(&actions)?;
         let action_id = self
             .core_schema
@@ -549,7 +552,12 @@ impl SchemaGen for ValidatorSchema<'_> {
         let principal_type = u.choose(&principals)?;
         let resources: Vec<_> = action_id.applies_to_resources().cloned().collect();
         let resource_type = u.choose(&resources)?;
-        let context_ty = abac::Type::from(action_id.context_type().clone());
+        let context_ty = abac::Type::from(
+            action_id
+                .context_type()
+                .expect("a non-external action has a context type")
+                .clone(),
+        );
         Ok(ABACRequest(Request {
             principal: self
                 .exprgenerator(Some(hierarchy))
@@ -627,8 +635,8 @@ impl SchemaGen for Schema {
     fn get_uid_enum_choices(&self, ty: &ast::EntityType) -> Option<&NonEmpty<Eid>> {
         self.get_uid_enum_choices(ty)
     }
-    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = EntityType> + '_> {
-        Box::new(self.entity_types.clone().into_iter())
+    fn entity_types(&self) -> Box<dyn ExactSizeIterator<Item = &EntityType> + '_> {
+        Box::new(self.entity_types.iter())
     }
     fn allowed_parent_typenames(
         &self,

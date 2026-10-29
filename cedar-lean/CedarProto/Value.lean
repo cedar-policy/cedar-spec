@@ -18,6 +18,7 @@ import Protobuf.Message
 
 -- Message Dependencies
 import CedarProto.Expr
+import CedarProto.Data
 
 open Proto
 
@@ -61,10 +62,10 @@ partial def exprToValue : Expr → Except String Value
   | .lit p => .ok (.prim p)
   | .record r => do
       let attrs ← r.mapM λ ⟨attr, e⟩ => do .ok ⟨attr, ← exprToValue e⟩
-      .ok $ .record (Cedar.Data.Map.make attrs)
+      .ok $ .record (Cedar.Data.mapOfArray attrs.toArray)
   | .set s => do
       let elts ← s.mapM exprToValue
-      .ok $ .set (Cedar.Data.Set.make elts)
+      .ok $ .set (Cedar.Data.setOfArray elts.toArray)
   | .call xfn args => extExprToValue xfn args
   | e => .error s!"exprToValue: invalid input expression {repr e}"
 

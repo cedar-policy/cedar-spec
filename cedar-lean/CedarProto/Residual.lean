@@ -66,16 +66,16 @@ end ResidualKind
 structure ProtoResidual where
   ty         : Option Validation.Proto.ProtoType := none
   kind       : ResidualKind := .val
-  children   : List ProtoResidual := []
+  children   : Array ProtoResidual := #[]
   val        : Option Expr := none
   var        : Var := .principal
   attr       : String := ""
-  attrs      : List String := []
-  fieldNames : List String := []
+  attrs      : Array String := #[]
+  fieldNames : Array String := #[]
   unaryOp    : Proto.ExprKind.UnaryApp.Op := .not
   binaryOp   : Proto.ExprKind.BinaryApp.Op := .eq
   fnName     : Option Spec.Proto.Name := none
-  pattern    : Pattern := []
+  pattern    : Array PatElem := #[]
   entityType : Option EntityType := none
 
 instance : Inhabited ProtoResidual where
@@ -112,9 +112,7 @@ partial def parseField (t : _root_.Proto.Tag) : BParsec (MergeFn ProtoResidual) 
   | 2 =>
     let x : ResidualKind ← Field.guardedParse t
     pureMergeFn (λ r => { r with kind := x })
-  | 3 =>
-    let x : Repeated ProtoResidual ← Field.guardedParse t
-    pureMergeFn (λ r => { r with children := r.children ++ x.toList })
+  | 3 => parseRepeatedFieldElement t (·.children) (update children)
   | 4 =>
     let x : Expr ← Field.guardedParse t
     pureMergeFn (λ r => { r with val := some x })
@@ -124,12 +122,8 @@ partial def parseField (t : _root_.Proto.Tag) : BParsec (MergeFn ProtoResidual) 
   | 6 =>
     let x : String ← Field.guardedParse t
     pureMergeFn (λ r => { r with attr := Field.merge r.attr x })
-  | 7 =>
-    let x : Repeated String ← Field.guardedParse t
-    pureMergeFn (λ r => { r with attrs := r.attrs ++ x.toList })
-  | 8 =>
-    let x : Repeated String ← Field.guardedParse t
-    pureMergeFn (λ r => { r with fieldNames := r.fieldNames ++ x.toList })
+  | 7 => parseRepeatedFieldElement t (·.attrs) (update attrs)
+  | 8 => parseRepeatedFieldElement t (·.fieldNames) (update fieldNames)
   | 9 =>
     let x : Proto.ExprKind.UnaryApp.Op ← Field.guardedParse t
     pureMergeFn (λ r => { r with unaryOp := x })
@@ -139,9 +133,7 @@ partial def parseField (t : _root_.Proto.Tag) : BParsec (MergeFn ProtoResidual) 
   | 11 =>
     let x : Spec.Proto.Name ← Field.guardedParse t
     pureMergeFn (λ r => { r with fnName := some x })
-  | 12 =>
-    let x : Pattern ← Field.guardedParse t
-    pureMergeFn (λ r => { r with pattern := r.pattern ++ x })
+  | 12 => parseRepeatedFieldElement t (·.pattern) (update pattern)
   | 13 =>
     let x : EntityType ← Field.guardedParse t
     pureMergeFn (λ r => { r with entityType := some x })
@@ -205,7 +197,7 @@ partial def toResidual (r : ProtoResidual) : Except String Residual := do
   let some protoTy := r.ty
     | .error s!"Residual: missing `ty` on a {repr r.kind} node"
   let ty ← protoTy.toCedarType
-  let kids ← r.children.mapM toResidual
+  let kids := (← r.children.mapM toResidual).toList
   let arity (n : Nat) : Except String Unit :=
     if kids.length == n then .ok ()
     else .error s!"Residual: {repr r.kind} expects {n} children, got {kids.length}"
@@ -228,10 +220,10 @@ partial def toResidual (r : ProtoResidual) : Except String Residual := do
   | .getAttr, [a] => .ok (.getAttr a r.attr ty)
   | .hasAttr, [a] => .ok (.hasAttr a r.attr ty)
   | .extHasAttr, [a] =>
-    match r.attrs with
+    match r.attrs.toList with
     | [] => .error "Residual: EXT_HAS_ATTR with empty `attrs`"
     | hd :: tl => .ok (.extHasAttr a hd tl ty)
-  | .like, [a] => .ok (.unaryApp (.like r.pattern) a ty)
+  | .like, [a] => .ok (.unaryApp (.like r.pattern.toList) a ty)
   | .is, [a] => do
     let some ety := r.entityType | .error "Residual: IS without `entity_type`"
     .ok (.unaryApp (.is ety) a ty)
@@ -240,9 +232,9 @@ partial def toResidual (r : ProtoResidual) : Except String Residual := do
     let some fn := r.fnName | .error "Residual: CALL without `fn_name`"
     .ok (.call (← extFunOf fn) kids ty)
   | .record, _ =>
-    if r.fieldNames.length == kids.length
-    then .ok (.record (r.fieldNames.zip kids) ty)
-    else .error s!"Residual: RECORD has {r.fieldNames.length} names \
+    if r.fieldNames.size == kids.length
+    then .ok (.record (r.fieldNames.toList.zip kids) ty)
+    else .error s!"Residual: RECORD has {r.fieldNames.size} names \
                    but {kids.length} children"
   -- Wrong number of children for the kind; `arity` produces the message.
   | .ite, _ => do arity 3; .error "unreachable"

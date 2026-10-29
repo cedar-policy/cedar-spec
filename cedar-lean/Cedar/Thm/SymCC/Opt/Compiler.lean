@@ -96,13 +96,12 @@ does not. See detailed note in `Opt.compile`.
 -/
 private theorem Opt.compileGetAttr.correctness (t₁ : Term) (attr : Attr) (εs : SymEntities) (footprint : Data.Set Term) :
   Opt.compileGetAttr { term := t₁, footprint } attr εs =
-  (do let term ← SymCC.compileGetAttr (Factory.option.get t₁) attr εs ; .ok { term, footprint := footprint ∪ Opt.directFootprint (Factory.ifSome t₁ term) })
+  (do let term ← SymCC.compileGetAttr (Factory.option.get t₁) attr εs ; .ok { term, footprint := Opt.directFootprint (Factory.ifSome t₁ term) ∪ footprint })
 := by
   simp only [Opt.compileGetAttr, SymCC.compileGetAttr, Except.bind_ok, Except.bind_err, bind_assoc]
   simp_do_let compileAttrsOf (Factory.option.get t₁) εs
   split <;> rename_i h <;> simp [h]
   split <;> rename_i h <;> simp [h]
-  all_goals apply Data.Set.union_comm
 
 /--
 Correctness lemma for `Opt.compileHasAttr`, at least as to the `term`:
@@ -216,407 +215,97 @@ private theorem Opt.compileCall₂.correctness (xty : ExtType) (enc : Term → T
   rw [Opt.compileCallWithError₂.correctness]
 
 /--
+Correctness lemma for `Opt.compileCallₙ`, at least as to the `term`:
+`Opt.compileCallₙ` produces the same `term` as `SymCC.compileCallₙ`
+-/
+private theorem Opt.compileCallₙ.correctness (xty : ExtType) (enc : Term → List Term → Term) (arg₁ : Opt.CompileResult) (args : List Opt.CompileResult) :
+  Opt.compileCallₙ xty enc arg₁ args =
+  (do let term ← SymCC.compileCallₙ xty enc arg₁.term (args.map Opt.CompileResult.term) ;
+      .ok { term, footprint := args.foldl (λ acc a => acc ∪ a.footprint) arg₁.footprint })
+:= by
+  simp only [Opt.compileCallₙ, SymCC.compileCallₙ, List.forall_mem_map]
+  split <;> simp [List.foldr_map, List.map_map, Function.comp_def]
+
+/--
+The footprint accumulated by `Opt.compileCallₙ` is the `mapUnion` of all the
+arguments' footprints.
+-/
+private theorem Opt.compileCallₙ.footprint_eq_mapUnion {arg₁ : Opt.CompileResult} {args : List Opt.CompileResult} :
+  args.foldl (λ acc a => acc ∪ a.footprint) arg₁.footprint =
+  (arg₁ :: args).mapUnion Opt.CompileResult.footprint
+:= by
+  simp only [List.mapUnion, List.foldl_cons, EmptyCollection.emptyCollection]
+  rw [Data.Set.union_empty_left]
+
+/--
 Correctness lemma for `Opt.compileCall`, at least as to the `term`:
 `Opt.compileCall` produces the same `term` as `SymCC.compileCall`
 -/
-private theorem Opt.compileCall.correctness (xfn : ExtFun) (ress : List Opt.CompileResult)
-  (hwf : ∀ res ∈ ress, res.footprint.WellFormed) :
+private theorem Opt.compileCall.correctness (xfn : ExtFun) (ress : List Opt.CompileResult) :
   Opt.compileCall xfn ress =
   (do let term ← SymCC.compileCall xfn (ress.map Opt.CompileResult.term) ; .ok { term, footprint := ress.mapUnion Opt.CompileResult.footprint })
 := by
   simp only [Opt.compileCall, SymCC.compileCall]
-  split <;> try simp only [Opt.compileCall₀.correctness, Opt.compileCall₁.correctness, Opt.compileCall₂.correctness, List.map_cons, List.map_nil]
+  split <;> try simp only [Opt.compileCall₀.correctness, Opt.compileCall₁.correctness, Opt.compileCall₂.correctness, Opt.compileCallₙ.correctness, List.map_cons, List.map_nil]
   all_goals first
-  | simp only [Opt.compileCall₀.correctness] | simp only [Opt.compileCall₁.correctness] | simp only [Opt.compileCall₂.correctness] | simp only [Opt.compileCallWithError₁.correctness] | simp only [Opt.compileCallWithError₂.correctness] | symm
+  | simp only [Opt.compileCall₀.correctness] | simp only [Opt.compileCall₁.correctness] | simp only [Opt.compileCall₂.correctness] | simp only [Opt.compileCallₙ.correctness] | simp only [Opt.compileCallWithError₁.correctness] | simp only [Opt.compileCallWithError₂.correctness] | symm
   · rename_i res ; simp_do_let SymCC.compileCall₀ Ext.Decimal.decimal res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton]
   · rename_i res₁ res₂ ; simp_do_let SymCC.compileCall₂ _ Decimal.lessThan res₁.term res₂.term
-    rw [List.mapUnion_cons hwf]
-    rw [List.mapUnion_singleton (by apply hwf res₂ (by simp))]
+    rw [List.mapUnion_pair]
   · rename_i res₁ res₂ ; simp_do_let SymCC.compileCall₂ _ Decimal.lessThanOrEqual res₁.term res₂.term
-    rw [List.mapUnion_cons hwf]
-    rw [List.mapUnion_singleton (by apply hwf res₂ (by simp))]
+    rw [List.mapUnion_pair]
   · rename_i res₁ res₂ ; simp_do_let SymCC.compileCall₂ _ Decimal.greaterThan res₁.term res₂.term
-    rw [List.mapUnion_cons hwf]
-    rw [List.mapUnion_singleton (by apply hwf res₂ (by simp))]
+    rw [List.mapUnion_pair]
   · rename_i res₁ res₂ ; simp_do_let SymCC.compileCall₂ _ Decimal.greaterThanOrEqual res₁.term res₂.term
-    rw [List.mapUnion_cons hwf]
-    rw [List.mapUnion_singleton (by apply hwf res₂ (by simp))]
+    rw [List.mapUnion_pair]
   · rename_i res ; simp_do_let SymCC.compileCall₀ Ext.IPAddr.ip res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ IPAddr.isIpv4 res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ IPAddr.isIpv6 res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ IPAddr.isLoopback res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ IPAddr.isMulticast res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
-  · rename_i res₁ res₂ ; simp_do_let SymCC.compileCall₂ _ IPAddr.isInRange res₁.term res₂.term
-    rw [List.mapUnion_cons hwf]
-    rw [List.mapUnion_singleton (by apply hwf res₂ (by simp))]
+    rw [List.mapUnion_singleton]
+  · rw [Opt.compileCallₙ.footprint_eq_mapUnion]
   · rename_i res ; simp_do_let SymCC.compileCall₀ Ext.Datetime.datetime res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton]
   · rename_i res ; simp_do_let SymCC.compileCall₀ Ext.Datetime.duration res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton]
   · rename_i res₁ res₂ ; simp_do_let SymCC.compileCallWithError₂ _ _ Datetime.offset res₁.term res₂.term
-    rw [List.mapUnion_cons hwf]
-    rw [List.mapUnion_singleton (by apply hwf res₂ (by simp))]
+    rw [List.mapUnion_pair]
   · rename_i res₁ res₂ ; simp_do_let SymCC.compileCallWithError₂ _ _ Datetime.durationSince res₁.term res₂.term
-    rw [List.mapUnion_cons hwf]
-    rw [List.mapUnion_singleton (by apply hwf res₂ (by simp))]
+    rw [List.mapUnion_pair]
   · rename_i res ; simp_do_let SymCC.compileCallWithError₁ _ Datetime.toDate res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ Datetime.toTime res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ Duration.toMilliseconds res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ Duration.toSeconds res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ Duration.toMinutes res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ Duration.toHours res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton]
   · rename_i res ; simp_do_let SymCC.compileCall₁ _ Duration.toDays res.term
-    rw [List.mapUnion_singleton (by apply hwf res (by simp))]
+    rw [List.mapUnion_singleton]
   · rw [do_error]
     split <;> simp_all
-    all_goals {
-      rename_i t₁ t₂ h₁ h₂
-      have ⟨res₁, res₂, hres⟩ := List.map_eq_doubleton h₁
-      specialize h₂ res₁ res₂ ; contradiction
-    }
-
-/--
-Helper lemma that `Opt.compileCall₀` produces a well-formed footprint set.
--/
-private theorem Opt.compileCall₀_footprint_wf [Coe α Ext] {mk : String → Option α} {term : Term} {footprint : Data.Set Term} {res : Opt.CompileResult} :
-  footprint.WellFormed →
-  Opt.compileCall₀ mk { term, footprint } = .ok res →
-  res.footprint.WellFormed
-:= by
-  simp [Opt.compileCall₀]
-  split <;> rename_i h
-  · simp at h ; replace ⟨h, h'⟩ := h ; subst term footprint
-    split <;> simp
-    intro wf h ; subst res ; simp [wf]
-  · simp
-
-/--
-Helper lemma that `Opt.compileCallWithError₁` produces a well-formed footprint set.
--/
-private theorem Opt.compileCallWithError₁_footprint_wf {xty : ExtType} {arg res : Opt.CompileResult} :
-  arg.footprint.WellFormed →
-  Opt.compileCallWithError₁ xty enc arg = .ok res →
-  res.footprint.WellFormed
-:= by
-  simp [Opt.compileCallWithError₁]
-  split <;> simp
-  intro wf h ; subst res ; simp [wf]
-
-/--
-Helper lemma that `Opt.compileCall₁` produces a well-formed footprint set.
--/
-private theorem Opt.compileCall₁_footprint_wf {xty : ExtType} {arg res : Opt.CompileResult} :
-  arg.footprint.WellFormed →
-  Opt.compileCall₁ xty enc arg = .ok res →
-  res.footprint.WellFormed
-:= by
-  unfold Opt.compileCall₁
-  exact Opt.compileCallWithError₁_footprint_wf
-
-/--
-Helper lemma that `Opt.compileCallWithError₂` produces a well-formed footprint set.
-
-Unlike the ₀ and ₁ cases, this case does not require that the args are well-formed.
--/
-private theorem Opt.compileCallWithError₂_footprint_wf {xty₁ xty₂ : ExtType} {arg₁ arg₂ res : Opt.CompileResult} :
-  Opt.compileCallWithError₂ xty₁ xty₂ enc arg₁ arg₂ = .ok res →
-  res.footprint.WellFormed
-:= by
-  simp [Opt.compileCallWithError₂]
-  split <;> simp
-  intro h ; subst res ; simp [Data.Set.union_wf]
-
-/--
-Helper lemma that `Opt.compileCall₂` produces a well-formed footprint set.
-
-Unlike the ₀ and ₁ cases, this case does not require that the args are well-formed.
--/
-private theorem Opt.compileCall₂_footprint_wf {xty : ExtType} {arg₁ arg₂ res : Opt.CompileResult} :
-  Opt.compileCall₂ xty enc arg₁ arg₂ = .ok res →
-  res.footprint.WellFormed
-:= by
-  unfold Opt.compileCall₂
-  exact Opt.compileCallWithError₂_footprint_wf
-
-/--
-Lemma that `Opt.compile` produces a well-formed footprint set.
--/
-theorem Opt.compile_footprint_wf {x : Expr} {εnv : SymEnv} {res : Opt.CompileResult} :
-  Opt.compile x εnv = .ok res →
-  res.footprint.WellFormed
-:= by
-  cases x <;> simp [Opt.compile]
-  case lit p =>
-    cases p <;> simp [Opt.compilePrim]
-    case bool | int | string =>
-      intro h ; subst res ; simp [EmptyCollection.emptyCollection, Data.Set.empty_wf]
-    case entityUID =>
-      split <;> simp
-      · intro h ; subst res ; simp [Data.Set.singleton_wf]
-  case var v =>
-    cases v <;> simp [Opt.compileVar] <;> split <;> simp
-    · intro h ; subst res ; simp [Data.Set.singleton_wf]
-    · intro h ; subst res ; simp [Data.Set.singleton_wf]
-    · intro h ; subst res ; simp [Data.Set.singleton_wf]
-    · intro h ; subst res ; simp [EmptyCollection.emptyCollection, Data.Set.empty_wf]
-  case ite x₁ x₂ x₃ =>
-    simp_do_let Opt.compile x₁ εnv
-    case error => simp
-    case ok =>
-      simp [Opt.compileIf]
-      split
-      · exact Opt.compile_footprint_wf
-      · exact Opt.compile_footprint_wf
-      · simp_do_let Opt.compile x₂ εnv
-        case error => simp
-        case ok =>
-          simp_do_let Opt.compile x₃ εnv
-          case error => simp
-          case ok =>
-            split <;> simp
-            intro h ; subst res ; simp [Data.Set.union_wf]
-      · simp
-  case and x₁ x₂ | or x₁ x₂ =>
-    simp_do_let Opt.compile x₁ εnv
-    case error => simp
-    case ok =>
-      rename_i res' h₁
-      simp [Opt.compileAnd, Opt.compileOr]
-      split
-      · simp ; intro h ; subst res ; simp [EmptyCollection.emptyCollection, Data.Set.empty_wf]
-      · simp_do_let Opt.compile x₂ εnv
-        case error => simp
-        case ok =>
-          split <;> simp
-          intro h ; subst res ; simp
-          split
-          · apply Opt.compile_footprint_wf ; assumption
-          · simp [Data.Set.union_wf]
-      · simp
-  case unaryApp op x₁ =>
-    simp_do_let Opt.compile x₁ εnv
-    case error => simp
-    case ok res₁ =>
-      simp_do_let Opt.compileApp₁ op _
-      case error => simp
-      case ok resApp _ =>
-        simp ; intro h ; subst res
-        simp [Opt.CompileResult.mapTerm]
-        -- we could make the remainder of this case a separate lemma `Opt.compileApp₁_footprint_wf`, but leaving it inline for now
-        rename_i h₁ ; revert h₁
-        simp [Opt.compileApp₁]
-        split <;> simp
-        all_goals {
-          intro h ; subst resApp
-          simp [Opt.CompileResult.mapTerm]
-          apply Opt.compile_footprint_wf ; assumption
-        }
-  case binaryApp op x₁ x₂ =>
-    simp_do_let Opt.compile x₁ εnv
-    case error => simp
-    case ok res₁ h₁ =>
-      simp_do_let Opt.compile x₂ εnv
-      case error => simp
-      case ok res₂ h₂ =>
-        simp_do_let Opt.compileApp₂ op res₁ res₂ εnv.entities
-        case error => simp
-        case ok resApp h₃ =>
-          simp ; intro h ; subst res
-          simp [Opt.CompileResult.mapTerm]
-          -- we could make the remainder of this case a separate lemma `Opt.compileApp₂_footprint_wf`, but leaving it inline for now
-          revert h₃
-          simp [Opt.compileApp₂]
-          split
-          · simp_do_let reducibleEq _ _
-            case error => simp
-            case ok b hb =>
-              simp ; intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · simp ; intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · simp ; intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · simp ; intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · simp ; intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · simp ; intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · simp ; intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · simp ; intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · simp ; intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · simp ; intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · split <;> simp
-            intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · split <;> simp
-            intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · split <;> simp
-            intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · simp ; intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · simp ; intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · simp_do_let compileHasTag _ _ _
-            case error => simp
-            case ok => simp ; intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · simp_do_let compileGetTag _ _ _
-            case error => simp
-            case ok => simp ; intro h ; subst resApp ; simp [Data.Set.union_wf]
-          · simp
-  case hasAttr x₁ attr =>
-    simp_do_let Opt.compile x₁ εnv
-    case error => simp
-    case ok res₁ h₁ =>
-      simp_do_let Opt.compileHasAttr _ _ _
-      case error => simp
-      case ok res₂ h₂ =>
-        simp ; intro h ; subst res
-        simp [Opt.CompileResult.mapTerm]
-        -- we could make the remainder of this case a separate lemma `Opt.compileHasAttr_footprint_wf`, but leaving it inline for now
-        revert h₂
-        simp [Opt.compileHasAttr]
-        simp_do_let compileAttrsOf _ _
-        case error => simp
-        case ok t ht =>
-          split
-          · split <;> simp
-            all_goals {
-              intro h ; subst res₂
-              simp [Opt.CompileResult.mapTerm]
-              exact Opt.compile_footprint_wf h₁
-            }
-          · simp
-  case extHasAttr x₁ attr attrs =>
-    simp_do_let Opt.compile x₁ εnv
-    case error => simp
-    case ok res₁ h₁ =>
-      simp_do_let SymCC.compileExtHasAttr res₁.term (attr :: attrs) εnv.entities
-      case error => simp
-      case ok t ht =>
-        simp ; intro h ; subst res
-        simp
-        exact Opt.compile_footprint_wf h₁
-  case getAttr x₁ attr =>
-    simp_do_let Opt.compile x₁ εnv
-    case error => simp
-    case ok res₁ h₁ =>
-      simp_do_let Opt.compileGetAttr res₁ attr εnv.entities
-      case error => simp
-      case ok res₂ h₂ =>
-        simp ; intro h ; subst res
-        simp [Opt.CompileResult.mapTerm]
-        -- we could make the remainder of this case a separate lemma `Opt.compileGetAttr_footprint_wf`, but leaving it inline for now
-        revert h₂
-        simp [Opt.compileGetAttr]
-        simp_do_let compileAttrsOf _ _
-        case error => simp
-        case ok t ht =>
-          split
-          · split <;> simp
-            all_goals {
-              intro h ; subst res₂ ; simp [Data.Set.union_wf]
-            }
-          · simp
-  case set xs =>
-    rw [List.mapM₁_eq_mapM (Opt.compile · εnv)]
-    simp_do_let xs.mapM (Opt.compile · εnv)
-    case error => simp
-    case ok ress hress =>
-      -- we could make the remainder of this case a separate lemma `Opt.compileSet_footprint_wf`, but leaving it inline for now
-      simp [Opt.compileSet]
-      split
-      · simp
-      · split
-        · split <;> simp
-          intro h ; subst res ; simp [List.mapUnion_wf]
-        · simp
-  case record axs =>
-    rw [do_eq_ok]
-    intro h ; replace ⟨aress, haress, h⟩ := h
-    simp at h ; subst res
-    -- we could make the remainder of this case a separate lemma `Opt.compileRecord_footprint_wf`, but leaving it inline for now
-    simp [Opt.compileRecord, List.mapUnion_wf]
-  case call xfn args =>
-    rw [List.mapM₁_eq_mapM (Opt.compile · εnv)]
-    simp_do_let args.mapM (Opt.compile · εnv)
-    case error => simp
-    case ok ress hress =>
-      -- we could make the remainder of this case a separate lemma `Opt.compileCall_footprint_wf`, but leaving it inline for now
-      simp [Opt.compileCall]
-      replace hress := List.mapM_ok_implies_all_from_ok hress
-      split
-      · apply Opt.compileCall₀_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · exact Opt.compileCall₂_footprint_wf
-      · exact Opt.compileCall₂_footprint_wf
-      · exact Opt.compileCall₂_footprint_wf
-      · exact Opt.compileCall₂_footprint_wf
-      · apply Opt.compileCall₀_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · apply Opt.compileCall₁_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · apply Opt.compileCall₁_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · apply Opt.compileCall₁_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · apply Opt.compileCall₁_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · exact Opt.compileCall₂_footprint_wf
-      · apply Opt.compileCall₀_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · apply Opt.compileCall₀_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · exact Opt.compileCallWithError₂_footprint_wf
-      · exact Opt.compileCallWithError₂_footprint_wf
-      · apply Opt.compileCallWithError₁_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · apply Opt.compileCall₁_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · apply Opt.compileCall₁_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · apply Opt.compileCall₁_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · apply Opt.compileCall₁_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · apply Opt.compileCall₁_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · apply Opt.compileCall₁_footprint_wf
-        rename_i res'
-        have ⟨arg, harg, h₁⟩ := hress res' (by simp)
-        exact Opt.compile_footprint_wf h₁
-      · simp
+    all_goals first
+      | (rename_i _ _ h₁ h₂
+         have ⟨res₁, res₂, _⟩ := List.map_eq_doubleton h₁
+         specialize h₂ res₁ res₂ ; contradiction)
+      -- variadic isInRange arm: the mapped list has ≥ 2 elements, so `ress` does too
+      | (rename_i _ _ _ h₁ h₂
+         cases ress with
+         | nil => simp at h₁
+         | cons r₁ rest =>
+           cases rest with
+           | nil => simp at h₁
+           | cons r₂ rest' => exact absurd rfl (h₂ r₁ r₂ rest'))
 
 /--
 Lemma pulled out from the below `mutual` block so that we can prove it on its own by induction
@@ -856,9 +545,7 @@ theorem Opt.compile.correctness.andor (x₁ x₂ : Expr) (εnv : SymEnv) :
         split <;> simp [*]
         split <;> simp at *
         split <;> simp [*]
-        first
-        | rw [Data.Set.union_empty_right (Data.Set.union_wf _ _)]
-        | rw [Data.Set.union_empty_right (footprint_wf _ _)]
+        rw [Data.Set.union_empty_right]
   }
 termination_by 1 + 2 * sizeOf x₁ + 2 * sizeOf x₂
 
@@ -931,9 +618,8 @@ theorem Opt.compile.correctness.getAttr (expr : Expr) (attr : Attr) (εnv : SymE
     simp_do_let compileGetAttr (Factory.option.get t) attr εnv.entities ; rename_i t' h₂
     simp only [Except.ok.injEq, Opt.CompileResult.mk.injEq, true_and]
     rw [Opt.directFootprint.correctness (t := Factory.ifSome t t') (x := .getAttr expr attr) (εnv := εnv)]
-    · apply Data.Set.union_comm
-    · -- here we have to show that the `t` and `x` arguments we chose for `Opt.directFootprint.correctness` in the `rw` above correspond to each other correctly
-      simp [SymCC.compile, h₁, h₂]
+    -- here we have to show that the `t` and `x` arguments we chose for `Opt.directFootprint.correctness` in the `rw` above correspond to each other correctly
+    simp [SymCC.compile, h₁, h₂]
 termination_by 1 + 2 * sizeOf expr
 
 /--
@@ -1017,7 +703,7 @@ theorem Opt.compile.correctness.set (ls : List Expr) (εnv : SymEnv) :
       exact Opt.compile.correctness x εnv
     )
     subst ts₂ ; simp
-    apply List.map_eqv_implies_mapUnion_eq (by simp [h₂, List.Equiv.refl])
+    exact List.mapUnion_eq_of_map_eq h₂
 termination_by 1 + 2 * sizeOf ls
 
 /--
@@ -1071,7 +757,7 @@ theorem Opt.compile.correctness.record (m : List (Attr × Expr)) (εnv : SymEnv)
       exact Opt.compile.correctness pair.snd εnv
     )
     subst ts₂ ; simp
-    apply List.map_eqv_implies_mapUnion_eq (by simp [h₂, List.Equiv.refl])
+    exact List.mapUnion_eq_of_map_eq h₂
 termination_by 1 + 2 * sizeOf m
 
 /--
@@ -1121,11 +807,7 @@ theorem Opt.compile.correctness.call (xfn : ExtFun) (args : List Expr) (εnv : S
         exact Opt.compile.correctness x εnv
       )
       subst ts₂ ; simp
-      apply List.map_eqv_implies_mapUnion_eq (by simp [h₂, List.Equiv.refl])
-    case hwf =>
-      intro res hres
-      have ⟨arg, harg, h₁⟩ := List.mapM_ok_implies_all_from_ok hmap₁ res hres
-      exact Opt.compile_footprint_wf h₁
+      exact List.mapUnion_eq_of_map_eq h₂
 termination_by 1 + 2 * sizeOf args
 
 /--

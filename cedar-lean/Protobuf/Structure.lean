@@ -42,3 +42,13 @@ def parseFieldElement {α β} [Field β] (t : Tag) (f : α → β) (g : α → �
      let old : β := f result
      g result (Field.merge old x)
   pureMergeFn (merge · x)
+
+/--
+Like `parseFieldElement`, but for a repeated field stored as an `Array`.
+-/
+def parseRepeatedFieldElement {α β} [Field β] (t : Tag) (f : α → Array β) (g : α → Array β → α) : BParsec (MergeFn α) := do
+  let x : Repeated β ← Field.guardedParse t
+  let merge (result : α) (x : Array β) :=
+     let old := f result
+     g result (old ++ x)
+  pureMergeFn (merge · x)

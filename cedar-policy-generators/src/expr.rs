@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-use crate::abac::{
-    AttrValue, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type, UnknownPool,
-};
+use crate::abac::{AttrValue, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type};
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::{generate_uid_with_type, Hierarchy};
 use crate::schema_gen::SchemaGen;
@@ -39,8 +37,6 @@ pub struct ExprGenerator<'a> {
     pub settings: &'a ABACSettings,
     /// Constant pool to use when needed
     pub constant_pool: &'a ConstantPool,
-    /// Unknown pool to use when needed
-    pub unknown_pool: &'a UnknownPool,
     /// data on available extension functions
     pub ext_funcs: &'a AvailableExtensionFunctions,
     /// If this is present, any literal UIDs included in generated `Expr`s will
@@ -194,8 +190,14 @@ impl ExprGenerator<'_> {
                         let arity = if !self.settings.enable_arbitrary_func_call
                             || u.ratio::<u8>(9, 10)?
                         {
-                            // 90% of the time respect the correct arity, but sometimes don't
-                            func.parameter_types.len()
+                            // 90% of the time respect the correct arity, but sometimes don't.
+                            // A variadic function's declared arity is a minimum.
+                            if func.is_variadic {
+                                func.parameter_types.len()
+                                    + u.int_in_range::<usize>(0..=self.settings.max_width)?
+                            } else {
+                                func.parameter_types.len()
+                            }
                         } else {
                             u.int_in_range::<usize>(0..=4)?
                         };
@@ -303,21 +305,12 @@ impl ExprGenerator<'_> {
         max_depth: usize,
         u: &mut Unstructured<'_>,
     ) -> Result<ast::Expr> {
-        if self.should_generate_unknown(max_depth, u)? {
-            let v = self.generate_value_for_type(target_type, max_depth, u)?;
-            let name = self.unknown_pool.alloc(target_type.clone(), v);
-            let unknown_type: Option<ast::Type> = target_type.clone().try_into().ok();
-            match unknown_type {
-                Some(ty) => Ok(ast::Expr::unknown(ast::Unknown::new_with_type(name, ty))),
-                None => Ok(ast::Expr::unknown(ast::Unknown::new_untyped(name))),
-            }
-        } else {
-            match target_type {
-                Type::Bool => {
-                    if max_depth == 0 || u.len() < 10 {
-                        self.generate_expr_for_type_structurally_recursive(target_type, u)
-                    } else {
-                        gen!(u,
+        match target_type {
+            Type::Bool => {
+                if max_depth == 0 || u.len() < 10 {
+                    self.generate_expr_for_type_structurally_recursive(target_type, u)
+                } else {
+                    gen!(u,
                         // bool literal
                         2 => Ok(ast::Expr::val(u.arbitrary::<bool>()?)),
                         // == expression, where types on both sides match
@@ -596,13 +589,13 @@ impl ExprGenerator<'_> {
                         1 => self.generate_get_record_attr_for_type(&Type::Bool, max_depth, u),
                         // getting an entity tag with type bool
                         1 => self.generate_get_tag_for_type(&Type::Bool, max_depth, u))
-                    }
                 }
-                Type::Long => {
-                    if max_depth == 0 || u.len() < 10 {
-                        self.generate_expr_for_type_structurally_recursive(target_type, u)
-                    } else {
-                        gen!(u,
+            }
+            Type::Long => {
+                if max_depth == 0 || u.len() < 10 {
+                    self.generate_expr_for_type_structurally_recursive(target_type, u)
+                } else {
+                    gen!(u,
                         // int literal. weighted highly because all the other choices
                         // are recursive, and we don't want a scenario where we have,
                         // say, a 90% chance to recurse every time
@@ -664,13 +657,13 @@ impl ExprGenerator<'_> {
                         4 => self.generate_get_record_attr_for_type(&Type::Long, max_depth, u),
                         // getting an entity tag with type long
                         3 => self.generate_get_tag_for_type(&Type::Long, max_depth, u))
-                    }
                 }
-                Type::String => {
-                    if max_depth == 0 || u.len() < 10 {
-                        self.generate_expr_for_type_structurally_recursive(target_type, u)
-                    } else {
-                        gen!(u,
+            }
+            Type::String => {
+                if max_depth == 0 || u.len() < 10 {
+                    self.generate_expr_for_type_structurally_recursive(target_type, u)
+                } else {
+                    gen!(u,
                         // string literal. weighted highly because all the other choices
                         // are recursive, and we don't want a scenario where we have, say,
                         // a 90% chance to recurse every time
@@ -687,13 +680,13 @@ impl ExprGenerator<'_> {
                         4 => self.generate_get_record_attr_for_type(&Type::String, max_depth, u),
                         // getting an entity tag with type string
                         3 => self.generate_get_tag_for_type(&Type::String, max_depth, u))
-                    }
                 }
-                Type::Set(target_element_ty) => {
-                    if max_depth == 0 || u.len() < 10 {
-                        self.generate_expr_for_type_structurally_recursive(target_type, u)
-                    } else {
-                        gen!(u,
+            }
+            Type::Set(target_element_ty) => {
+                if max_depth == 0 || u.len() < 10 {
+                    self.generate_expr_for_type_structurally_recursive(target_type, u)
+                } else {
+                    gen!(u,
                         // set literal
                         6 => {
                             let mut l = Vec::new();
@@ -721,13 +714,13 @@ impl ExprGenerator<'_> {
                         3 => self.generate_get_record_attr_for_type(target_type, max_depth, u),
                         // getting an entity tag with the appropriate set type
                         3 => self.generate_get_tag_for_type(target_type, max_depth, u))
-                    }
                 }
-                Type::Record(m) => {
-                    if max_depth == 0 || u.len() < 10 {
-                        self.generate_expr_for_type_structurally_recursive(target_type, u)
-                    } else {
-                        gen!(u,
+            }
+            Type::Record(m) => {
+                if max_depth == 0 || u.len() < 10 {
+                    self.generate_expr_for_type_structurally_recursive(target_type, u)
+                } else {
+                    gen!(u,
                         // record literal
                         2 => {
                             let mut r = IndexMap::new();
@@ -750,14 +743,14 @@ impl ExprGenerator<'_> {
                         3 => self.generate_get_tag_for_type(target_type, max_depth, u),
                         // `context`
                         1 => Ok(ast::Expr::var(ast::Var::Context)))
-                    }
                 }
-                Type::Entity(ety) => {
-                    if max_depth == 0 || u.len() < 10 {
-                        // no recursion allowed, so, just do `principal`, `action`, or `resource`
-                        self.generate_expr_for_type_structurally_recursive(target_type, u)
-                    } else {
-                        gen!(u,
+            }
+            Type::Entity(ety) => {
+                if max_depth == 0 || u.len() < 10 {
+                    // no recursion allowed, so, just do `principal`, `action`, or `resource`
+                    self.generate_expr_for_type_structurally_recursive(target_type, u)
+                } else {
+                    gen!(u,
                         // UID literal, that exists
                         11 => Ok(ast::Expr::val(self.arbitrary_uid_with_type(ety, u)?)),
                         // UID literal, that doesn't exist
@@ -778,13 +771,13 @@ impl ExprGenerator<'_> {
                         5 => self.generate_get_record_attr_for_type(target_type, max_depth, u),
                         // getting an entity tag with type entity
                         5 => self.generate_get_tag_for_type(target_type, max_depth, u))
-                    }
                 }
-                Type::IPAddr | Type::Decimal | Type::DateTime | Type::Duration => {
-                    if max_depth == 0 || u.len() < 10 {
-                        self.generate_expr_for_type_structurally_recursive(target_type, u)
-                    } else {
-                        gen!(u,
+            }
+            Type::IPAddr | Type::Decimal | Type::DateTime | Type::Duration => {
+                if max_depth == 0 || u.len() < 10 {
+                    self.generate_expr_for_type_structurally_recursive(target_type, u)
+                } else {
+                    gen!(u,
                         // if-then-else expression, where both arms are extension types
                         2 => self.generate_ite_for_type(target_type, max_depth, u),
                         // extension function that returns an extension type
@@ -795,7 +788,6 @@ impl ExprGenerator<'_> {
                         2 => self.generate_get_record_attr_for_type(target_type, max_depth, u),
                         // getting an entity tag with extension type
                         5 => self.generate_get_tag_for_type(target_type, max_depth, u))
-                    }
                 }
             }
         }
@@ -983,7 +975,12 @@ impl ExprGenerator<'_> {
             .iter()
             .map(|param_ty| self.generate_expr_for_type(param_ty, max_depth, u))
             .collect::<Result<_>>()?;
-        if self.settings.enable_arbitrary_func_call && u.ratio::<u8>(1, 20)? {
+        // For a variadic function the extra arguments are well-typed, so generate
+        // them unconditionally. For any other function they are a deliberate arity
+        // error, so generate them only rarely and only when that is enabled.
+        let extra_args = func.is_variadic
+            || (self.settings.enable_arbitrary_func_call && u.ratio::<u8>(1, 20)?);
+        if extra_args {
             let last_param_ty = func
                 .parameter_types
                 .last()
@@ -1381,19 +1378,6 @@ impl ExprGenerator<'_> {
             Hierarchy::arbitrary_uid_with_type_size_hint(depth),
         )
     }
-
-    /// Decide if we should fill the current AST node w/ an unknown
-    /// We want the chance of generating an unknown to go up the lower in the
-    /// AST we are.
-    fn should_generate_unknown(&self, max_depth: usize, u: &mut Unstructured<'_>) -> Result<bool> {
-        if self.settings.enable_unknowns {
-            let chance = self.settings.max_depth - max_depth;
-            let choice = u.int_in_range::<usize>(0..=self.settings.max_depth)?;
-            Ok(choice <= chance)
-        } else {
-            Ok(false)
-        }
-    }
 }
 
 /// internal helper function, get a [`abac::Type`] representing a Record
@@ -1406,4 +1390,114 @@ fn record_type_with_attr(attr_name: SmolStr, attr_type: Type) -> Type {
             required: true,
         },
     )]))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::schema::Schema;
+    use cedar_policy_core::ast::ExprKind;
+    use cedar_policy_core::validator::{json_schema, RawName};
+    use rand::{rngs::StdRng, Rng, SeedableRng};
+
+    // Arbitrary function calls deliberately produce wrong arities, which would
+    // defeat the arity checks below.
+    const TEST_SETTINGS: ABACSettings = ABACSettings {
+        max_depth: 3,
+        max_width: 3,
+        enable_arbitrary_func_call: false,
+        ..ABACSettings::type_directed()
+    };
+
+    const SCHEMA_STR: &str = r#"
+    {
+        "": {
+            "entityTypes": { "User": {} },
+            "actions": {
+                "read": {
+                    "appliesTo": {
+                        "principalTypes": ["User"],
+                        "resourceTypes": ["User"]
+                    }
+                }
+            }
+        }
+    }"#;
+
+    /// Arities of every `isInRange` call the type-directed generator produces
+    /// when asked for boolean expressions.
+    #[allow(deprecated)]
+    fn generated_is_in_range_arities() -> Vec<usize> {
+        let fragment = json_schema::Fragment::<RawName>::from_json_file(SCHEMA_STR.as_bytes())
+            .expect("schema str should be valid");
+        let mut rng = StdRng::seed_from_u64(1234);
+        let mut schema_bytes = [0; 4096];
+        rng.fill_bytes(&mut schema_bytes);
+        // Generate the schema from its own bytes: it consumes most of a buffer,
+        // leaving too few for expression generation to be interesting.
+        let schema = Schema::from_raw_schemafrag(
+            fragment,
+            TEST_SETTINGS,
+            &mut Unstructured::new(&schema_bytes),
+        )
+        .expect("failed to generate schema");
+        let exprgenerator = schema.exprgenerator(None);
+        let mut arities = Vec::new();
+        for _ in 0..200 {
+            let mut bytes = [0; 4096];
+            rng.fill_bytes(&mut bytes);
+            let mut u = Unstructured::new(&bytes);
+            while !u.is_empty() {
+                let remaining = u.len();
+                let Ok(expr) = exprgenerator.generate_expr_for_type(
+                    &Type::bool(),
+                    TEST_SETTINGS.max_depth,
+                    &mut u,
+                ) else {
+                    // Failed attempts (e.g., no attribute to choose) are common;
+                    // retry with the remaining bytes as long as we're making progress.
+                    if u.len() == remaining {
+                        break;
+                    }
+                    continue;
+                };
+                arities.extend(expr.subexpressions().filter_map(|e| match e.expr_kind() {
+                    ExprKind::ExtensionFunctionApp { fn_name, args }
+                        if fn_name.basename_as_ref().as_ref() == "isInRange" =>
+                    {
+                        Some(args.len())
+                    }
+                    _ => None,
+                }));
+            }
+        }
+        arities
+    }
+
+    #[test]
+    fn is_in_range_arity() {
+        let arities = generated_is_in_range_arities();
+        assert!(
+            !arities.is_empty(),
+            "generator never produced an isInRange call, so this test proves nothing"
+        );
+        assert!(
+            arities.iter().all(|arity| *arity >= 2),
+            "isInRange needs a target plus at least one range, got arities {arities:?}"
+        );
+        if cfg!(feature = "variadic-is-in-range") {
+            assert!(
+                arities.iter().any(|arity| *arity > 2),
+                "with the variadic feature on the generator should exercise more than one \
+                 range, but every generated call had arity 2 ({} calls)",
+                arities.len()
+            );
+        } else {
+            assert!(
+                arities.iter().all(|arity| *arity == 2),
+                "with the variadic feature off isInRange takes exactly two arguments, got \
+                 arities {arities:?}"
+            );
+        }
+    }
 }

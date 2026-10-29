@@ -131,6 +131,12 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
       .ok { data, duration }
   toString (Lean.toJson result)
 
+/-- Require a decoded partial schema to be complete. -/
+private def asCompleteSchema (ps : PartialSchema) : Except String Cedar.Validation.Schema :=
+  match ps.asSchema? with
+  | some schema => .ok schema
+  | none => .error "schema declares entity types or actions `external` (RFC 116), but a complete schema is required here"
+
 /--
   `req`: binary protobuf for an `EntityValidationRequest`
 
@@ -141,9 +147,10 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
     match (@Message.interpret? EntityValidationRequest) req with
     | .error e => .error s!"validateEntitiesDRT: failed to parse input: {e}"
     | .ok v => do
-        let actionEntities := (v.schema.acts.mapOnValues actionSchemaEntryToEntityData)
+        let schema ← asCompleteSchema v.schema
+        let actionEntities := (schema.acts.mapOnValues actionSchemaEntryToEntityData)
         let entities := Cedar.Data.Map.make (v.entities.toList ++ actionEntities.toList)
-        let result := runAndTime (λ () => Cedar.Validation.validateEntities v.schema entities )
+        let result := runAndTime (λ () => Cedar.Validation.validateEntities schema entities )
         .ok (unsafeBaseIO result)
   toString (Lean.toJson result)
 
@@ -157,7 +164,8 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
     match (@Message.interpret? RequestValidationRequest) req with
     | .error e => .error s!"validateRequestDRT: failed to parse input: {e}"
     | .ok v => do
-        let result := runAndTime (λ () => Cedar.Validation.validateRequest v.schema v.request )
+        let schema ← asCompleteSchema v.schema
+        let result := runAndTime (λ () => Cedar.Validation.validateRequest schema v.request )
         .ok (unsafeBaseIO result)
   toString (Lean.toJson result)
 

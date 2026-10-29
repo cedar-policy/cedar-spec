@@ -26,7 +26,6 @@ use cedar_policy_core::ast::{self, EntityType};
 use cedar_policy_core::extensions;
 use indexmap::IndexMap;
 use smol_str::{SmolStr, ToSmolStr};
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::ops::{Deref, DerefMut};
@@ -68,44 +67,6 @@ fn mutate_str(u: &mut Unstructured<'_>, s: &str) -> Result<String> {
         }
     }
     Ok(res.into_iter().collect())
-}
-
-/// Pool of "unknowns"
-#[derive(Debug, Clone, Default)]
-pub struct UnknownPool {
-    unknowns: RefCell<IndexMap<String, (Type, ast::Value)>>,
-}
-
-impl UnknownPool {
-    /// Given the name of an unknown, get its `Type`, or `None` if it's not in
-    /// the pool
-    pub fn get_type(&self, unk: impl AsRef<str>) -> Option<Type> {
-        self.unknowns
-            .borrow()
-            .get(unk.as_ref())
-            .map(|(t, _)| t)
-            .cloned()
-    }
-
-    /// Iterate over the unknowns in the pool, getting the name of the unknown
-    /// and its `Type`
-    pub fn unknowns(self) -> impl Iterator<Item = (String, Type)> {
-        self.unknowns.take().into_iter().map(|(k, (t, _))| (k, t))
-    }
-
-    /// Iterate over the unknowns in the pool, getting the name of the unknown
-    /// and its `Value`
-    pub fn mapping(self) -> impl Iterator<Item = (String, ast::Value)> {
-        self.unknowns.take().into_iter().map(|(k, (_, v))| (k, v))
-    }
-
-    /// Create a new unknown with the given `Type` and `Value`. Returns the new
-    /// name as a `String`
-    pub fn alloc(&self, t: Type, v: ast::Value) -> String {
-        let this = format!("{}", self.unknowns.borrow().len());
-        self.unknowns.borrow_mut().insert(this.clone(), (t, v));
-        this
-    }
 }
 
 /// Pool of integer and string constants
@@ -382,8 +343,13 @@ pub struct AvailableExtensionFunction {
     /// All constructors must have return types that are extension values.
     pub is_constructor: bool,
     /// Parameter types expected by the extension function. The length of this
-    /// list indicates the function arity.
+    /// list indicates the function arity, or the minimum arity if
+    /// `is_variadic`.
     pub parameter_types: Vec<Type>,
+    /// Whether the function also accepts additional arguments of its last
+    /// parameter type. Mirrors
+    /// `cedar_policy_core::ast::ExtensionFunction::is_variadic`.
+    pub is_variadic: bool,
     /// Return type of the extension function
     pub return_ty: Type,
 }
@@ -413,18 +379,21 @@ impl AvailableExtensionFunctions {
                 name: Name::parse_unqualified_name("ip").expect("should be a valid identifier"),
                 is_constructor: true,
                 parameter_types: vec![Type::string()],
+                is_variadic: false,
                 return_ty: Type::ipaddr(),
             },
             AvailableExtensionFunction {
                 name: Name::parse_unqualified_name("isIpv4").expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::ipaddr()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
                 name: Name::parse_unqualified_name("isIpv6").expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::ipaddr()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -432,6 +401,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::ipaddr()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -439,6 +409,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::ipaddr()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -446,6 +417,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::ipaddr(), Type::ipaddr()],
+                is_variadic: cfg!(feature = "variadic-is-in-range"),
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -453,6 +425,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: true,
                 parameter_types: vec![Type::string()],
+                is_variadic: false,
                 return_ty: Type::decimal(),
             },
             AvailableExtensionFunction {
@@ -460,6 +433,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::decimal(), Type::decimal()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -467,6 +441,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::decimal(), Type::decimal()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -474,6 +449,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::decimal(), Type::decimal()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -481,6 +457,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::decimal(), Type::decimal()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -488,12 +465,14 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: true,
                 parameter_types: vec![Type::string()],
+                is_variadic: false,
                 return_ty: Type::datetime(),
             },
             AvailableExtensionFunction {
                 name: Name::parse_unqualified_name("offset").expect("should be a valid identifier"),
                 is_constructor: true,
                 parameter_types: vec![Type::datetime(), Type::duration()],
+                is_variadic: false,
                 return_ty: Type::datetime(),
             },
             AvailableExtensionFunction {
@@ -501,18 +480,21 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::datetime(), Type::datetime()],
+                is_variadic: false,
                 return_ty: Type::duration(),
             },
             AvailableExtensionFunction {
                 name: Name::parse_unqualified_name("toDate").expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::datetime()],
+                is_variadic: false,
                 return_ty: Type::datetime(),
             },
             AvailableExtensionFunction {
                 name: Name::parse_unqualified_name("toTime").expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::datetime()],
+                is_variadic: false,
                 return_ty: Type::duration(),
             },
             AvailableExtensionFunction {
@@ -520,6 +502,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: true,
                 parameter_types: vec![Type::string()],
+                is_variadic: false,
                 return_ty: Type::duration(),
             },
             AvailableExtensionFunction {
@@ -527,6 +510,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::duration()],
+                is_variadic: false,
                 return_ty: Type::long(),
             },
             AvailableExtensionFunction {
@@ -534,6 +518,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::duration()],
+                is_variadic: false,
                 return_ty: Type::long(),
             },
             AvailableExtensionFunction {
@@ -541,6 +526,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::duration()],
+                is_variadic: false,
                 return_ty: Type::long(),
             },
             AvailableExtensionFunction {
@@ -548,12 +534,14 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::duration()],
+                is_variadic: false,
                 return_ty: Type::long(),
             },
             AvailableExtensionFunction {
                 name: Name::parse_unqualified_name("toDays").expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::duration()],
+                is_variadic: false,
                 return_ty: Type::long(),
             },
         ];

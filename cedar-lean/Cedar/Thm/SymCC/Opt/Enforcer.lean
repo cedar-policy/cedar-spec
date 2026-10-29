@@ -37,7 +37,7 @@ theorem enforce_eq_map_union {xs : List Expr} {εnv : SymEnv} :
     ((footprints xs εnv).product (footprints xs εnv)).map (fun (t₁, t₂) => transitivity t₁ t₂ εnv.entities)
 := by
   simp only [enforce]
-  rw [Data.Set.eq_means_eqv (Data.Set.make_wf _) (Data.Set.union_wf _ _)]
+  rw [Data.Set.eq_means_eqv (Data.Set.make_wf _) (Data.Set.union_wf (Data.Set.map_wf _ _) (Data.Set.map_wf _ _))]
   simp only [List.Equiv, List.subset_def, Data.Set.mem_elts_iff_mem_set, Data.Set.mem_make,
     Data.Set.mem_union, List.mem_union_iff, List.mem_flatMap, List.mem_map, Data.Set.mem_map]
   constructor <;> intro a h

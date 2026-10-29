@@ -14,10 +14,15 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Thm.Tactics
-import Cedar.Thm.Data.List
-import Cedar.Thm.Data.Map
+module
+
+public import Cedar.Spec
+public import Cedar.Thm.Tactics
+public import Cedar.Thm.Data.List
+public import Cedar.Thm.Data.Map
+import Batteries.Data.Except
+
+@[expose] public section
 
 /-!
 This file contains useful lemmas about the `Evaluator` functions.
@@ -267,5 +272,28 @@ theorem record_value_contains_evaluated_attrs {rxs : List (Attr × Expr)} {rvs :
   simp only at he₃ ; replace ⟨_, he₃⟩ := he₃ ; subst a'
   exists x
   simp [Map.find?, Map.toList_make_eq_canonicalize, List.mem_of_sortedBy_implies_find? he₂ (List.canonicalize_sortedBy _ _), he₃]
+
+theorem mapM'_asEntityUID_eq_entities {vs : List Value} {euids : List EntityUID}
+  (h₁ : List.mapM' Value.asEntityUID vs = Except.ok euids) :
+  vs = List.map (Value.prim ∘ Prim.entityUID) euids
+:= by
+  cases vs
+  case nil =>
+    simp only [List.mapM', pure, Except.pure, Except.ok.injEq, List.nil_eq] at h₁
+    subst h₁
+    simp only [List.map_nil]
+  case cons hd tl =>
+    simp only [List.mapM', bind_pure_comp] at h₁
+    cases h₂ : Value.asEntityUID hd <;> simp [h₂] at h₁
+    cases h₃ : List.mapM' Value.asEntityUID tl <;> simp [h₃] at h₁
+    rename_i vhd vtl
+    subst h₁
+    simp only [List.map, Function.comp_apply, List.cons.injEq]
+    constructor
+    · simp only [Value.asEntityUID] at h₂
+      split at h₂ <;> simp at h₂
+      rw [eq_comm] at h₂ ; subst h₂
+      rfl
+    · exact mapM'_asEntityUID_eq_entities h₃
 
 end Cedar.Thm

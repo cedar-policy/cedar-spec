@@ -24,6 +24,7 @@ use cedar_policy::{
     ValidationError, ValidationMode, ValidationResult, Validator, eval_expression, ffi,
 };
 
+use itertools::Itertools;
 use libfuzzer_sys::arbitrary::{self, Unstructured};
 use log::info;
 use miette::miette;
@@ -329,7 +330,8 @@ pub fn drop_some_entities(
     let should_drop: bool = u.arbitrary()?;
     if should_drop {
         let mut set: Vec<_> = vec![];
-        for entity in entities.iter() {
+        // sort entities so decisions for what entity to drop happen in a consistent order.
+        for entity in entities.iter().sorted_by_key(|e| e.uid()) {
             match u.int_in_range(0..=9)? {
                 0 => (),
                 _ => {

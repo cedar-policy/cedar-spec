@@ -140,6 +140,12 @@ unsafe def runFfiM {α : Type} [Lean.ToJson α] (m : FfiM α) : String :=
       | _, _ => false
     )
 
+/-- Require a decoded partial schema to be complete. -/
+private def asCompleteSchema (ps : PartialSchema) : Except String Schema :=
+  match ps.asSchema? with
+  | some schema => .ok schema
+  | none => .error "schema declares entity types or actions `external` (RFC 116), but a complete schema is required here"
+
 /--
   `req`: binary protobuf for an `EntityValidationRequest`
 
@@ -148,9 +154,10 @@ unsafe def runFfiM {α : Type} [Lean.ToJson α] (m : FfiM α) : String :=
 @[export validateEntities] unsafe def validateEntitiesFFI (req : ByteArray) : String :=
   runFfiM do
     let v ← (@Proto.Message.interpret? Proto.EntityValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
-    let actionEntities := (v.schema.acts.mapOnValues actionSchemaEntryToEntityData)
+    let schema ← asCompleteSchema v.schema
+    let actionEntities := schema.acts.mapOnValues actionSchemaEntryToEntityData
     let entities := Data.Map.make (v.entities.toList ++ actionEntities.toList)
-    runAndTime (λ () => validateEntities v.schema entities)
+    runAndTime (λ () => validateEntities schema entities)
 
 /--
   `req`: binary protobuf for a `RequestValidationRequest`
@@ -160,7 +167,30 @@ unsafe def runFfiM {α : Type} [Lean.ToJson α] (m : FfiM α) : String :=
 @[export validateRequest] unsafe def validateRequestFFI (req : ByteArray) : String :=
   runFfiM do
     let v ← (@Proto.Message.interpret? Proto.RequestValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
-    runAndTime (λ () => validateRequest v.schema v.request)
+    let schema ← asCompleteSchema v.schema
+    runAndTime (λ () => validateRequest schema v.request)
+
+/-- Validate entities against a partial schema. -/
+@[export validateEntitiesPartialSchema] unsafe def validateEntitiesPartialSchemaFFI (req : ByteArray) : String :=
+  runFfiM do
+    let v ← (@Proto.Message.interpret? Proto.EntityValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
+    -- Materialize defined and external actions.
+    let actionEntities := v.schema.acts.mapOnValues
+      (λ entry => actionSchemaEntryToEntityData entry.validationView)
+    let entities := Data.Map.make (v.entities.toList ++ actionEntities.toList)
+    runAndTime (λ () => v.schema.validateEntities entities)
+
+/-- Validate a request against a partial schema. -/
+@[export validateRequestPartialSchema] unsafe def validateRequestPartialSchemaFFI (req : ByteArray) : String :=
+  runFfiM do
+    let v ← (@Proto.Message.interpret? Proto.RequestValidationRequest) req |>.mapError (s!"failed to parse input: {·}")
+    runAndTime (λ () => v.schema.validateRequest v.request)
+
+/-- Compare partial-schema linking with the request's expected result. -/
+@[export linkPartialSchemas] unsafe def linkPartialSchemasFFI (req : ByteArray) : String :=
+  runFfiM do
+    let v ← (@Proto.Message.interpret? Proto.PartialSchemaLinkRequest) req |>.mapError (s!"failed to parse input: {·}")
+    runAndTime (λ () => checkLink v.first v.second v.linked)
 
 ------------------------------------ Cedar Symbolic Compiler ------------------------------------
 

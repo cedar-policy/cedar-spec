@@ -272,14 +272,14 @@ public instance IPNet.decLt (d₁ d₂ : IPNet) : Decidable (d₁ < d₂) :=
   if h : IPNet.lt d₁ d₂ then isTrue h else isFalse h
 
 -- as of this writing, only handles nats up to 0xffff
-private def toHex (n : Nat) : String :=
+public def toHex (n : Nat) : String :=
   let a0 := hexDigitRepr ((n % 0x10000) / 0x1000)
   let a1 := hexDigitRepr ((n % 0x1000) / 0x100)
   let a2 := hexDigitRepr ((n % 0x100) / 0x10)
   let a3 := hexDigitRepr ((n % 0x10) / 0x1)
   s!"{a0}{a1}{a2}{a3}"
 
-instance : ToString IPNet where
+public instance : ToString IPNet where
   toString : IPNet → String
   | .V4 ⟨addr, pre⟩ =>
     let v  := addr.toNat

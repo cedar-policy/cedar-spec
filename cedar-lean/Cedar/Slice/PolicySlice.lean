@@ -14,7 +14,11 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
+module
+
+public import Cedar.Spec
+
+@[expose] public section
 
 /-!
 This file defines a simple policy slicing algorithm that is based
