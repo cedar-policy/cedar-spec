@@ -66,11 +66,12 @@ def runAndTimeIO (f : IO α) : IO (Timed α) := do
     duration := stop - start
   }
 
+-- Formats output JSON with `.compress`. `toString` does pretty printing for JSON
 unsafe def runFfiM {α : Type} [Lean.ToJson α] (m : FfiM α) : String :=
   match unsafeIO m with
-  | .error s => toString (Lean.toJson ((.error s!"IO error: {s}") : Except String α))
-  | .ok (.error s) => toString (Lean.toJson ((.error s) : Except String α))
-  | .ok (.ok r) => toString (Lean.toJson (.ok r : Except String α))
+  | .error s => (Lean.toJson ((.error s!"IO error: {s}") : Except String α)).compress
+  | .ok (.error s) => (Lean.toJson ((.error s) : Except String α)).compress
+  | .ok (.ok r) => (Lean.toJson (.ok r : Except String α)).compress
 
 @[export loadProtobufSchema] unsafe def loadProtobufSchema (req: ByteArray) : Except String Schema :=
   ((@Proto.Message.interpret? Proto.Schema) req |>.mapError (s!"failed to parse input: {·}")) >>= (·.toSchema)
