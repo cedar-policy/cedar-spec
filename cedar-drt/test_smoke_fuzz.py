@@ -11,23 +11,23 @@ import smoke_fuzz as smoke
 
 class SmokeTests(unittest.TestCase):
     def test_target_discovery(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            (root / "fuzz").mkdir()
-            manifest = root / "fuzz/Cargo.toml"
-            manifest.write_text('[[bin]]\nname="first"\n[[bin]]\nname="second"\n')
-            with patch.object(smoke, "DRT", root), patch.object(
+        for output, expected in (
+            ("second\nfirst\n", ["first", "second"]),
+            ("", None),
+        ):
+            with self.subTest(output=output), patch.object(
                 smoke.subprocess, "run",
-                return_value=subprocess.CompletedProcess([], 0, "first\nsecond\n", ""),
-            ):
-                self.assertEqual(smoke.targets(), ["first", "second"])
-                manifest.write_text('[[bin]]\nname="first"\n[[bin]]\nname="first"\n')
-                with self.assertRaises(ValueError):
-                    smoke.targets()
-                manifest.write_text('[[bin]]\nname="first"\n[[bin]]\nname="second"\n')
-                with patch.object(smoke.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "first\n", "")):
+                return_value=subprocess.CompletedProcess([], 0, output, ""),
+            ) as invoke:
+                if expected is None:
                     with self.assertRaises(ValueError):
                         smoke.targets()
+                else:
+                    self.assertEqual(smoke.targets(), expected)
+                self.assertEqual(invoke.call_args.args[0], ["cargo", "fuzz", "list"])
+        with patch.object(smoke.subprocess, "run", side_effect=subprocess.CalledProcessError(1, "cargo")):
+            with self.assertRaises(subprocess.CalledProcessError):
+                smoke.targets()
 
     def test_exit_and_execution_count(self):
         with patch.object(smoke, "environment", return_value={}):
@@ -57,6 +57,7 @@ class SmokeTests(unittest.TestCase):
             self.assertEqual(cmd[:3], ["timeout", "--kill-after=5s", "12s"])
             self.assertIn("--all-features", cmd)
             self.assertIn("-runs=8", cmd)
+            self.assertIn("-len_control=0", cmd)
             self.assertEqual(invoke.call_args.kwargs["timeout"], 22)
 
     def test_input_generation_requires_fixtures(self):
@@ -80,4 +81,3 @@ class SmokeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

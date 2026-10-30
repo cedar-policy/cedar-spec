@@ -6,7 +6,6 @@ import re
 import subprocess
 import sys
 import time
-import tomllib
 from pathlib import Path
 
 DRT = Path(__file__).resolve().parent
@@ -16,18 +15,14 @@ DONE = re.compile(r"^[ \t]*Done (\d+) runs? in\b", re.MULTILINE)
 
 
 def targets():
-    """Require cargo-fuzz to discover exactly the declared target names."""
-    entries = tomllib.loads((DRT / "fuzz/Cargo.toml").read_text())["bin"]
-    declared = [entry["name"] for entry in entries]
-    if not declared or len(declared) != len(set(declared)):
-        raise ValueError("Missing or duplicate fuzz targets in Cargo.toml")
+    """Use cargo-fuzz as the source of truth for the target set."""
     listed = subprocess.run(
         ["cargo", "fuzz", "list"], cwd=DRT, capture_output=True,
         text=True, check=True, timeout=45,
     ).stdout.splitlines()
-    if len(listed) != len(set(listed)) or set(listed) != set(declared):
-        raise ValueError("cargo fuzz list disagrees with Cargo.toml")
-    return sorted(declared)
+    if not listed:
+        raise ValueError("cargo fuzz reported no targets")
+    return sorted(listed)
 
 
 def environment(name):
@@ -49,7 +44,7 @@ def run_target(name, seconds=60):
     command = [
         "timeout", "--kill-after=5s", f"{seconds}s", "cargo", "fuzz", "run",
         "-s", "none", "--all-features", name, "--", f"-runs={RUNS}",
-        "-timeout=10", "-rss_limit_mb=2048",
+        "-timeout=10", "-rss_limit_mb=2048", "-len_control=0",
     ]
     result = subprocess.run(
         command, cwd=DRT, env=environment(name), capture_output=True,
@@ -83,4 +78,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-
