@@ -19,3 +19,5 @@
 import Cedar.Thm.External.PartialSchema
 import Cedar.Thm.External.Linker
 import Cedar.Thm.External.PartialValidation
+import Cedar.Thm.External.DecomposeEval
+import Cedar.Thm.External.Decompose
