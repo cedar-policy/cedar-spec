@@ -288,7 +288,14 @@ theorem call_safe {xfn : ExtFun} {vs : List Value} {v : Value} (h : call xfn vs 
        split at h
        · simp only [Except.ok.injEq] at h; subst h; exact .ext _
        · simp at h)
-    | simp at h
+    | (simp at h; done)
+    | -- A function that decodes its arguments in a `do` block before
+      -- returning, such as the variadic `isInRange`, returns a boolean.
+      (simp only [bind, Except.bind] at h
+       repeat' split at h
+       all_goals first
+         | (simp only [Except.ok.injEq] at h; subst h; exact .bool _)
+         | (simp at h; done))
 
 ----- Literals of subexpressions -----
 
