@@ -62,18 +62,26 @@ private def Policy.permit (x : Expr) : Policy := {
   condition      := [⟨.when, x⟩]
 }
 
+/-- Pre-compiles the schema of `Γ`, for use with the `CompiledPolicy(Set).compile` entry points. -/
+public def compileTypeEnv (Γ : Validation.TypeEnv) : CompiledSchema × Validation.RequestType :=
+  (CompiledSchema.compile Γ.schema, Γ.reqty)
+
 private def CompiledPolicy.permit (x : Expr) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicy :=
-  CompiledPolicy.compile (Policy.permit x) Γ
+  let (cs, reqty) := compileTypeEnv Γ
+  CompiledPolicy.compile (Policy.permit x) cs reqty
 
 private def CompiledPolicySet.permit (x : Expr) (Γ : Validation.TypeEnv) : Except CompiledPolicyError CompiledPolicySet :=
-  CompiledPolicySet.compile [Policy.permit x] Γ
+  let (cs, reqty) := compileTypeEnv Γ
+  CompiledPolicySet.compile [Policy.permit x] cs reqty
 
 public def testFailsCompilePolicy (desc : String) (x : Expr) (Γ : Validation.TypeEnv) : TestCase SolverM :=
-  let compileResult := CompiledPolicy.compile (Policy.permit x) Γ
+  let (cs, reqty) := compileTypeEnv Γ
+  let compileResult := CompiledPolicy.compile (Policy.permit x) cs reqty
   test desc ⟨λ _ => checkMatches (compileResult matches .error _) compileResult⟩
 
 public def testFailsCompilePolicies (desc : String) (x : Expr) (Γ : Validation.TypeEnv) : TestCase SolverM :=
-  let compileResult := CompiledPolicySet.compile [Policy.permit x] Γ
+  let (cs, reqty) := compileTypeEnv Γ
+  let compileResult := CompiledPolicySet.compile [Policy.permit x] cs reqty
   test desc ⟨λ _ => checkMatches (compileResult matches .error _) compileResult⟩
 
 /-- Returns two `TestCase`s, one which tests unoptimized SymCC, the other which tests SymCCOpt -/

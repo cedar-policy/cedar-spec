@@ -30,8 +30,8 @@ open Cedar.Spec Cedar.SymCC
 private theorem compiledPolicies_footprint_mapUnion {cpss : List CompiledPolicies} {εnv : SymEnv}
   (hεnv : ∀ cps ∈ cpss, cps.εnv = εnv)
   (hcompile : ∀ cps ∈ cpss, match cps with
-    | .policy cp => ∃ p Γ, CompiledPolicy.compile p Γ = .ok cp
-    | .pset cpset => ∃ ps Γ, CompiledPolicySet.compile ps Γ = .ok cpset) :
+    | .policy cp => ∃ p s reqty, CompiledPolicy.compile p s reqty = .ok cp
+    | .pset cpset => ∃ ps s reqty, CompiledPolicySet.compile ps s reqty = .ok cpset) :
   cpss.mapUnion CompiledPolicies.footprint =
     (cpss.flatMap CompiledPolicies.allPolicies).mapUnion ((footprint · εnv) ∘ Policy.toExpr)
 := by
@@ -45,12 +45,12 @@ private theorem compiledPolicies_footprint_mapUnion {cpss : List CompiledPolicie
     replace hcompile := hcompile.left
     cases cps with
     | policy cp =>
-      replace ⟨_, _, hcompile⟩ := hcompile
+      replace ⟨_, _, _, hcompile⟩ := hcompile
       simp only [CompiledPolicies.εnv] at hεnv
       simp [CompiledPolicies.footprint, CompiledPolicies.allPolicies,
         cp_compile_produces_the_right_footprint hcompile, hεnv]
     | pset cpset =>
-      replace ⟨_, _, hcompile⟩ := hcompile
+      replace ⟨_, _, _, hcompile⟩ := hcompile
       simp only [CompiledPolicies.εnv] at hεnv
       simp [CompiledPolicies.footprint, CompiledPolicies.allPolicies,
         cpset_compile_produces_the_right_footprint hcompile, footprints, hεnv]
@@ -60,8 +60,8 @@ theorem extractOpt?_eqv_extract? {cpsets : List CompiledPolicies} {I : Interpret
   (∀ cpset ∈ cpsets, cpset.εnv = εnv) →
   -- the `CompiledPolicies` at least have to be constructed with `CompiledPolicy.compile` or `CompiledPolicySet.compile`, even though we don't care about the original uncompiled policies
   (∀ cpset ∈ cpsets, match cpset with
-    | .policy cp => ∃ p Γ, CompiledPolicy.compile p Γ = .ok cp
-    | .pset cpset => ∃ ps Γ, CompiledPolicySet.compile ps Γ = .ok cpset
+    | .policy cp => ∃ p s reqty, CompiledPolicy.compile p s reqty = .ok cp
+    | .pset cpset => ∃ ps s reqty, CompiledPolicySet.compile ps s reqty = .ok cpset
   ) →
   extractOpt? cpsets I = SymEnv.extract? ((cpsets.flatMap CompiledPolicies.allPolicies).map Policy.toExpr) I εnv
 := by
@@ -78,7 +78,7 @@ theorem extractOpt?_eqv_extract? {cpsets : List CompiledPolicies} {I : Interpret
   all_goals {
     subst εnv
     first | rename CompiledPolicy => cp | rename CompiledPolicySet => cps
-    replace ⟨⟨p, Γ, hcompile⟩, hcompile'⟩ := hcompile ; try rename Policies => ps
+    replace ⟨⟨p, s, reqty, hcompile⟩, hcompile'⟩ := hcompile ; try rename Policies => ps
     rw [List.mapUnion_cons]
     · simp only [CompiledPolicies.footprint]
       first
