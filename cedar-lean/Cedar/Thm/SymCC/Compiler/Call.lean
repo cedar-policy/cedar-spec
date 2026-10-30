@@ -133,19 +133,50 @@ private theorem pe_ipaddr_inRange {w : Nat} {c₁ c₂ : Ext.IPAddr.CIDR w} {ran
   · simp only [pe_and_false_left, Bool.false_and]
   · simp only [pe_and_true_left, Bool.true_and]
 
-private theorem pe_ipaddr_isInRange {ip₁ ip₂ : Ext.IPAddr.IPNet} :
-  IPAddr.isInRange (.prim (.ext (Ext.ipaddr ip₁))) (.prim (.ext (Ext.ipaddr ip₂))) =
-  ip₁.inRange ip₂
+private theorem pe_ipaddr_inRangeVs {w : Nat} {c₁ : Ext.IPAddr.CIDR w} {f : Ext.IPAddr.CIDR w → Ext.IPAddr.IPNet}
+  {isIp : Term → Term} {rangeV : Term → Term × Term} {ips : List Ext.IPAddr.IPNet}
+  (htrue : isIp (.prim (.ext (Ext.ipaddr (f c₁)))) = true)
+  (hstep : ∀ ip : Ext.IPAddr.IPNet,
+    Factory.and (isIp (.prim (.ext (Ext.ipaddr ip))))
+      (IPAddr.inRange rangeV (.prim (.ext (Ext.ipaddr (f c₁)))) (.prim (.ext (Ext.ipaddr ip))))
+    = .prim (.bool ((f c₁).inRange ip))) :
+  IPAddr.inRangeVs isIp rangeV (.prim (.ext (Ext.ipaddr (f c₁))))
+    (ips.map (fun ip => (.prim (.ext (Ext.ipaddr ip)) : Term)))
+  = .prim (.bool (ips.any ((f c₁).inRange ·)))
 := by
-  simp [IPAddr.isInRange, Ext.IPAddr.IPNet.inRange, IPAddr.inRangeV]
-  cases ip₁ <;> cases ip₂ <;>
-  simp only [
-    pe_ipaddr_isIpv4_V4, pe_ipaddr_isIpv4_V6,
-    pe_ipaddr_isIpv6_V4, pe_ipaddr_isIpv6_V6,
-    pe_and_false_left, pe_and_false_right, pe_and_true_left,
-    pe_or_false_left, pe_or_false_right]
-  case V4 => exact pe_ipaddr_inRange pe_ipaddr_rangeV4
-  case V6 => exact pe_ipaddr_inRange pe_ipaddr_rangeV6
+  simp only [IPAddr.inRangeVs, htrue, pe_and_true_left]
+  have h := pe_foldl_or (f c₁).inRange (fun ip => (.prim (.ext (Ext.ipaddr ip)) : Term))
+    (fun t₂ => Factory.and (isIp t₂) (IPAddr.inRange rangeV (.prim (.ext (Ext.ipaddr (f c₁)))) t₂))
+    ips hstep false
+  simp only [Bool.false_or] at h
+  exact h
+
+private theorem pe_ipaddr_isInRangeV {ip₁ : Ext.IPAddr.IPNet} {ips : List Ext.IPAddr.IPNet} :
+  IPAddr.isInRangeV (.prim (.ext (Ext.ipaddr ip₁))) (ips.map (fun ip => (.prim (.ext (Ext.ipaddr ip)) : Term))) =
+  .prim (.bool (ips.any (ip₁.inRange ·)))
+:= by
+  simp only [IPAddr.isInRangeV]
+  cases ip₁ with
+  | V4 c₁ =>
+    have h4 := pe_ipaddr_inRangeVs (c₁ := c₁) (f := Ext.IPAddr.IPNet.V4)
+      (isIp := IPAddr.isIpv4) (rangeV := IPAddr.rangeV4) (ips := ips)
+      pe_ipaddr_isIpv4_V4
+      (by intro ip; cases ip with
+          | V4 c => simp only [pe_ipaddr_isIpv4_V4, pe_and_true_left, Ext.IPAddr.IPNet.inRange]
+                    exact pe_ipaddr_inRange pe_ipaddr_rangeV4
+          | V6 c => simp only [pe_ipaddr_isIpv4_V6, pe_and_false_left, Ext.IPAddr.IPNet.inRange])
+    rw [h4]
+    simp only [IPAddr.inRangeVs, pe_ipaddr_isIpv6_V4, pe_and_false_left, pe_or_false_right]
+  | V6 c₁ =>
+    have h6 := pe_ipaddr_inRangeVs (c₁ := c₁) (f := Ext.IPAddr.IPNet.V6)
+      (isIp := IPAddr.isIpv6) (rangeV := IPAddr.rangeV6) (ips := ips)
+      pe_ipaddr_isIpv6_V6
+      (by intro ip; cases ip with
+          | V4 c => simp only [pe_ipaddr_isIpv6_V4, pe_and_false_left, Ext.IPAddr.IPNet.inRange]
+          | V6 c => simp only [pe_ipaddr_isIpv6_V6, pe_and_true_left, Ext.IPAddr.IPNet.inRange]
+                    exact pe_ipaddr_inRange pe_ipaddr_rangeV6)
+    rw [h6]
+    simp only [IPAddr.inRangeVs, pe_ipaddr_isIpv4_V6, pe_and_false_left, pe_or_false_left]
 
 private theorem pe_ipaddr_isInRangeLit {ip : Ext.IPAddr.IPNet}
   {c₄ : Ext.IPAddr.CIDR Ext.IPAddr.V4_WIDTH} {c₆ : Ext.IPAddr.CIDR Ext.IPAddr.V6_WIDTH} :
@@ -484,59 +515,6 @@ private theorem interpret_ipaddr_inRange {εs : SymEntities} {I : Interpretation
   have h₆ := wf_bvule h₂.left.left h₁.left.left h₂.left.right h₁.left.right
   simp only [interpret_and hI h₅.left h₆.left h₅.right h₆.right, interpret_bvule, ← h₃, ←h₄]
 
-private theorem interpret_ipaddr_inRangeV {εs : SymEntities} {I : Interpretation} {w : Nat} {isIp : Term → Term} {rangeV : Term → Term × Term} {t₁ t₂ : Term}
-  (hI : I.WellFormed εs)
-  (hr₁ : WFIPRange εs (rangeV t₁) w)
-  (hr₂ : WFIPRange εs (rangeV t₂) w)
-  (hw₁ : (isIp t₁).WellFormed εs ∧ (isIp t₁).typeOf = .bool)
-  (hw₂ : (isIp t₂).WellFormed εs ∧ (isIp t₂).typeOf = .bool)
-  (hi₁ : (isIp t₁).interpret I = isIp (t₁.interpret I))
-  (hi₂ : (isIp t₂).interpret I = isIp (t₂.interpret I))
-  (hi₃ : isIp (t₁.interpret I) = true → (rangeV t₁).map (Term.interpret I) (Term.interpret I) = rangeV (t₁.interpret I))
-  (hi₄ : isIp (t₂.interpret I) = true → (rangeV t₂).map (Term.interpret I) (Term.interpret I) = rangeV (t₂.interpret I)) :
-  (IPAddr.inRangeV isIp rangeV t₁ t₂).interpret I =
-  IPAddr.inRangeV isIp rangeV (t₁.interpret I) (t₂.interpret I)
-:= by
-  have hw₃ := wf_ipaddr_inRange hr₁ hr₂
-  have hw₄ := wf_and hw₂.left hw₃.left hw₂.right hw₃.right
-  simp only [IPAddr.inRangeV]
-  rw [
-    interpret_and hI hw₁.left hw₄.left hw₁.right hw₄.right,
-    interpret_and hI hw₂.left hw₃.left hw₂.right hw₃.right,
-    hi₁, hi₂]
-  have hlit₁ := interpret_term_wfl hI hw₁.left
-  have hlit₂ := interpret_term_wfl hI hw₂.left
-  rw [hw₁.right] at hlit₁
-  rw [hw₂.right] at hlit₂
-  replace ⟨b₁, hlit₁⟩ := wfl_of_type_bool_is_bool hlit₁.left hlit₁.right
-  replace ⟨b₂, hlit₂⟩ := wfl_of_type_bool_is_bool hlit₂.left hlit₂.right
-  simp only [hi₁, hi₂] at hlit₁ hlit₂
-  cases b₁ <;> cases b₂ <;>
-  simp only [hlit₁, hlit₂, pe_and_false_right, pe_and_false_left, pe_and_true_left]
-  exact interpret_ipaddr_inRange hI hr₁ hr₂ (hi₃ hlit₁) (hi₄ hlit₂)
-
-private theorem interpret_ipaddr_isInRange {εs : SymEntities} {I : Interpretation} {t₁ t₂ : Term}
-  (hI: I.WellFormed εs)
-  (h₁ : t₁.WellFormed εs ∧ t₁.typeOf = .ext .ipAddr)
-  (h₂ : t₂.WellFormed εs ∧ t₂.typeOf = .ext .ipAddr) :
-  (IPAddr.isInRange t₁ t₂).interpret I = IPAddr.isInRange (t₁.interpret I) (t₂.interpret I)
-:= by
-  have h₃ := wf_ipaddr_inRangeV (wf_ipaddr_rangeV4 h₁) (wf_ipaddr_rangeV4 h₂) (wf_ipaddr_isIpv4 h₁) (wf_ipaddr_isIpv4 h₂)
-  have h₄ := wf_ipaddr_inRangeV (wf_ipaddr_rangeV6 h₁) (wf_ipaddr_rangeV6 h₂) (wf_ipaddr_isIpv6 h₁) (wf_ipaddr_isIpv6 h₂)
-  simp only [
-    IPAddr.isInRange,
-    interpret_or hI h₃.left h₄.left h₃.right h₄.right,
-    interpret_ipaddr_inRangeV hI
-      (wf_ipaddr_rangeV4 h₁) (wf_ipaddr_rangeV4 h₂)
-      (wf_ipaddr_isIpv4 h₁) (wf_ipaddr_isIpv4 h₂)
-      interpret_ipaddr_isIpv4 interpret_ipaddr_isIpv4
-      (interpret_ipaddr_rangeV4 hI h₁) (interpret_ipaddr_rangeV4 hI h₂),
-    interpret_ipaddr_inRangeV hI
-      (wf_ipaddr_rangeV6 h₁) (wf_ipaddr_rangeV6 h₂)
-      (wf_ipaddr_isIpv6 h₁) (wf_ipaddr_isIpv6 h₂)
-      (interpret_ipaddr_isIpv6 hI h₁) (interpret_ipaddr_isIpv6 hI h₂)
-      (interpret_ipaddr_rangeV6 hI h₁) (interpret_ipaddr_rangeV6 hI h₂)]
-
 private theorem interpret_ipaddr_inRangeLit {εs : SymEntities} {I : Interpretation} {t : Term}
   {cidr₄ : Ext.IPAddr.CIDR Ext.IPAddr.V4_WIDTH} {cidr₆ : Ext.IPAddr.CIDR Ext.IPAddr.V6_WIDTH}
   (hI : I.WellFormed εs)
@@ -858,15 +836,206 @@ private theorem compileCall_interpret_ipaddr_isMulticast {εs : SymEntities} {I 
     IPAddr.isMulticast compileCall_ipAddr_isMulticast_ok_implies
     wf_ipaddr_isMulticast interpret_ipaddr_isMulticast
 
+/--
+Push `interpret` through the `foldl`-of-`or`/`and` range-check accumulator built
+by `IPAddr.inRangeVs`, given that the target `t` is `isIp` (so its range commutes).
+-/
+private theorem interpret_foldl_or_and_inRange {εs : SymEntities} {I : Interpretation} {w : Nat}
+  {isIp : Term → Term} {range : Term → Term × Term} {t : Term}
+  (hI : I.WellFormed εs)
+  (hcomm_t : (range t).map (Term.interpret I) (Term.interpret I) = range (t.interpret I))
+  (hrt : WFIPRange εs (range t) w) :
+  ∀ (ts : List Term) (seed : Term),
+  seed.WellFormed εs → seed.typeOf = .bool →
+  (∀ t₂ ∈ ts, WFIPRange εs (range t₂) w) →
+  (∀ t₂ ∈ ts, (isIp t₂).WellFormed εs ∧ (isIp t₂).typeOf = .bool) →
+  (∀ t₂ ∈ ts, (isIp t₂).interpret I = isIp (t₂.interpret I)) →
+  (∀ t₂ ∈ ts, isIp (t₂.interpret I) = true →
+    (range t₂).map (Term.interpret I) (Term.interpret I) = range (t₂.interpret I)) →
+  (ts.foldl (fun acc t₂ => or acc (and (isIp t₂) (IPAddr.inRange range t t₂))) seed).interpret I =
+  (ts.map (Term.interpret I)).foldl
+    (fun acc t₂ => or acc (and (isIp t₂) (IPAddr.inRange range (t.interpret I) t₂))) (seed.interpret I)
+:= by
+  intro ts
+  induction ts with
+  | nil => intro seed _ _ _ _ _ _; simp only [List.foldl_nil, List.map_nil]
+  | cons t₂ rest ih =>
+    intro seed hsw hst hrs his hisc hisr
+    have hmem : t₂ ∈ t₂ :: rest := by simp
+    have hir := wf_ipaddr_inRange hrt (hrs t₂ hmem)
+    have hand := wf_and (his t₂ hmem).left hir.left (his t₂ hmem).right hir.right
+    have hseed' := wf_or hsw hand.left hst hand.right
+    simp only [List.foldl_cons, List.map_cons]
+    rw [ih (or seed (and (isIp t₂) (IPAddr.inRange range t t₂))) hseed'.left hseed'.right
+        (fun s hs => hrs s (List.mem_cons_of_mem _ hs))
+        (fun s hs => his s (List.mem_cons_of_mem _ hs))
+        (fun s hs => hisc s (List.mem_cons_of_mem _ hs))
+        (fun s hs => hisr s (List.mem_cons_of_mem _ hs))]
+    congr 1
+    rw [interpret_or hI hsw hand.left hst hand.right]
+    congr 1
+    rw [interpret_and hI (his t₂ hmem).left hir.left (his t₂ hmem).right hir.right, hisc t₂ hmem]
+    have hlit := interpret_term_wfl hI (his t₂ hmem).left
+    rw [(his t₂ hmem).right] at hlit
+    replace ⟨b, hb⟩ := wfl_of_type_bool_is_bool hlit.left hlit.right
+    rw [hisc t₂ hmem] at hb
+    cases b <;> simp only [hb, pe_and_false_left, pe_and_true_left]
+    exact interpret_ipaddr_inRange hI hrt (hrs t₂ hmem) hcomm_t (hisr t₂ hmem hb)
+
+/-- Push `interpret` through the variadic `IPAddr.inRangeVs`. -/
+private theorem interpret_ipaddr_inRangeVs {εs : SymEntities} {I : Interpretation} {w : Nat}
+  {isIp : Term → Term} {range : Term → Term × Term} {t : Term} {ts : List Term}
+  (hI : I.WellFormed εs)
+  (hrt : WFIPRange εs (range t) w)
+  (hit : (isIp t).WellFormed εs ∧ (isIp t).typeOf = .bool)
+  (hrs : ∀ t₂ ∈ ts, WFIPRange εs (range t₂) w)
+  (his : ∀ t₂ ∈ ts, (isIp t₂).WellFormed εs ∧ (isIp t₂).typeOf = .bool)
+  (hitc : (isIp t).interpret I = isIp (t.interpret I))
+  (hisc : ∀ t₂ ∈ ts, (isIp t₂).interpret I = isIp (t₂.interpret I))
+  (hitr : isIp (t.interpret I) = true →
+    (range t).map (Term.interpret I) (Term.interpret I) = range (t.interpret I))
+  (hisr : ∀ t₂ ∈ ts, isIp (t₂.interpret I) = true →
+    (range t₂).map (Term.interpret I) (Term.interpret I) = range (t₂.interpret I)) :
+  (IPAddr.inRangeVs isIp range t ts).interpret I =
+  IPAddr.inRangeVs isIp range (t.interpret I) (ts.map (Term.interpret I))
+:= by
+  simp only [IPAddr.inRangeVs]
+  have hwfold :
+      (ts.foldl (fun acc t₂ => or acc (and (isIp t₂) (IPAddr.inRange range t t₂))) (false : Term)).WellFormed εs ∧
+      (ts.foldl (fun acc t₂ => or acc (and (isIp t₂) (IPAddr.inRange range t t₂))) (false : Term)).typeOf = .bool := by
+    rw [← @typeOf_bool false]
+    apply wf_foldl wf_bool
+    intro t₂ acc hin hw hty
+    simp only [typeOf_bool] at *
+    have hir := wf_ipaddr_inRange hrt (hrs t₂ hin)
+    have hand := wf_and (his t₂ hin).left hir.left (his t₂ hin).right hir.right
+    exact wf_or hw hand.left hty hand.right
+  rw [interpret_and hI hit.left hwfold.left hit.right hwfold.right, hitc]
+  have hlit := interpret_term_wfl hI hit.left
+  rw [hit.right] at hlit
+  replace ⟨b, hb⟩ := wfl_of_type_bool_is_bool hlit.left hlit.right
+  rw [hitc] at hb
+  cases b
+  case false => simp only [hb, pe_and_false_left]
+  case true =>
+    simp only [hb, pe_and_true_left]
+    rw [interpret_foldl_or_and_inRange hI (hitr hb) hrt ts (false : Term)
+        wf_bool typeOf_bool hrs his hisc hisr, interpret_term_prim]
+
+/-- Push `interpret` through the variadic `IPAddr.isInRangeV`. -/
+private theorem interpret_ipaddr_isInRangeV {εs : SymEntities} {I : Interpretation} {t₁ : Term} {ts : List Term}
+  (hI : I.WellFormed εs)
+  (h₁ : t₁.WellFormed εs ∧ t₁.typeOf = .ext .ipAddr)
+  (h₂ : ∀ t ∈ ts, t.WellFormed εs ∧ t.typeOf = .ext .ipAddr) :
+  (IPAddr.isInRangeV t₁ ts).interpret I = IPAddr.isInRangeV (t₁.interpret I) (ts.map (Term.interpret I))
+:= by
+  have h₃ := wf_ipaddr_inRangeVs (isIp := IPAddr.isIpv4) (range := IPAddr.rangeV4)
+    (wf_ipaddr_rangeV4 h₁) (wf_ipaddr_isIpv4 h₁)
+    (fun t ht => wf_ipaddr_rangeV4 (h₂ t ht)) (fun t ht => wf_ipaddr_isIpv4 (h₂ t ht))
+  have h₄ := wf_ipaddr_inRangeVs (isIp := IPAddr.isIpv6) (range := IPAddr.rangeV6)
+    (wf_ipaddr_rangeV6 h₁) (wf_ipaddr_isIpv6 h₁)
+    (fun t ht => wf_ipaddr_rangeV6 (h₂ t ht)) (fun t ht => wf_ipaddr_isIpv6 (h₂ t ht))
+  simp only [IPAddr.isInRangeV,
+    interpret_or hI h₃.left h₄.left h₃.right h₄.right,
+    interpret_ipaddr_inRangeVs hI
+      (wf_ipaddr_rangeV4 h₁) (wf_ipaddr_isIpv4 h₁)
+      (fun t ht => wf_ipaddr_rangeV4 (h₂ t ht)) (fun t ht => wf_ipaddr_isIpv4 (h₂ t ht))
+      interpret_ipaddr_isIpv4 (fun t _ => interpret_ipaddr_isIpv4)
+      (interpret_ipaddr_rangeV4 hI h₁) (fun t ht => interpret_ipaddr_rangeV4 hI (h₂ t ht)),
+    interpret_ipaddr_inRangeVs hI
+      (wf_ipaddr_rangeV6 h₁) (wf_ipaddr_isIpv6 h₁)
+      (fun t ht => wf_ipaddr_rangeV6 (h₂ t ht)) (fun t ht => wf_ipaddr_isIpv6 (h₂ t ht))
+      (interpret_ipaddr_isIpv6 hI h₁) (fun t ht => interpret_ipaddr_isIpv6 hI (h₂ t ht))
+      (interpret_ipaddr_rangeV6 hI h₁) (fun t ht => interpret_ipaddr_rangeV6 hI (h₂ t ht))]
+
 private theorem compileCall_interpret_ipaddr_isInRange {εs : SymEntities} {I : Interpretation} {ts : List Term} {t : Term}
   (hI  : I.WellFormed εs)
   (hwφ : ∀ (t : Term), t ∈ ts → Term.WellFormed εs t)
   (hok : compileCall ExtFun.isInRange ts = Except.ok t) :
   compileCall ExtFun.isInRange (List.map (Term.interpret I) ts) = Except.ok (Term.interpret I t)
 := by
-  simp_compileCall₂_interpret I hI hwφ hok
-    IPAddr.isInRange compileCall_ipAddr_isInRange_ok_implies
-    wf_ipaddr_isInRange interpret_ipaddr_isInRange
+  replace ⟨t₁, t₂, ts', hts, hty₁, htyrest, ht⟩ := compileCall_ipAddr_isInRange_ok_implies hok
+  subst hts ht
+  have hwt₁ : t₁.WellFormed εs := hwφ t₁ (by simp)
+  have htyall : ∀ s ∈ t₂ :: ts', s.WellFormed εs ∧ s.typeOf = .option (.ext .ipAddr) := by
+    intro s hs
+    exact ⟨hwφ s (List.mem_cons_of_mem _ hs), htyrest s hs⟩
+  have hit₁ : (Term.interpret I t₁).typeOf = TermType.option (.ext .ipAddr) := by
+    rw [(interpret_term_wf hI hwt₁).right, hty₁]
+  have hitrest : ∀ s ∈ List.map (Term.interpret I) (t₂ :: ts'),
+      s.typeOf = TermType.option (.ext .ipAddr) := by
+    intro s hs
+    simp only [List.mem_map] at hs
+    obtain ⟨a, ha, rfl⟩ := hs
+    rw [(interpret_term_wf hI (htyall a ha).left).right, (htyall a ha).right]
+  -- well-formedness of the interpreted guards `t₂ :: ts'`
+  have hwfInterp : ∀ s ∈ List.map (Term.interpret I) (t₂ :: ts'), s.WellFormed εs := by
+    intro s hs
+    simp only [List.mem_map] at hs
+    obtain ⟨a, ha, rfl⟩ := hs
+    exact (interpret_term_wf hI (htyall a ha).left).left
+  -- `option.get` of each guard is a well-formed ipaddr
+  have hgetrest : ∀ t ∈ (t₂ :: ts').map option.get, t.WellFormed εs ∧ t.typeOf = .ext .ipAddr := by
+    intro g hg
+    simp only [List.mem_map] at hg
+    obtain ⟨s, hs, rfl⟩ := hg
+    exact wf_option_get (htyall s hs).left (htyall s hs).right
+  -- the (uninterpreted) payload has type `option bool`
+  have hbody := wf_ipaddr_isInRangeV (t₁ := option.get t₁) (ts := (t₂ :: ts').map option.get)
+    (wf_option_get hwt₁ hty₁) hgetrest
+  have hPwf : (Term.some (IPAddr.isInRangeV (option.get t₁) ((t₂ :: ts').map option.get))).WellFormed εs :=
+    Term.WellFormed.some_wf hbody.left
+  have hPty : (Term.some (IPAddr.isInRangeV (option.get t₁) ((t₂ :: ts').map option.get))).typeOf =
+      .option .bool := by
+    rw [typeOf_term_some, hbody.right]
+  -- the interpreted payload (via `option.get`) has type `option bool`
+  have hbodyG := wf_ipaddr_isInRangeV
+    (t₁ := option.get (Term.interpret I t₁))
+    (ts := (List.map (Term.interpret I) (t₂ :: ts')).map option.get)
+    (wf_option_get (interpret_term_wf hI hwt₁).left hit₁)
+    (by intro g hg
+        obtain ⟨s, hs, rfl⟩ := List.mem_map.mp hg
+        exact wf_option_get (hwfInterp s hs) (hitrest s hs))
+  have htyGet : (Term.some (IPAddr.isInRangeV (option.get (Term.interpret I t₁))
+      ((List.map (Term.interpret I) (t₂ :: ts')).map option.get))).typeOf = TermType.option .bool := by
+    rw [typeOf_term_some, hbodyG.right]
+  -- the interpreted payload (via `option.get'`) has type `option bool`
+  have hbodyG' := wf_ipaddr_isInRangeV
+    (t₁ := option.get' I (Term.interpret I t₁))
+    (ts := (List.map (Term.interpret I) (t₂ :: ts')).map (option.get' I))
+    (wf_option_get' hI (interpret_term_wf hI hwt₁).left hit₁)
+    (by intro g hg
+        obtain ⟨s, hs, rfl⟩ := List.mem_map.mp hg
+        exact wf_option_get' hI (hwfInterp s hs) (hitrest s hs))
+  have htyGet' : (Term.some (IPAddr.isInRangeV (option.get' I (Term.interpret I t₁))
+      ((List.map (Term.interpret I) (t₂ :: ts')).map (option.get' I)))).typeOf =
+      TermType.option .bool := by
+    rw [typeOf_term_some, hbodyG'.right]
+  rw [show List.map (Term.interpret I) (t₁ :: t₂ :: ts') =
+        Term.interpret I t₁ :: Term.interpret I t₂ :: List.map (Term.interpret I) ts' from rfl]
+  simp only [compileCall, compileCallₙ]
+  rw [if_pos ⟨hit₁, hitrest⟩]
+  congr 1
+  -- push `interpret` through the compiled residual on the RHS
+  rw [interpret_ifSome hI hwt₁
+        (wf_foldr_ifSome hPwf hPty (fun s hs => hwφ s (List.mem_cons_of_mem _ hs))).left,
+      interpret_foldr_ifSome hI hPwf hPty (t₂ :: ts')
+        (fun s hs => hwφ s (List.mem_cons_of_mem _ hs)),
+      interpret_term_some,
+      interpret_ipaddr_isInRangeV hI (wf_option_get hwt₁ hty₁) hgetrest,
+      interpret_option_get I hwt₁ hty₁,
+      map_interpret_option_get htyall]
+  -- reconcile `option.get` (compiled side) with `option.get'` (interpreted side)
+  exact pe_foldr_ifSome_get_eq_get' (ty := .bool) I
+    (Term.interpret I t₁ :: List.map (Term.interpret I) (t₂ :: ts'))
+    (fun vs => Term.some (IPAddr.isInRangeV (vs.headD (Term.interpret I t₁)) vs.tail))
+    (by intro g hg
+        rcases List.mem_cons.mp hg with rfl | hg'
+        · exact ⟨(interpret_term_wfl hI hwt₁).left, .ext .ipAddr, hit₁⟩
+        · obtain ⟨a, ha, rfl⟩ := List.mem_map.mp hg'
+          exact ⟨(interpret_term_wfl hI (htyall a ha).left).left, .ext .ipAddr,
+            (interpret_term_wf hI (htyall a ha).left).right.trans (htyall a ha).right⟩)
+    htyGet htyGet'
 
 private theorem compileCall_interpret_datetime {I : Interpretation} {ts : List Term} {t : Term}
   (hok : compileCall ExtFun.datetime ts = Except.ok t) :
@@ -1252,14 +1421,146 @@ private theorem compile_evaluate_call_ipaddr_isIpv6 {xs : List Expr} {ts : List 
     compileCall_ipAddr_isIpv6_ok_implies wfl_of_type_ext_ipaddr_is_ext_ipaddr
     pe_ipaddr_isIpv6
 
+/--
+Given per-argument `evaluate ∼ term` relations where every term is an option-typed
+ipaddr, either some argument errors (a `none`), or all arguments evaluate to ipaddr
+values and the terms are the corresponding `some (ipTerm ·)` literals.
+-/
+private theorem forall₂_same_eval_ipaddr {xs : List Expr} {ts : List Term} {env : Env} {εnv : SymEnv}
+  (hwφ : ∀ t ∈ ts, Term.WellFormed εnv.entities t)
+  (hty : ∀ t ∈ ts, t.typeOf = .option (.ext .ipAddr))
+  (ih  : List.Forall₂ (fun x t => evaluate x env.request env.entities ∼ t) xs ts) :
+  (∃ e tⱼ, ¬ e = Spec.Error.entityDoesNotExist ∧ tⱼ ∈ ts ∧
+      (Except.error e : Spec.Result Value) ∼ tⱼ ∧
+      xs.mapM (evaluate · env.request env.entities) = .error e) ∨
+  (∃ avs : List Ext.IPAddr.IPNet,
+     ts = avs.map (fun a => Term.some (Term.prim (TermPrim.ext (Ext.ipaddr a)))) ∧
+     xs.mapM (evaluate · env.request env.entities) =
+       .ok (avs.map (fun a => Value.ext (Ext.ipaddr a))))
+:= by
+  induction xs generalizing ts with
+  | nil =>
+    cases ih
+    exact Or.inr ⟨[], rfl, rfl⟩
+  | cons x xs' ihx =>
+    cases ih
+    rename_i t ts' hxt hrest
+    have hrec := ihx (fun s hs => hwφ s (List.mem_cons_of_mem _ hs))
+      (fun s hs => hty s (List.mem_cons_of_mem _ hs)) hrest
+    cases hev : evaluate x env.request env.entities with
+    | error e =>
+      rw [hev] at hxt
+      have ⟨hne, _, _⟩ := same_error_implies hxt
+      exact Or.inl ⟨e, t, hne, List.mem_cons_self .., hxt, by
+        simp only [List.mapM_cons, hev, Except.bind_err]⟩
+    | ok v =>
+      rw [hev] at hxt
+      have ⟨t', ht', hvt'⟩ := same_ok_implies hxt
+      subst ht'
+      have htyt' : t'.typeOf = .ext .ipAddr := by
+        have := hty (Term.some t') (List.mem_cons_self ..)
+        simp only [typeOf_term_some, TermType.option.injEq] at this
+        exact this
+      have hwfl : t'.WellFormedLiteral εnv.entities :=
+        And.intro (wf_term_some_implies (hwφ (Term.some t') (List.mem_cons_self ..))) (same_value_implies_lit hvt')
+      obtain ⟨a, ht'a⟩ := wfl_of_type_ext_ipaddr_is_ext_ipaddr hwfl htyt'
+      subst ht'a
+      have hva : v = Value.ext (Ext.ipaddr a) := same_ext_term_implies hvt'
+      subst hva
+      cases hrec with
+      | inl herr =>
+        obtain ⟨e, tⱼ, hne, hmem, hsame, hmaperr⟩ := herr
+        exact Or.inl ⟨e, tⱼ, hne, List.mem_cons_of_mem _ hmem, hsame, by
+          simp only [List.mapM_cons, hev, hmaperr, Except.bind_ok, Except.bind_err]⟩
+      | inr hok =>
+        obtain ⟨avs, hts', hmapok⟩ := hok
+        refine Or.inr ⟨a :: avs, ?_, ?_⟩
+        · simp only [List.map_cons, hts']
+        · simp only [List.mapM_cons, hev, hmapok, List.map_cons, Except.bind_ok]; rfl
+
+/-- Extracting ipaddrs from a list of ipaddr values via `mapM` succeeds with the underlying list. -/
+private theorem mapM_extract_ipaddrs (l : List Ext.IPAddr.IPNet) :
+  (l.map (fun a => Value.ext (Ext.ipaddr a))).mapM
+    (fun x => match x with | .ext (.ipaddr a) => Except.ok a | _ => Except.error Spec.Error.typeError)
+  = Except.ok l
+:= by
+  induction l with
+  | nil => rfl
+  | cons a rest ih => simp only [List.map_cons, List.mapM_cons, ih, Except.bind_ok]; rfl
+
+/-- Concrete `isInRange` over a target ipaddr and a nonempty list of range ipaddrs. -/
+private theorem call_isInRange_map (a₀ : Ext.IPAddr.IPNet) (rs : List Ext.IPAddr.IPNet) (hne : rs ≠ []) :
+  call ExtFun.isInRange ((a₀ :: rs).map (fun a => Value.ext (Ext.ipaddr a)))
+  = Except.ok (Value.prim (Prim.bool (rs.any (fun a => a₀.inRange a))))
+:= by
+  cases rs with
+  | nil => exact absurd rfl hne
+  | cons a₁ rest =>
+    simp only [List.map_cons, call, Except.bind_ok]
+    exact (mapM_extract_ipaddrs (a₁ :: rest)) ▸ rfl
+
+/-- `map option.get` over a list of `some (ipTerm ·)` literals recovers the underlying ipaddr terms. -/
+private theorem map_option_get_some_ext (a₁ : Ext.IPAddr.IPNet) (l : List Ext.IPAddr.IPNet) :
+  (Term.some (Term.prim (TermPrim.ext (Ext.ipaddr a₁)))
+      :: l.map (fun a => Term.some (Term.prim (TermPrim.ext (Ext.ipaddr a))))).map option.get
+  = (a₁ :: l).map (fun a => Term.prim (TermPrim.ext (Ext.ipaddr a)))
+:= by
+  rw [List.map_cons, pe_option_get_some, List.map_cons]
+  congr 1
+  induction l with
+  | nil => rfl
+  | cons a rest ih => simp only [List.map_cons, pe_option_get_some, ih]
+
 private theorem compile_evaluate_call_ipaddr_isInRange {xs : List Expr} {ts : List Term} {env : Env} {εnv : SymEnv} {t : Term}
   (hwφ : ∀ (t : Term), t ∈ ts → Term.WellFormed εnv.entities t)
   (ih  : List.Forall₂ (λ x t => evaluate x env.request env.entities ∼ t) xs ts)
   (hok : compileCall ExtFun.isInRange ts = Except.ok t) :
   (do call ExtFun.isInRange (← xs.mapM (evaluate · env.request env.entities))) ∼ t
 := by
-  simp_compileCall₂_evaluate env hwφ ih hok compileCall_ipAddr_isInRange_ok_implies
-    wfl_of_type_ext_ipaddr_is_ext_ipaddr pe_ipaddr_isInRange
+  replace ⟨t₁, t₂, ts', hts, hty₁, htyrest, ht⟩ := compileCall_ipAddr_isInRange_ok_implies hok
+  subst hts ht
+  -- every term in t₁ :: t₂ :: ts' is a well-formed option-typed ipaddr
+  have htyall : ∀ s ∈ t₁ :: t₂ :: ts', s.typeOf = .option (.ext .ipAddr) := by
+    intro s hs
+    rcases List.mem_cons.mp hs with rfl | hs
+    · exact hty₁
+    · exact htyrest s hs
+  -- the payload has type `option bool`
+  have hbody := wf_ipaddr_isInRangeV
+    (t₁ := option.get t₁) (ts := (t₂ :: ts').map option.get)
+    (wf_option_get (hwφ t₁ (by simp)) hty₁)
+    (by intro g hg
+        simp only [List.mem_map] at hg
+        obtain ⟨s, hs, rfl⟩ := hg
+        exact wf_option_get (hwφ s (List.mem_cons_of_mem _ hs)) (htyrest s hs))
+  have hPty : (Term.some (IPAddr.isInRangeV (option.get t₁) ((t₂ :: ts').map option.get))).typeOf
+      = .option .bool := by rw [typeOf_term_some, hbody.right]
+  cases forall₂_same_eval_ipaddr hwφ htyall ih with
+  | inl herr =>
+    obtain ⟨e, tⱼ, hne, hmem, hsame, hmaperr⟩ := herr
+    simp only [hmaperr, Except.bind_err]
+    -- t is `foldr ifSome payload (t₁ :: t₂ :: ts')`; some guard is a `none`
+    exact same_error_foldr_ifSome hPty hmem hsame
+  | inr hall =>
+    obtain ⟨avs, hts, hmapok⟩ := hall
+    -- `avs` has ≥ 2 elements, matching `t₁ :: t₂ :: ts'`
+    rcases avs with _ | ⟨a₀, _ | ⟨a₁, avs''⟩⟩
+    · simp only [List.map_nil, reduceCtorEq] at hts
+    · simp only [List.map_cons, List.map_nil, List.cons.injEq, reduceCtorEq, and_false] at hts
+    · simp only [List.map_cons, List.cons.injEq] at hts
+      obtain ⟨rfl, rfl, rfl⟩ := hts
+      -- concrete side
+      simp only [hmapok, Except.bind_ok]
+      rw [call_isInRange_map a₀ (a₁ :: avs'') (by simp)]
+      -- symbolic side: all guards are `some`, so the fold collapses to the payload
+      rw [pe_foldr_ifSome_all_some hPty (by
+        intro s hs
+        rcases List.mem_cons.mp hs with rfl | hs
+        · exact ⟨_, rfl⟩
+        · obtain ⟨a, _, rfl⟩ := List.mem_map.mp hs; exact ⟨_, rfl⟩)]
+      -- reduce the payload to a boolean literal
+      rw [pe_ifSome_some hPty, pe_option_get_some, map_option_get_some_ext, pe_ipaddr_isInRangeV]
+      exact same_ok_bool
 
 private theorem compile_evaluate_call_ipaddr_isLoopback {xs : List Expr} {ts : List Term} {env : Env} {εnv : SymEnv} {t : Term}
   (hwφ : ∀ (t : Term), t ∈ ts → Term.WellFormed εnv.entities t)

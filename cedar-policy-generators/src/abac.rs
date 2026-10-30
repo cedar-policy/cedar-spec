@@ -343,8 +343,13 @@ pub struct AvailableExtensionFunction {
     /// All constructors must have return types that are extension values.
     pub is_constructor: bool,
     /// Parameter types expected by the extension function. The length of this
-    /// list indicates the function arity.
+    /// list indicates the function arity, or the minimum arity if
+    /// `is_variadic`.
     pub parameter_types: Vec<Type>,
+    /// Whether the function also accepts additional arguments of its last
+    /// parameter type. Mirrors
+    /// `cedar_policy_core::ast::ExtensionFunction::is_variadic`.
+    pub is_variadic: bool,
     /// Return type of the extension function
     pub return_ty: Type,
 }
@@ -374,18 +379,21 @@ impl AvailableExtensionFunctions {
                 name: Name::parse_unqualified_name("ip").expect("should be a valid identifier"),
                 is_constructor: true,
                 parameter_types: vec![Type::string()],
+                is_variadic: false,
                 return_ty: Type::ipaddr(),
             },
             AvailableExtensionFunction {
                 name: Name::parse_unqualified_name("isIpv4").expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::ipaddr()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
                 name: Name::parse_unqualified_name("isIpv6").expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::ipaddr()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -393,6 +401,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::ipaddr()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -400,6 +409,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::ipaddr()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -407,6 +417,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::ipaddr(), Type::ipaddr()],
+                is_variadic: cfg!(feature = "variadic-is-in-range"),
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -414,6 +425,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: true,
                 parameter_types: vec![Type::string()],
+                is_variadic: false,
                 return_ty: Type::decimal(),
             },
             AvailableExtensionFunction {
@@ -421,6 +433,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::decimal(), Type::decimal()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -428,6 +441,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::decimal(), Type::decimal()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -435,6 +449,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::decimal(), Type::decimal()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -442,6 +457,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::decimal(), Type::decimal()],
+                is_variadic: false,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
@@ -449,12 +465,14 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: true,
                 parameter_types: vec![Type::string()],
+                is_variadic: false,
                 return_ty: Type::datetime(),
             },
             AvailableExtensionFunction {
                 name: Name::parse_unqualified_name("offset").expect("should be a valid identifier"),
                 is_constructor: true,
                 parameter_types: vec![Type::datetime(), Type::duration()],
+                is_variadic: false,
                 return_ty: Type::datetime(),
             },
             AvailableExtensionFunction {
@@ -462,18 +480,21 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::datetime(), Type::datetime()],
+                is_variadic: false,
                 return_ty: Type::duration(),
             },
             AvailableExtensionFunction {
                 name: Name::parse_unqualified_name("toDate").expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::datetime()],
+                is_variadic: false,
                 return_ty: Type::datetime(),
             },
             AvailableExtensionFunction {
                 name: Name::parse_unqualified_name("toTime").expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::datetime()],
+                is_variadic: false,
                 return_ty: Type::duration(),
             },
             AvailableExtensionFunction {
@@ -481,6 +502,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: true,
                 parameter_types: vec![Type::string()],
+                is_variadic: false,
                 return_ty: Type::duration(),
             },
             AvailableExtensionFunction {
@@ -488,6 +510,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::duration()],
+                is_variadic: false,
                 return_ty: Type::long(),
             },
             AvailableExtensionFunction {
@@ -495,6 +518,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::duration()],
+                is_variadic: false,
                 return_ty: Type::long(),
             },
             AvailableExtensionFunction {
@@ -502,6 +526,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::duration()],
+                is_variadic: false,
                 return_ty: Type::long(),
             },
             AvailableExtensionFunction {
@@ -509,12 +534,14 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::duration()],
+                is_variadic: false,
                 return_ty: Type::long(),
             },
             AvailableExtensionFunction {
                 name: Name::parse_unqualified_name("toDays").expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::duration()],
+                is_variadic: false,
                 return_ty: Type::long(),
             },
         ];

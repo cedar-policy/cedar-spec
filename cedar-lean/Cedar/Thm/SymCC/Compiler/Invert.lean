@@ -721,12 +721,22 @@ theorem compileCall_ipAddr_isMulticast_ok_implies {ts : List Term} {t : Term} :
 
 theorem compileCall_ipAddr_isInRange_ok_implies {ts : List Term} {t : Term} :
   compileCall ExtFun.isInRange ts = .ok t →
-  ∃ t₁ t₂,
-    ts = [t₁, t₂] ∧
+  ∃ t₁ t₂ ts',
+    ts = t₁ :: t₂ :: ts' ∧
     t₁.typeOf = .option (.ext .ipAddr) ∧
-    t₂.typeOf = .option (.ext .ipAddr) ∧
-    t = ifSome t₁ (ifSome t₂ (Term.some (IPAddr.isInRange (option.get t₁) (option.get t₂))))
-:= by simp_compileCall₂
+    (∀ tᵢ ∈ t₂ :: ts', tᵢ.typeOf = .option (.ext .ipAddr)) ∧
+    t = ifSome t₁ ((t₂ :: ts').foldr (fun tᵢ acc => ifSome tᵢ acc)
+          (Term.some (IPAddr.isInRangeV (option.get t₁) ((t₂ :: ts').map option.get))))
+:= by
+  intro hok
+  unfold compileCall at hok
+  -- Every arm other than `isInRange` contradicts the `ExtFun` equation introduced by `split`.
+  split at hok <;> try (simp only [reduceCtorEq] at * ; done)
+  rename_i t₁ t₂ ts' _
+  simp only [compileCallₙ] at hok
+  split at hok <;> simp only [someOf, Except.ok.injEq, reduceCtorEq] at hok
+  rename_i hty
+  exact ⟨t₁, t₂, ts', rfl, hty.1, hty.2, hok.symm ▸ rfl⟩
 
 theorem compileCall_datetime_ok_implies {ts : List Term} {t : Term} :
   compileCall ExtFun.datetime ts = .ok t →

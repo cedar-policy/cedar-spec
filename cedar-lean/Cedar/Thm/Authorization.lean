@@ -14,10 +14,15 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Thm.Authorization.Authorizer
-import Cedar.Thm.Authorization.PolicySlice
-import Cedar.Thm.Authorization.Evaluator
+module
+
+public import Cedar.Spec
+public import Cedar.Thm.Authorization.Authorizer
+public import Cedar.Thm.Authorization.PolicySlice
+public import Cedar.Thm.Authorization.Evaluator
+import all Cedar.Spec.Authorizer
+
+@[expose] public section
 
 /-! This file contains basic theorems about Cedar's authorizer. -/
 

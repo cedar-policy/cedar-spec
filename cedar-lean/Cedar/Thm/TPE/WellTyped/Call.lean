@@ -66,11 +66,21 @@ theorem ext_well_typed_after_map {xfn args ty env f} :
     | apply ExtResidualWellTyped.isLoopback
     | apply ExtResidualWellTyped.isMulticast
     rw [h₃ x₁ (by simp), h₆]
-  -- Binary operations: isInRange, offset, durationSince
-  case isInRange x₁ x₂ h₆ h₇ | offset x₁ x₂ h₆ h₇ | durationSince x₁ x₂ h₆ h₇ =>
+  -- isInRange (variadic)
+  case isInRange x₁ xs h₆ h₇ h₈ =>
+    rw [List.map_cons]
+    apply ExtResidualWellTyped.isInRange
+    · rw [h₃ x₁ (by simp), h₆]
+    · rw [List.length_map]
+      exact h₇
+    · intro x hx
+      simp only [List.mem_map] at hx
+      obtain ⟨y, hy, hxy⟩ := hx
+      rw [←hxy, h₃ y (by simp [hy]), h₈ y hy]
+  -- Binary operations: offset, durationSince
+  case offset x₁ x₂ h₆ h₇ | durationSince x₁ x₂ h₆ h₇ =>
     simp only [List.map_cons, List.map_nil]
     first
-    | apply ExtResidualWellTyped.isInRange
     | apply ExtResidualWellTyped.offset
     | apply ExtResidualWellTyped.durationSince
     . rw [h₃ x₁ (by simp), h₆]
@@ -158,13 +168,30 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
       simp only [someOrError, Except.toOption]
       cases h₃
       exact well_typed_bool
-    case h_11 | h_14 | h_15 =>
+    -- isInRange (variadic): the call either type-errors or returns a `Bool`.
+    case h_11 =>
+      cases h₃
+      split
+      · simp only [Except.bind_ok, Except.toOption, someOrError]
+        split
+        · rename_i heq
+          split at heq
+          · rename_i _ hok
+            rw [do_ok_eq_ok] at hok
+            obtain ⟨rs, _, hrs⟩ := hok
+            simp only [Option.some.injEq] at heq
+            rw [←heq, ←hrs]
+            exact well_typed_bool
+          · simp at heq
+        · exact Residual.WellTyped.error
+      · simp only [Except.bind_err, Except.toOption, someOrError]
+        exact Residual.WellTyped.error
+    case h_14 | h_15 =>
       rename ExtFun => xf
       rename List Value => vs
       try unfold Cedar.Spec.res
 
       first
-        | unfold Ext.IPAddr.IPNet.inRange
         | unfold Ext.Datetime.offset
         | skip
 
@@ -191,21 +218,12 @@ theorem partial_eval_well_typed_call {env : TypeEnv} {xfn : ExtFun} {args : List
         cases ih ; rename_i ih
         cases ih
         cases h₃
-        first
-        | apply Residual.WellTyped.val
-          apply InstanceOfType.instance_of_ext
-          simp [InstanceOfExtType, Coe.coe]
-        | exact well_typed_bool
+        apply Residual.WellTyped.val
+        apply InstanceOfType.instance_of_ext
+        simp [InstanceOfExtType, Coe.coe]
       case h_2 x₂ h₄ =>
         simp only [someOrError, Except.toOption]
-        first
-        | apply Residual.WellTyped.error
-        | cases h₃
-          exact well_typed_bool
-      try case h_3 x₂ v =>
-        simp only [someOrError, Except.toOption]
-        cases h₃
-        exact well_typed_bool
+        apply Residual.WellTyped.error
     case h_17 | h_18 | h_19 | h_20 | h_21 | h_22 =>
       simp only [someOrError, Except.toOption, Ext.Datetime.toTime, ge_iff_le, beq_iff_eq]
       rw [List.mapM_some_iff_forall₂, List.forall₂_singleton_right_iff] at h₁
