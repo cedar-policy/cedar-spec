@@ -35,56 +35,29 @@ namespace Proto
 @[inline] def clear_msb64(i : UInt64) : UInt64 := i &&& (9223372036854775808 : UInt64)
 
 
--- Does not progress iterator
--- Has panic! indexing, should work towards adding needed proof
--- Probably the way to remove the panic! indexing would be to reorganize this module.
--- Instead of first searching to find the number of bytes we'll need to parse,
--- without progressing the iterator (`find_varint_size`), and then actually
--- parsing them and progressing the iterator (`parse_uint64` and friends), we
--- should do everything in one pass that progresses the iterator as it goes.
-private def find_end_of_varint_helper  (n : Nat) : BParsec Nat := do
-  let empty ← BParsec.empty
-  if empty then throw "Expected more bytes"
-
+/--
+Parse a varint in a single pass, progressing the iterator as it accumulates
+the value. `n` is the number of bytes consumed so far and `r` the value
+accumulated from them.
+-/
+private def parse_uint64_helper (n : Nat) (r : UInt64) : BParsec UInt64 := do
   -- Due to the PTypes allowed, we can't have a varint with more than 10 bytes
   if H : n ≥ 10 then throw "Too many bytes in this varint" else
-
-  let msbSet ← BParsec.inspect λ pos => msb_set8 pos.data[pos.pos + n]!
-  if ¬msbSet then
-    let pos ← BParsec.pos
-    pure (pos + n + 1) -- Include current byte as part of varint
-  else
-    find_end_of_varint_helper (n + 1)
-termination_by 10 - n
-
-@[inline]
-def find_end_of_varint : BParsec Nat := find_end_of_varint_helper 0
-
-
-/- Find the start and end indices of the next varint -/
--- NOTE: Does not progress iterator
-@[inline]
-def find_varint_size : BParsec Nat := do
-  let start_idx ← BParsec.pos
-  let end_idx ← find_end_of_varint
-  pure (end_idx - start_idx)
-
-
-private def parse_uint64_helper (remaining : Nat) (p : Nat) (r : UInt64) : BParsec UInt64 := do
-  if remaining = 0 then pure r else
   let byte ← BParsec.nextByte
   match byte with
   | none => throw "Expected more bytes"
   | some byte =>
     have byte2 := clear_msb8 byte
-    have byte3 := byte2.toUInt64 <<< (7 * p.toUInt64)
-    parse_uint64_helper (remaining - 1) (p + 1) (r ||| byte3)
+    have byte3 := byte2.toUInt64 <<< (7 * n.toUInt64)
+    if msb_set8 byte then
+      parse_uint64_helper (n + 1) (r ||| byte3)
+    else
+      pure (r ||| byte3)
+termination_by 10 - n
 
 
 @[inline]
-def parse_uint64 : BParsec UInt64 := do
-  let remaining ← find_varint_size
-  parse_uint64_helper remaining 0 0
+def parse_uint64 : BParsec UInt64 := parse_uint64_helper 0 0
 
 
 instance : Field UInt64 := {
@@ -93,21 +66,12 @@ instance : Field UInt64 := {
   merge := Field.Merge.override
 }
 
-private def parse_uint32_helper (remaining : Nat) (p : Nat) (r : UInt32) : BParsec UInt32 := do
-  if remaining = 0 then pure r else
-  let byte ← BParsec.nextByte
-  match byte with
-  | none => throw "Expected more bytes"
-  | some byte =>
-    have byte2 := clear_msb8 byte
-    have byte3 := byte2.toUInt32 <<< (7 * p.toUInt32)
-    parse_uint32_helper (remaining - 1) (p + 1) (r ||| byte3)
-
-
+/-- Parse a varint as a 64-bit value and truncate it to 32 bits, as the
+Protobuf encoding of `int32` and `uint32` requires -/
 @[inline]
 def parse_uint32 : BParsec UInt32 := do
-  let remaining ← find_varint_size
-  parse_uint32_helper remaining 0 0
+  let r ← parse_uint64
+  pure r.toUInt32
 
 instance : Field UInt32 := {
   parse := parse_uint32

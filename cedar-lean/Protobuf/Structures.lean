@@ -36,9 +36,7 @@ deriving Repr
 
 namespace VarInt
   @[inline]
-  def skip : BParsec Unit := do
-    let size ← find_varint_size
-    BParsec.forward size
+  def skip : BParsec Unit := discard parse_uint64
 end VarInt
 
 namespace Len

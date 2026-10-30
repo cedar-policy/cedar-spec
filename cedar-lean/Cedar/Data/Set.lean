@@ -19,7 +19,6 @@ module
 public import Cedar.Data.List
 import Batteries.Data.List.Basic
 import Batteries.Data.List.Lemmas
-public import Lean.Data.Json.FromToJson.Basic
 
 /-!
 # Canonical list-based sets
@@ -36,7 +35,7 @@ namespace Cedar.Data
 
 public inductive Set (α : Type u) where
 | mk (l : List α)
-deriving Repr, DecidableEq, Inhabited, Lean.ToJson
+deriving Repr, DecidableEq, Inhabited
 
 namespace Set
 
