@@ -25,36 +25,49 @@ use indexmap::{IndexMap, IndexSet};
 use nonempty::NonEmpty;
 use smol_str::SmolStr;
 
-/// Expected number of edges in an entity graph (the entity hierarchy). Higher
+/// Expected number of edges in an entity graph (the entity hierarchy), and half
+/// the most it can have (see [`arbitrary_edges`]). Higher
 /// than the type/action graphs so individual hierarchies stay interesting,
 /// since the entity graph is a DAG and its closure is cheaper than a cyclic
 /// type graph's.
 pub const ENTITY_EDGE_BUDGET: u64 = 16;
 
-/// Expected number of edges in a type or action graph. Kept low: the entity-type
+/// Expected number of edges in a type or action graph, and half the most it can
+/// have (see [`arbitrary_edges`]). Kept low: the entity-type
 /// graph may be cyclic and its transitive closure feeds the allowed parent types
 /// per entity, so a dense type graph multiplies entity-level density.
 pub const TYPE_EDGE_BUDGET: u64 = 4;
 
-/// Decide if we should add an edge in a graph with the given edge `budget`.
+/// Choose the edges of a graph, as indices into its `num_candidates` candidate edges, in increasing
+/// order: first how many, uniformly in `0..=min(2 * budget, num_candidates)` (so `budget` on average,
+/// or half the candidates in a graph smaller than that), then which, each a distinct candidate drawn
+/// uniformly.
 ///
-/// There are `~num_nodes^2 / 2` candidate edges, so a per-edge probability of
-/// `2 * budget / num_nodes^2` keeps the expected edge count at `budget` instead
-/// of growing with the graph, which bounds the transitive closure.
-///
-/// Draw `int_in_range(0..=d-1)` and trigger on the top value, not `ratio(1, d)`:
-/// `ratio` triggers on the bottom, which `0x00` always produces, so `0x00`-heavy
-/// corpora yielded near-complete hierarchies. The top keeps probability `1/d`
-/// but maps low bytes to "no edge".
-pub fn should_add_edge(u: &mut Unstructured<'_>, num_nodes: usize, budget: u64) -> Result<bool> {
-    if u.is_empty() {
-        return Ok(false);
+/// The number of edges is decided before any endpoint is, so it is at most `2 * budget` whatever the
+/// bytes are. Spending a byte per candidate edge instead (one weighted coin each) makes the graph a
+/// function of the byte pattern: a run of a byte that lands every coin on "edge" (`0x00` for
+/// `ratio(1, d)`; any byte that is `d - 1` mod `d` for a draw in `0..=d-1`) yields a near-complete
+/// graph, whose transitive closure then makes a test case slow.
+pub fn arbitrary_edges(
+    u: &mut Unstructured<'_>,
+    num_candidates: usize,
+    budget: u64,
+) -> Result<Vec<usize>> {
+    if u.is_empty() || num_candidates == 0 {
+        return Ok(Vec::new());
     }
-    // Clamp `d` to at least 2 so tiny graphs still get an edge sometimes.
-    let n = num_nodes as u64;
-    let d = ((n * n).div_ceil(2 * budget)).max(2) as u32;
-    let x: u32 = u.int_in_range(0..=d - 1)?;
-    Ok(x == d - 1)
+    let max_edges = (2 * budget).min(num_candidates as u64) as usize;
+    let num_edges = u.int_in_range(0..=max_edges)?;
+    // A partial Fisher-Yates shuffle: distinct indices, and a fixed number of draws even when `u`
+    // runs out (each draw then returns the bottom of its range).
+    let mut indices: Vec<usize> = (0..num_candidates).collect();
+    for i in 0..num_edges {
+        let j = u.int_in_range(i..=num_candidates - 1)?;
+        indices.swap(i, j);
+    }
+    let mut edges = indices[..num_edges].to_vec();
+    edges.sort_unstable();
+    Ok(edges)
 }
 
 /// Contains data about an entity hierarchy
@@ -504,48 +517,41 @@ impl HierarchyGenerator<'_, '_> {
             })
             .collect::<Result<IndexMap<ast::EntityType, IndexSet<ast::EntityUID>>>>()?;
         let hierarchy_no_attrs = Hierarchy::from_uids_by_type(uids_by_type, self.u)?;
+        // The candidate parent edges, `(child, parent)`, in entity order. Only those consistent with
+        // the schema in schema-based mode; otherwise only to uids appearing after the child in the
+        // pool, which makes the hierarchy a DAG (no cycles) without loss of generality.
+        let mut candidates: Vec<(&EntityUID, &EntityUID)> = Vec::new();
+        for uid in hierarchy_no_attrs.entities().map(|e| e.uid()) {
+            match &self.mode {
+                HierarchyGeneratorMode::SchemaBased { schema } => {
+                    for ty in schema.allowed_parent_typenames(uid.entity_type()).unwrap() {
+                        // `uids_for_type` prevent cycles
+                        for parent in hierarchy_no_attrs.uids_for_type(&ty, uid) {
+                            candidates.push((uid, parent));
+                        }
+                    }
+                }
+                HierarchyGeneratorMode::Arbitrary { .. } => {
+                    for parent in hierarchy_no_attrs.uids_after(uid) {
+                        candidates.push((uid, parent));
+                    }
+                }
+            }
+        }
+        let mut parents_of: IndexMap<&EntityUID, IndexSet<EntityUID>> = IndexMap::new();
+        for i in arbitrary_edges(self.u, candidates.len(), ENTITY_EDGE_BUDGET)? {
+            let (child, parent) = candidates[i];
+            parents_of.entry(child).or_default().insert(parent.clone());
+        }
         // now create an entity hierarchy composed of those entity UIDs
         let entities = hierarchy_no_attrs
             .entities()
             .map(|e| e.uid())
             .map(|uid| {
                 let name = uid.entity_type();
-                // choose parents for this entity
-                let mut parents = IndexSet::new();
-                match &self.mode {
-                    HierarchyGeneratorMode::SchemaBased { schema } => {
-                        for ty in schema.allowed_parent_typenames(name).unwrap() {
-                            // `uids_for_type` prevent cycles
-                            for possible_parent_uid in hierarchy_no_attrs.uids_for_type(&ty, uid) {
-                                if should_add_edge(
-                                    self.u,
-                                    hierarchy_no_attrs.num_entities(),
-                                    ENTITY_EDGE_BUDGET,
-                                )? {
-                                    parents.insert(possible_parent_uid.clone());
-                                }
-                            }
-                        }
-                    }
-                    HierarchyGeneratorMode::Arbitrary { .. } => {
-                        // no schema data.
-                        // for each uid in the pool, flip a weighted coin to decide whether
-                        // to add it as a parent. We only consider uids appearing after the
-                        // given one in the pool; this ensures we get a DAG (no cycles)
-                        // without loss of generality
-                        for pool_uid in hierarchy_no_attrs.uids_after(uid) {
-                            if should_add_edge(
-                                self.u,
-                                hierarchy_no_attrs.num_entities(),
-                                ENTITY_EDGE_BUDGET,
-                            )? {
-                                parents.insert(pool_uid.clone());
-                            }
-                        }
-                        // assert there is no self-edge
-                        assert!(!parents.contains(uid));
-                    }
-                }
+                let parents = parents_of.swap_remove(uid).unwrap_or_default();
+                // assert there is no self-edge
+                assert!(!parents.contains(uid));
                 // generate appropriate attributes for this entity
                 let mut attrs = IndexMap::new();
                 match &self.mode {
@@ -662,5 +668,62 @@ impl HierarchyGenerator<'_, '_> {
     /// size hint for generate()
     pub fn size_hint(_depth: usize) -> (usize, Option<usize>) {
         (0, None)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{arbitrary_edges, ENTITY_EDGE_BUDGET, TYPE_EDGE_BUDGET};
+    use arbitrary::Unstructured;
+    use rand::{rng, Rng};
+
+    /// Every buffer of one repeated byte, the pattern that made per-edge coins land on "edge" every
+    /// time, gets at most `2 * budget` distinct, in-range, increasing edges.
+    #[test]
+    fn edges_bounded_for_every_constant_byte() {
+        for budget in [TYPE_EDGE_BUDGET, ENTITY_EDGE_BUDGET] {
+            for num_candidates in [0usize, 1, 3, 50, 1000] {
+                for b in 0..=u8::MAX {
+                    let bytes = vec![b; 4096];
+                    let mut u = Unstructured::new(&bytes);
+                    let edges = arbitrary_edges(&mut u, num_candidates, budget).unwrap();
+                    assert!(edges.len() as u64 <= 2 * budget);
+                    assert!(edges.len() <= num_candidates);
+                    assert!(edges.windows(2).all(|w| w[0] < w[1]));
+                    assert!(edges.iter().all(|&e| e < num_candidates));
+                }
+            }
+        }
+    }
+
+    /// On random bytes the expected number of edges is the budget.
+    #[test]
+    fn edges_average_budget() {
+        let mut rng = rng();
+        let trials = 4000;
+        let mut total = 0usize;
+        for _ in 0..trials {
+            let mut bytes = [0u8; 256];
+            rng.fill_bytes(&mut bytes);
+            let mut u = Unstructured::new(&bytes);
+            total += arbitrary_edges(&mut u, 1000, TYPE_EDGE_BUDGET)
+                .unwrap()
+                .len();
+        }
+        let mean = total as f64 / trials as f64;
+        let budget = TYPE_EDGE_BUDGET as f64;
+        assert!(
+            (mean - budget).abs() < 0.5,
+            "mean {mean} far from budget {budget}"
+        );
+    }
+
+    /// An empty buffer gets no edges.
+    #[test]
+    fn no_edges_without_bytes() {
+        let mut u = Unstructured::new(&[]);
+        assert!(arbitrary_edges(&mut u, 100, ENTITY_EDGE_BUDGET)
+            .unwrap()
+            .is_empty());
     }
 }
