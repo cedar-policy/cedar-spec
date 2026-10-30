@@ -22,6 +22,9 @@ require "leanprover" / "doc-gen4" @ git "v4.35.0"
 
 require "leanprover-community" / "batteries" @ git "v4.35.0"
 
+require LeanParserGenerator from git
+  "https://github.com/cedar-policy/lean-parser-generator" @ "cabaf3eb268138445948aa1257e9092001089095"
+
 package Cedar
 
 @[default_target]
