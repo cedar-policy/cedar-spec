@@ -1632,10 +1632,11 @@ impl Schema {
                     .collect();
                 attributes.sort();
                 let exprgenerator = self.exprgenerator(Some(hierarchy));
-                let attrs = attributes
-                    .iter()
-                    .map(|(attr_name, attr_type)| {
-                        Ok((
+                let mut attrs = IndexMap::new();
+                for (attr_name, attr_type) in attributes {
+                    // optional attributes are only sometimes present
+                    if attr_type.required || u.ratio(1, 2)? {
+                        attrs.insert(
                             attr_name.parse().expect("failed to parse attribute name"),
                             exprgenerator
                                 .generate_attr_value_for_type(
@@ -1648,9 +1649,9 @@ impl Schema {
                                     u,
                                 )?
                                 .into(),
-                        ))
-                    })
-                    .collect::<Result<IndexMap<_, _>>>()?;
+                        );
+                    }
+                }
                 ast::Context::from_pairs(attrs, Extensions::all_available())
                     .map_err(|e| Error::ContextError(Box::new(e)))?
             },
@@ -2387,6 +2388,69 @@ mod tests {
         for _ in 0..ITERATION {
             assert!(generate_hierarchy_from_schema(&mut rng, fragment.clone()).is_ok());
         }
+    }
+
+    const OPTIONAL_CONTEXT_SCHEMA_STR: &str = r#"
+    {
+        "": {
+            "entityTypes": {
+                "User": {}
+            },
+            "actions": {
+                "view": {
+                    "appliesTo": {
+                        "principalTypes": ["User"],
+                        "resourceTypes": ["User"],
+                        "context": {
+                            "type": "Record",
+                            "attributes": {
+                                "required_attr": {
+                                    "type": "Long",
+                                    "required": true
+                                },
+                                "optional_attr": {
+                                    "type": "Long",
+                                    "required": false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }"#;
+
+    #[test]
+    #[allow(deprecated)]
+    fn request_generation_optional_context_attrs() {
+        let fragment =
+            json_schema::Fragment::from_json_file(OPTIONAL_CONTEXT_SCHEMA_STR.as_bytes())
+                .expect("schema str should be valid!");
+        let mut rng = rng();
+        let mut saw_present = false;
+        let mut saw_absent = false;
+        for _ in 0..ITERATION {
+            let mut bytes = [0; RANDOM_BYTE_SIZE as usize];
+            rng.fill_bytes(&mut bytes);
+            let mut u = Unstructured::new(&bytes);
+            let schema = Schema::from_raw_schemafrag(fragment.clone(), TEST_SETTINGS, &mut u)
+                .expect("failed to generate schema!");
+            let h = schema
+                .arbitrary_hierarchy(&mut u)
+                .expect("failed to generate hierarchy!");
+            let request = schema
+                .arbitrary_request(&h, &mut u)
+                .expect("failed to generate request!");
+            let attrs: Vec<_> = request.0.context.into_iter().map(|(k, _)| k).collect();
+            assert!(attrs.iter().any(|k| k == "required_attr"));
+            if attrs.iter().any(|k| k == "optional_attr") {
+                saw_present = true;
+            } else {
+                saw_absent = true;
+            }
+        }
+        assert!(saw_present, "optional attribute never present");
+        assert!(saw_absent, "optional attribute never absent");
     }
 
     #[allow(deprecated)]
