@@ -17,6 +17,7 @@
 import Lean.Data.Json.FromToJson
 
 import Cedar.Spec
+import Cedar.Spec.Json
 import Cedar.Validation
 import CedarProto
 import Protobuf

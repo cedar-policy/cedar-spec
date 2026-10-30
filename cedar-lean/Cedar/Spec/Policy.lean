@@ -159,6 +159,4 @@ deriving instance Repr, DecidableEq, Inhabited for ResourceScope
 deriving instance Repr, DecidableEq, Inhabited for ActionScope
 deriving instance Repr, DecidableEq, Inhabited for Policy
 
-deriving instance Lean.ToJson for PolicyID
-
 end Cedar.Spec

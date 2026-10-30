@@ -2,6 +2,7 @@ import Lean.Data.Json.FromToJson
 import Std.Data.HashMap
 
 import Cedar.Spec
+import Cedar.Spec.Json
 import Cedar.SymCC
 import Cedar.Data
 import Cedar.TPE.Authorizer

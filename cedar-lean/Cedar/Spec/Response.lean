@@ -17,7 +17,6 @@
 module
 
 public import Cedar.Spec.Policy
-import Lean.Data.Json.FromToJson
 
 /-!
 This file defines Cedar responses.
@@ -40,7 +39,7 @@ public structure Response where
 
 ----- Derivations -----
 
-deriving instance Repr, DecidableEq, Lean.ToJson for Decision
-deriving instance Repr, DecidableEq, Lean.ToJson for Response
+deriving instance Repr, DecidableEq for Decision
+deriving instance Repr, DecidableEq for Response
 
 end Cedar.Spec

@@ -157,9 +157,9 @@ public instance : Coe Value (Result (Data.Set Value)) where
 
 deriving instance Repr, DecidableEq, BEq for Except
 deriving instance Repr, DecidableEq for Error
-deriving instance Repr, DecidableEq, Inhabited, Lean.ToJson for Name
+deriving instance Repr, DecidableEq, Inhabited for Name
 deriving instance Repr, DecidableEq, Inhabited for EntityType
-deriving instance Repr, DecidableEq, Inhabited, Lean.ToJson for EntityUID
+deriving instance Repr, DecidableEq, Inhabited for EntityUID
 deriving instance Repr, DecidableEq, Inhabited for Prim
 deriving instance Repr, Inhabited for Value
 
