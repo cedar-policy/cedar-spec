@@ -17,6 +17,7 @@
 import Cedar.Thm.WellTyped.Residual.Definition
 import Cedar.Thm.WellTyped.Residual.Soundness
 import Cedar.Thm.WellTyped.Expr.Typechecking
+import Cedar.TPE -- `Cedar.TPE` namespace was previously reached transitively through TypeLifting
 import Cedar.TPE.Residual
 import Cedar.Data.Map
 

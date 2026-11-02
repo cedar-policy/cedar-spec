@@ -14,13 +14,19 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Validation.Typechecker.Basic
-import Cedar.Thm.Validation.Typechecker.GetAttr
-import Cedar.Thm.Validation.Typechecker.HasAttr
+module
+
+public import Cedar.Thm.Validation.Typechecker.Basic
+import all Cedar.Validation.Typechecker -- unfolds `typeOf` and its helpers
+import all Cedar.Validation.TypedExpr -- unfolds `TypedExpr.typeOf`
+public import Cedar.Thm.Validation.Typechecker.GetAttr
+public import Cedar.Thm.Validation.Typechecker.HasAttr
 
 /-!
 This file proves that typechecking of `.extHasAttr` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -119,15 +125,15 @@ private theorem getAttr_ok_of_attrsOf_find {v : Value} {a : Attr} {es : Entities
   (hattrs : attrsOf v (fun uid => .ok (es.attrsOrEmpty uid)) = .ok m)
   (hfind : m.find? a = .some next) :
   getAttr v a es = .ok next := by
-  simp only [getAttr, attrsOf, bind, Except.bind, Map.findOrErr] at hattrs ⊢
+  simp only [getAttr, attrsOf, bind, Except.bind, Map.findOrErr_eq_match] at hattrs ⊢
   split at hattrs
   · simp only [Except.ok.injEq] at hattrs; subst hattrs
     simp [hfind]
   · simp only [Except.ok.injEq] at hattrs; subst hattrs
     simp only [Entities.attrs, Entities.attrsOrEmpty] at hfind ⊢
     split at hfind <;> rename_i h₂
-    · simp only [h₂, Except.bind_ok, Map.findOrErr, hfind]
-    · simp [Map.empty, Map.find?] at hfind
+    · simp only [h₂, Except.bind_ok, Map.findOrErr_eq_match, hfind]
+    · simp [Map.not_find?_of_empty] at hfind
   · simp at hattrs
 
 private theorem hasAttr_true_of_attrsOf_find {v : Value} {a : Attr} {es : Entities}
@@ -216,7 +222,6 @@ private theorem instance_of_getAttr_type
           have hval : val_gir = (aty, ∅) := by unfold ok at hgir; simp at hgir; exact hgir.symm
           rw [hval]
           subst huid_ty
-          simp only [EntitySchema.attrs?] at hschema
           cases hfind_ent : entities.find? uid with
           | none =>
             exact absurd hfind (by simp [Entities.attrsOrEmpty, hfind_ent])
@@ -229,7 +234,6 @@ private theorem instance_of_getAttr_type
           · have hval : val_gir = (aty, ∅) := by unfold ok at hgir; simp at hgir; exact hgir.symm
             rw [hval]
             subst huid_ty
-            simp only [EntitySchema.attrs?] at hschema
             cases hfind_ent : entities.find? uid with
             | none =>
               exact absurd hfind (by simp [Entities.attrsOrEmpty, hfind_ent])
@@ -356,7 +360,7 @@ private theorem typeOfHasAttr_ff_contradicts_find
             have hfind_ety : env.ets.find? ety = some entry := huid_ety ▸ hets_find
             have hrty_eq : entry.attrs = rty := by
               have h : env.ets.attrs? ety = some entry.attrs := by
-                simp [EntitySchema.attrs?, hfind_ety]
+                simp [EntitySchema.attrs?_eq_map_find?, hfind_ety]
               simp [h] at hety_schema; exact hety_schema
             have habsent := absent_attribute_is_absent hinst_attrs (hrty_eq ▸ hfind_schema_none)
             rw [hfind] at habsent
@@ -364,7 +368,7 @@ private theorem typeOfHasAttr_ff_contradicts_find
           · -- Action schema case: action entities have empty attrs
             rename_i hempty _ _
             rw [hempty] at hfind
-            simp [Map.find?, Map.empty] at hfind
+            simp [Map.not_find?_of_empty] at hfind
     case h_2 hety_none =>
       -- Entity type not in schema
       split at hha
@@ -379,7 +383,7 @@ private theorem typeOfHasAttr_ff_contradicts_find
         · -- env.ets.find? uid.ty = some entry contradicts env.ets.attrs? ety = none
           have huid_ety : uid.ty = ety := by assumption
           have : env.ets.find? ety = none := by
-            simp [EntitySchema.attrs?] at hety_none
+            simp [EntitySchema.attrs?_eq_map_find?] at hety_none
             exact hety_none
           rw [huid_ety] at hets_find
           simp [this] at hets_find
@@ -625,7 +629,7 @@ private theorem typeOfHasAttr_tt_contradicts_find_none
   -- hasAttr v a entities = .ok false (from find? = none)
   have h_false : hasAttr v a entities = .ok false := by
     unfold hasAttr
-    simp only [bind, Except.bind, hattrs, Map.contains]
+    simp only [bind, Except.bind, hattrs, Map.contains_eq_isSome_find?]
     rw [hfind_none]; rfl
   -- Unfold typeOfHasAttr to extract why it returned .tt
   unfold typeOfHasAttr at hha
@@ -653,7 +657,7 @@ private theorem typeOfHasAttr_tt_contradicts_find_none
             simp only [EvaluatesTo] at h_cap_inv
             rcases h_cap_inv with h | h | h | h
             all_goals simp [evaluate, heval, hasAttr, bind, Except.bind, hattrs,
-              Map.contains, hfind_none] at h
+              Map.contains_eq_isSome_find?, hfind_none] at h
           | inr h_req =>
             cases qty with
             | required aty =>
@@ -694,7 +698,7 @@ private theorem typeOfHasAttr_tt_contradicts_find_none
             simp only [EvaluatesTo] at h_cap_inv
             rcases h_cap_inv with h | h | h | h
             all_goals simp [evaluate, heval, hasAttr, bind, Except.bind, hattrs,
-              Map.contains, hfind_none] at h
+              Map.contains_eq_isSome_find?, hfind_none] at h
           case isFalse =>
             simp only [Except.ok.injEq] at hattr_rec
             rw [← hattr_rec] at hha
@@ -837,7 +841,7 @@ private theorem typeOfExtHasAttr_bool_type_sound
                         unfold InstanceOfEntitySchemaEntry at h_entity_schema
                         rw [huid_ty] at h_entity_schema
                         obtain ⟨entry, hfind_ets, _⟩ := h_entity_schema
-                        simp [EntitySchema.attrs?] at *
+                        simp [EntitySchema.attrs?_eq_map_find?] at *
                         simp_all
                       | inr h_action_schema =>
                         unfold InstanceOfActionSchemaEntry at h_action_schema
@@ -858,7 +862,7 @@ private theorem typeOfExtHasAttr_bool_type_sound
               exfalso
               have h_false : hasAttr v a entities = .ok false := by
                 unfold hasAttr
-                simp only [bind, Except.bind, hattrs, Map.contains]
+                simp only [bind, Except.bind, hattrs, Map.contains_eq_isSome_find?]
                 rw [hfind]; rfl
               unfold typeOfHasAttr at hha
               split at hha
@@ -885,7 +889,7 @@ private theorem typeOfExtHasAttr_bool_type_sound
                         simp only [EvaluatesTo] at h_cap_inv
                         rcases h_cap_inv with h | h | h | h
                         all_goals simp [evaluate, heval, hasAttr, bind, Except.bind, hattrs,
-                          Map.contains, hfind] at h
+                          Map.contains_eq_isSome_find?, hfind] at h
                       | inr h_req =>
                         cases qty with
                         | required aty =>
@@ -1053,7 +1057,7 @@ private theorem typeOfExtHasAttr_bool_type_sound
                         simp only [EvaluatesTo]
                         refine Or.inr (Or.inr (Or.inr ?_))
                         simp only [evaluate, heval, hasAttr, bind, Except.bind,
-                          hattrs, Map.contains]
+                          hattrs, Map.contains_eq_isSome_find?]
                         rw [hfind]; rfl
                   have hih := ih h_rec hio_next hcap_ci heval_next hloop
                   rename_i heq_ff
@@ -1074,7 +1078,7 @@ private theorem typeOfExtHasAttr_bool_type_sound
                         simp only [EvaluatesTo]
                         refine Or.inr (Or.inr (Or.inr ?_))
                         simp only [evaluate, heval, hasAttr, bind, Except.bind,
-                          hattrs, Map.contains]
+                          hattrs, Map.contains_eq_isSome_find?]
                         rw [hfind]; rfl
                   have hih := ih h_rec hio_next hcap_ci heval_next hloop
                   rw [heq_tt] at hih

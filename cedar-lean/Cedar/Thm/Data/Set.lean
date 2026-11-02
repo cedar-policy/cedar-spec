@@ -58,6 +58,11 @@ public theorem wf_iff_sorted {α} [LT α] [DecidableLT α] [StrictLT α]  (s : S
     rw [← (List.sortedBy_implies_canonicalize_eq h),
       List.canonicalize_idempotent, List.sortedBy_implies_canonicalize_eq h]
 
+/-- Equation lemma for `Set.mapOrErr`, for clients that cannot unfold it. -/
+public theorem mapOrErr_eq_match {α β ε} [DecidableEq β] [LT β] [DecidableRel (α := β) (· < ·)] (f : α → Except ε β) (s : Set α) (err : ε) :
+  s.mapOrErr f err = match s.elts.mapM f with | .ok elts => .ok (make elts) | .error _ => .error err
+:= by unfold mapOrErr; rfl
+
 /-! ### contains and mem -/
 
 @[simp]

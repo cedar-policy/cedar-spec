@@ -1944,7 +1944,7 @@ theorem compile_well_typed_call
         fun y hy => (hty_comp_xs y hy).2
       have ⟨t₀, hok0⟩ : ∃ t, compileCall ExtFun.isInRange (thd :: t₂ :: ts') = .ok t := by
         simp only [compileCall, compileCallₙ]
-        rw [if_pos ⟨hty_all thd (by simp), fun tᵢ h => hty_all tᵢ (by simp [h])⟩]
+        rw [ite_eq_left ⟨hty_all thd (by simp), fun tᵢ h => hty_all tᵢ (by simp [h])⟩]
         exact ⟨_, rfl⟩
       refine ⟨t₀, hok0, ?_⟩
       have hty := (compileCall_wf_types hwf_all hok0).2

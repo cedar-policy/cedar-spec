@@ -14,20 +14,25 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Validation.Typechecker.Basic
+module
 
-import Cedar.Thm.Validation.Typechecker.BinaryApp.Eq
-import Cedar.Thm.Validation.Typechecker.BinaryApp.Cmp
-import Cedar.Thm.Validation.Typechecker.BinaryApp.Arith
-import Cedar.Thm.Validation.Typechecker.BinaryApp.Contains
-import Cedar.Thm.Validation.Typechecker.BinaryApp.ContainsAnyAll
-import Cedar.Thm.Validation.Typechecker.BinaryApp.Mem
-import Cedar.Thm.Validation.Typechecker.BinaryApp.HasTag
-import Cedar.Thm.Validation.Typechecker.BinaryApp.GetTag
+public import Cedar.Thm.Validation.Typechecker.Basic
+
+public import Cedar.Thm.Validation.Typechecker.BinaryApp.Eq
+public import Cedar.Thm.Validation.Typechecker.BinaryApp.Cmp
+public import Cedar.Thm.Validation.Typechecker.BinaryApp.Arith
+public import Cedar.Thm.Validation.Typechecker.BinaryApp.Contains
+public import Cedar.Thm.Validation.Typechecker.BinaryApp.ContainsAnyAll
+public import Cedar.Thm.Validation.Typechecker.BinaryApp.Mem
+public import Cedar.Thm.Validation.Typechecker.BinaryApp.HasTag
+public import Cedar.Thm.Validation.Typechecker.BinaryApp.GetTag
+import all Cedar.Validation.Typechecker -- unfolds `typeOf`
 
 /-!
 This file proves that typechecking of `.binaryApp` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 

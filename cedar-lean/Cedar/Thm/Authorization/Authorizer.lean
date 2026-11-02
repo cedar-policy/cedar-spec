@@ -101,6 +101,19 @@ theorem error_policies_congr_evaluate {ps : Policies} {r₁ r₂ : Request} {es�
     simp only [errored, herr]
   rw [List.filterMap_congr heq]
 
+/--
+`isAuthorized` depends only on the sets of forbid-satisfied, permit-satisfied,
+and erroring policies.
+-/
+theorem isAuthorized_eq_of_satisfied_and_error_policies_eq
+  {r₁ r₂ : Request} {es₁ es₂ : Entities} {ps₁ ps₂ : Policies}
+  (hf : satisfiedPolicies .forbid ps₁ r₁ es₁ = satisfiedPolicies .forbid ps₂ r₂ es₂)
+  (hp : satisfiedPolicies .permit ps₁ r₁ es₁ = satisfiedPolicies .permit ps₂ r₂ es₂)
+  (he : errorPolicies ps₁ r₁ es₁ = errorPolicies ps₂ r₂ es₂) :
+  isAuthorized r₁ es₁ ps₁ = isAuthorized r₂ es₂ ps₂
+:= by
+  simp only [isAuthorized, hf, hp, he]
+
 theorem is_authorized_congr_evaluate {ps : Policies} {r₁ r₂ : Request} {es₁ es₂ : Entities}
   (heq : ∀ p ∈ ps, evaluate p.toExpr r₁ es₁ = evaluate p.toExpr r₂ es₂) :
   isAuthorized r₁ es₁ ps = isAuthorized r₂ es₂ ps

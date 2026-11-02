@@ -14,11 +14,17 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Validation.Typechecker.Basic
+module
+
+public import Cedar.Thm.Validation.Typechecker.Basic
+import all Cedar.Validation.Typechecker -- unfolds `typeOf` and its helpers
+import all Cedar.Validation.TypedExpr -- unfolds `TypedExpr.typeOf`
 
 /-!
 This file proves that typechecking of `.binaryApp .hasTag` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -67,20 +73,18 @@ private theorem no_tags_type_implies_no_tags {uid : EntityUID} {env : TypeEnv} {
     | inl h₁ =>
       replace ⟨e, hf', _, _, h₁⟩ := h₁
       simp only [InstanceOfEntityTags] at h₁
-      simp only [EntitySchema.tags?, Option.map_eq_some_iff] at h₂
+      simp only [EntitySchema.tags?_eq_map_find?, Option.map_eq_some_iff] at h₂
       replace ⟨e', h₂, h₃⟩ := h₂
       simp only [hf', Option.some.injEq] at h₂
       subst h₂
-      simp only [EntitySchemaEntry.tags?] at h₁ h₃
+      simp only [EntitySchemaEntry.tags?_eq] at h₁ h₃
       split at h₃
       · simp only [h₃] at h₁
         simp only [h₁, map_empty_contains_instance_of_ff]
       · simp only [h₁, map_empty_contains_instance_of_ff]
     | inr h₁ =>
       replace ⟨_, h₁, ⟨e, _⟩⟩ := h₁
-      simp only [h₁, Map.empty, Map.contains, Map.find?, Map.toList, List.find?, Option.isSome]
-      constructor
-      constructor
+      simp only [h₁, map_empty_contains_instance_of_ff]
   · exact map_empty_contains_instance_of_ff
 
 private theorem no_type_implies_no_tags {uid : EntityUID} {env : TypeEnv} {entities : Entities}
@@ -94,13 +98,11 @@ private theorem no_type_implies_no_tags {uid : EntityUID} {env : TypeEnv} {entit
     cases h₁.1 uid d hf with
     | inl h₁ =>
       replace ⟨e, h₁, _, _, _⟩ := h₁
-      simp only [EntitySchema.tags?, Option.map_eq_none_iff] at h₂
+      simp only [EntitySchema.tags?_eq_map_find?, Option.map_eq_none_iff] at h₂
       simp only [h₁, reduceCtorEq] at h₂
     | inr h₁ =>
       replace ⟨_, h₁, ⟨e, _⟩⟩ := h₁
-      simp only [h₁, Map.empty, Map.contains, Map.find?, Map.toList, List.find?, Option.isSome]
-      constructor
-      constructor
+      simp only [h₁, map_empty_contains_instance_of_ff]
   · exact map_empty_contains_instance_of_ff
 
 private theorem mem_capabilities_implies_mem_tags {env : TypeEnv} {x₁ x₂ : Expr} {c₁ : Capabilities} {request : Request} {entities : Entities} {uid : EntityUID} {s : String}

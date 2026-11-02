@@ -13,27 +13,32 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+module
 
-import Cedar.Thm.Validation.Typechecker.And
-import Cedar.Thm.Validation.Typechecker.BinaryApp
-import Cedar.Thm.Validation.Typechecker.Call
-import Cedar.Thm.Validation.Typechecker.GetAttr
-import Cedar.Thm.Validation.Typechecker.HasAttr
-import Cedar.Thm.Validation.Typechecker.ExtHasAttr
-import Cedar.Thm.Validation.Typechecker.IfThenElse
-import Cedar.Thm.Validation.Typechecker.LitVar
-import Cedar.Thm.Validation.Typechecker.Record
-import Cedar.Thm.Validation.Typechecker.Set
-import Cedar.Thm.Validation.Typechecker.Or
-import Cedar.Thm.Validation.Typechecker.UnaryApp
-import Cedar.Thm.Validation.Typechecker.LUB
-import Cedar.Thm.Validation.Typechecker.WF
-import Cedar.Thm.Validation.Typechecker.Basic
-import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Validation.Typechecker.And
+public import Cedar.Thm.Validation.Typechecker.BinaryApp
+public import Cedar.Thm.Validation.Typechecker.Call
+public import Cedar.Thm.Validation.Typechecker.GetAttr
+public import Cedar.Thm.Validation.Typechecker.HasAttr
+public import Cedar.Thm.Validation.Typechecker.ExtHasAttr
+public import Cedar.Thm.Validation.Typechecker.IfThenElse
+public import Cedar.Thm.Validation.Typechecker.LitVar
+public import Cedar.Thm.Validation.Typechecker.Record
+public import Cedar.Thm.Validation.Typechecker.Set
+public import Cedar.Thm.Validation.Typechecker.Or
+public import Cedar.Thm.Validation.Typechecker.UnaryApp
+public import Cedar.Thm.Validation.Typechecker.LUB
+public import Cedar.Thm.Validation.Typechecker.WF
+public import Cedar.Thm.Validation.Typechecker.Basic
+public import Cedar.Thm.Validation.Typechecker.Types
+import all Cedar.Validation.Typechecker -- uses `typeOf.induct`
+import all Cedar.Validation.TypedExpr -- unfolds `TypedExpr.toExpr`, `TypedExpr.typeOf`
 
 /-!
 This file contains useful definitions and lemmas about the `Typechecker` functions.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 

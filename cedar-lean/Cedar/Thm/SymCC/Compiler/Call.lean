@@ -1014,7 +1014,7 @@ private theorem compileCall_interpret_ipaddr_isInRange {εs : SymEntities} {I : 
   rw [show List.map (Term.interpret I) (t₁ :: t₂ :: ts') =
         Term.interpret I t₁ :: Term.interpret I t₂ :: List.map (Term.interpret I) ts' from rfl]
   simp only [compileCall, compileCallₙ]
-  rw [if_pos ⟨hit₁, hitrest⟩]
+  rw [ite_eq_left ⟨hit₁, hitrest⟩]
   congr 1
   -- push `interpret` through the compiled residual on the RHS
   rw [interpret_ifSome hI hwt₁

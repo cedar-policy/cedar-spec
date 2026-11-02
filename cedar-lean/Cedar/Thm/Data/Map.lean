@@ -240,6 +240,11 @@ public theorem values_cons {m : Map α β} :
   intro h₁
   simp [h₁]
 
+/-- Characterizes `contains` in terms of `find?`, for clients that cannot unfold `contains`. -/
+public theorem contains_eq_isSome_find? {α β} [BEq α] (m : Map α β) (k : α) :
+  m.contains k = (m.find? k).isSome
+:= by simp [contains]
+
 public theorem contains_iff_some_find? {α β} [BEq α] {m : Map α β} {k : α} :
   m.contains k ↔ ∃ v, m.find? k = .some v
 := by simp [contains, Option.isSome_iff_exists]
@@ -274,6 +279,10 @@ public theorem mk_wf [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β
   replace h := List.sortedBy_implies_canonicalize_eq h
   rw [← h, WellFormed, make, toList]
   simp only [List.canonicalize_idempotent]
+
+public theorem make_eq_mk_canonicalize [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
+  Map.make xs = Map.mk (List.canonicalize Prod.fst xs)
+:= by simp [make]
 
 public theorem make_eq_mk [LT α] [StrictLT α] [DecidableLT α] {xs : List (α × β)} :
   xs.SortedBy Prod.fst ↔ Map.make xs = Map.mk xs
@@ -910,6 +919,10 @@ public theorem mapOnValues_restricted_id  {f : β → β} {m : Map α β} :
   intro pair hpair
   simp [h pair.snd (Map.in_list_in_values hpair)]
 
+public theorem mapOnValues_mk {f : β → γ} {kvs : List (α × β)} :
+  (Map.mk kvs).mapOnValues f = Map.mk (kvs.map λ (k, v) => (k, f v))
+:= by simp [mapOnValues, toList]
+
 @[simp]
 public theorem mapOnValues_make [LT α] [DecidableLT α] [StrictLT α] {f : β → γ} {kvs : List (α × β)} :
   (Map.make kvs).mapOnValues f = Map.make (kvs.map (Prod.map id f))
@@ -951,6 +964,11 @@ public theorem findOrErr_err_iff_find?_none [LT α] [DecidableLT α] [DecidableE
 := by
   unfold findOrErr
   cases m.find? k <;> simp only [reduceCtorEq]
+
+/-- Equation lemma for `findOrErr`, for clients that cannot unfold it. -/
+public theorem findOrErr_eq_match {α β ε} [BEq α] (m : Map α β) (k : α) (e : ε) :
+  m.findOrErr k e = match m.find? k with | some v => .ok v | _ => .error e
+:= by unfold findOrErr; rfl
 
 /--
   The converse requires the `wf` precondition, and is available in

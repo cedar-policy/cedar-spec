@@ -14,13 +14,21 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Validation
+module
+
+public import Cedar.Spec
+public import Cedar.Validation
+public import Cedar.Thm.Data.Map
+public import Cedar.Thm.Data.Set
+import Cedar.Data.SizeOf
+import all Cedar.Validation.Types -- well-formedness lemmas unfold the schema accessors (`tags?`, `attrs?`, `contains`, ...)
 
 /-!
 This file contains the definition of well-formedness of `TypeEnv`
 and related definitions.
 --/
+
+@[expose] public section
 
 namespace Cedar.Validation
 
@@ -122,6 +130,26 @@ def EntitySchema.WellFormed (env : TypeEnv) (ets : EntitySchema) : Prop :=
 def EntityUID.WellFormed (env : TypeEnv) (uid : EntityUID) : Prop :=
   env.ets.isValidEntityUID uid ∨ env.acts.contains uid
 
+theorem EntitySchema.attrs?_eq_map_find? {ets : EntitySchema} {ety : EntityType} :
+  ets.attrs? ety = (ets.find? ety).map EntitySchemaEntry.attrs
+:= by unfold EntitySchema.attrs?; rfl
+
+theorem EntitySchemaEntry.tags?_eq {entry : EntitySchemaEntry} :
+  entry.tags? = match entry with | .standard ty => ty.tags | .enum _ => none
+:= by cases entry <;> rfl
+
+theorem EntitySchema.tags?_eq_map_find? {ets : EntitySchema} {ety : EntityType} :
+  ets.tags? ety = (ets.find? ety).map EntitySchemaEntry.tags?
+:= by unfold EntitySchema.tags?; rfl
+
+theorem EntitySchema.isValidEntityUID_implies_contains {ets : EntitySchema} {uid : EntityUID} :
+  ets.isValidEntityUID uid → ets.contains uid.ty
+:= by
+  intro h
+  simp only [EntitySchema.isValidEntityUID] at h
+  simp only [EntitySchema.contains, Option.isSome]
+  split at h <;> simp_all
+
 def ActionSchemaEntry.WellFormed (env : TypeEnv) (entry : ActionSchemaEntry) : Prop :=
   -- Well-formed as `Map`/`Set`s
   entry.appliesToPrincipal.WellFormed ∧
@@ -186,7 +214,6 @@ theorem wf_record_type_cons {env : TypeEnv}
 := by
   cases hwf
   rename_i hwf_map hwf_tys
-  simp only [Map.WellFormed] at hwf_map
   constructor
   · have := hwf_tys hd.fst hd.snd
     simp only [Map.find?, Map.toList_mk_id, BEq.rfl, List.find?_cons_of_pos, forall_const] at this
@@ -197,23 +224,14 @@ theorem wf_record_type_cons {env : TypeEnv}
       simp only [Qualified.getType]
       assumption
   · constructor
-    · simp only [Map.WellFormed]
-      apply Eq.symm
-      apply Map.make_eq_mk.mp
-      have := Map.make_eq_mk.mpr (Eq.symm hwf_map)
-      cases this with
-      | cons_nil => constructor
-      | cons_cons =>
-        simp only [Map.toList, Map.toList]
-        assumption
+    · exact Map.wf_implies_tail_wf hwf_map
     · intros attr qty hfound
       have hfound := Map.find?_mem_toList hfound
       simp only [Map.toList_mk_id] at hfound
       have : (Map.mk (hd :: tl)).find? attr = some qty := by
         apply (Map.in_list_iff_find?_some ?_).mp
         · simp [hfound]
-        · simp only [Map.WellFormed]
-          exact hwf_map
+        · exact hwf_map
       exact hwf_tys attr qty this
 
 theorem wf_record_implies_wf_attr {env : TypeEnv} {rty : RecordType} {attr : Attr} {qty : QualifiedType}
@@ -240,7 +258,10 @@ theorem CedarType.WellFormed.mono {env₁ env₂ : TypeEnv}
   | ext_wf => exact .ext_wf
   | @record_wf rty hmap hattrs =>
     refine .record_wf hmap fun attr qty hfind => ?_
-    have hmem : (attr, qty) ∈ rty.1 := Map.find?_mem_toList hfind
+    have hmem : (attr, qty) ∈ rty.1 := by
+      have h := Map.find?_mem_toList hfind
+      cases rty
+      simpa only [Map.toList_mk_id] using h
     have hlt := Map.sizeOf_lt_of_value hmem
     cases hqty : qty with
     | optional ty =>
@@ -271,7 +292,7 @@ theorem emptyRecord_wf {env : TypeEnv} :
 /-- The empty record type is lifted. -/
 theorem emptyRecord_lifted : (CedarType.record Map.empty).IsLifted
 :=
-  .record_lifted fun _ _ h => by simp [Map.empty, Map.toList] at h
+  .record_lifted fun _ _ h => by simp at h
 
 /-- A standard entity type without tags is well-formed when its ancestors and attributes are. -/
 theorem standardEntry_wf {env : TypeEnv} {ancestors : Set EntityType}
@@ -338,10 +359,8 @@ theorem wf_env_implies_wf_attrs {env : TypeEnv} {ety : EntityType} {attrs : Reco
     simp only [← hattrs]
     exact hwf_attrs
   · simp only [EntitySchemaEntry.attrs] at hattrs
-    simp only [← hattrs, Map.empty]
-    constructor
-    . simp [Map.WellFormed, Map.make, List.canonicalize]
-    · simp [Map.find?]
+    subst hattrs
+    exact emptyRecord_wf
 
 theorem wf_env_implies_attrs_lifted {env : TypeEnv} {ety : EntityType} {attrs : RecordType}
   (hwf : env.WellFormed)
@@ -358,9 +377,8 @@ theorem wf_env_implies_attrs_lifted {env : TypeEnv} {ety : EntityType} {attrs : 
     simp only [← hattrs]
     exact hlift
   · simp only [EntitySchemaEntry.attrs] at hattrs
-    simp only [← hattrs, Map.empty]
-    constructor
-    simp
+    subst hattrs
+    exact emptyRecord_lifted
 
 theorem wf_env_implies_action_wf {env : TypeEnv}
   (hwf : env.WellFormed) :
@@ -403,12 +421,10 @@ theorem wf_env_implies_wf_request
   have ⟨_, _, _, hwf_app_to_princ, hwf_app_to_res, _, hwf_ctx_ty⟩ := hwf_act_entry
   and_intros
   · apply hwf_app_to_princ
-    simp only [Membership.mem] at hwf_princ
-    simp [Set.contains, hwf_princ, Membership.mem]
+    simpa using hwf_princ
   · simp [ActionSchema.contains, hwf_act]
   · apply hwf_app_to_res
-    simp only [Membership.mem] at hwf_res
-    simp [Set.contains, hwf_res, Membership.mem]
+    simpa using hwf_res
   · simp [hwf_ctx, hwf_ctx_ty]
 
 /--
@@ -497,11 +513,8 @@ theorem wf_env_implies_wf_ancestor
     apply Or.inl
     simp only [EntitySchema.contains, hanc_entry, Option.isSome]
   | enum es =>
-    simp [
-      EntitySchemaEntry.ancestors, Membership.mem,
-      Set.elts, Set.empty,
-    ] at hanc
-    contradiction
+    simp only [EntitySchemaEntry.ancestors] at hanc
+    exact absurd hanc (Set.not_mem_empty anc)
 
 theorem wf_env_implies_wf_ancestor_set
   {env : TypeEnv} {entry : EntitySchemaEntry}

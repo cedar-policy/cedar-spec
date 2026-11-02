@@ -14,12 +14,20 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.WellTyped.Expr.Definition
-import Cedar.Thm.WellTyped.Expr.TypeLifting
+module
+
+public import Cedar.Thm.WellTyped.Expr.Definition
+public import Cedar.Thm.WellTyped.Expr.TypeLifting
+import all Cedar.Validation.Typechecker -- lemmas about the internals of `typeOf`
+import all Cedar.Validation.TypedExpr -- unfolds `TypedExpr.liftBoolTypes`
+import all Cedar.Validation.Types -- unfolds `CedarType.liftBoolTypes`, `BoolType.lift`
+import all Cedar.Validation.Subtyping -- unfolds `subty`
 
 /-!
 This file contains expression-kind-specific lemmas of the theorem `typechecked_is_well_typed_after_lifting`
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -1515,32 +1523,11 @@ theorem record_lifting_make {tys : List (Attr × TypedExpr)} :
     (List.map (fun x => (x.fst, Qualified.required x.snd.typeOf))
       (List.map (fun x => (x.fst, x.snd.liftBoolTypes)) tys))
 := by
-  simp only [lift_bool_types_record_eq_map_on_values]
-  rw [Data.Map.mapOnValues_eq_make_map QualifiedType.liftBoolTypes]
-  simp only [List.map_map]
-  · simp only [Data.Map.make, Data.Map.mk.injEq]
-    have : (λ (x : Attr × TypedExpr) => (x.fst, Qualified.required x.snd.typeOf)) =
-           (Prod.map id (λ (tx : TypedExpr) => Qualified.required tx.typeOf)) := by
-      unfold Prod.map
-      simp only [id_eq]
-    simp only [this, List.canonicalize_of_map_fst, Data.Map.toList_mk_id, List.map_map]
-    have : ((λ (kv : Attr × QualifiedType) => (kv.fst, kv.snd.liftBoolTypes)) ∘ Prod.map id (λ (tx : TypedExpr) => Qualified.required tx.typeOf)) =
-           (Prod.map id (λ (tx : TypedExpr) => QualifiedType.liftBoolTypes (Qualified.required tx.typeOf))) := by
-      unfold Prod.map
-      simp only [id_eq]
-      apply funext
-      intros
-      simp only [Function.comp_apply]
-    simp only [this, List.canonicalize_of_map_fst]
-    have : (Prod.map id (λ (tx : TypedExpr) => Qualified.required tx.typeOf)) ∘ (λ (x : Attr × TypedExpr) => (x.fst, x.snd.liftBoolTypes)) =
-           (Prod.map id (λ (tx : TypedExpr) => QualifiedType.liftBoolTypes (Qualified.required tx.typeOf))) := by
-      unfold Prod.map
-      simp only [id_eq]
-      apply funext
-      intro (_, tx)
-      simp only [Function.comp_apply, type_of_after_lifted_is_lifted, QualifiedType.liftBoolTypes]
-    simp only [List.canonicalize_idempotent, this, List.canonicalize_of_map_fst]
-  · simp only [Data.Map.make_wf]
+  simp only [lift_bool_types_record_eq_map_on_values, Data.Map.mapOnValues_make, List.map_map]
+  congr 1
+  apply List.map_congr_left
+  intro (_, tx) _
+  simp [Prod.map, type_of_after_lifted_is_lifted, QualifiedType.liftBoolTypes]
 
 theorem typechecked_is_well_typed_after_lifting_record
 {c₁ c₂ : Capabilities}

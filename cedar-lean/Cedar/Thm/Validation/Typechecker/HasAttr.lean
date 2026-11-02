@@ -14,11 +14,17 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Validation.Typechecker.Basic
+module
+
+public import Cedar.Thm.Validation.Typechecker.Basic
+import all Cedar.Validation.Typechecker -- unfolds `typeOf` and its helpers
+import all Cedar.Validation.TypedExpr -- unfolds `TypedExpr.typeOf`
 
 /-!
 This file proves that typechecking of `.hasAttr` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -169,10 +175,12 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
     simp [←h₃]
     unfold Entities.attrsOrEmpty
     rename_i _ h₇ _ _
-    simp [EntitySchema.attrs?] at h₇
+    simp [EntitySchema.attrs?_eq_map_find?] at h₇
     replace ⟨_, _, h₂⟩ := h₂
     cases h₈ : Map.find? entities uid
-    case none => exact false_is_instance_of_ff
+    case none =>
+      simp only [Map.not_contains_of_empty]
+      exact false_is_instance_of_ff
     cases h₂.1 uid _ h₈ with
     | inl h₂ =>
       replace ⟨_, h₈, _⟩ := h₂
@@ -180,7 +188,7 @@ theorem type_of_hasAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
       contradiction
     | inr h₂ =>
       -- Action entity always have empty attributes
-      simp only [h₂.left]
+      simp only [h₂.left, Map.not_contains_of_empty]
       exact false_is_instance_of_ff
 
 theorem type_of_hasAttr_is_sound {x₁ : Expr} {a : Attr} {c₁ c₂ : Capabilities} {env : TypeEnv} {ty : TypedExpr} {request : Request} {entities : Entities}

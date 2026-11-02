@@ -14,21 +14,26 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Validation
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Data
-import Cedar.TPE
+module
+
+public import Cedar.Spec
+public import Cedar.Validation
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Data
+import all Cedar.Validation.TypedExpr -- lemmas about `TypedExpr.liftBoolTypes`
+import all Cedar.Validation.Types -- lemmas about `CedarType.liftBoolTypes`
+import all Cedar.Validation.Subtyping -- lemmas relating lifting to `subty` and `lub?`
 
 /-!
 This file contains theorems related to `TypedExpr.liftBoolTypes`
 -/
 
+@[expose] public section
+
 namespace Cedar.Thm
 
 open Cedar.Validation
 open Cedar.Spec
-open Cedar.TPE
 
 theorem type_of_after_lifted_is_lifted (x : TypedExpr) :
   x.liftBoolTypes.typeOf = x.typeOf.liftBoolTypes
@@ -112,7 +117,7 @@ inductive Lifted : CedarType → CedarType → Prop
 
 mutual
 
-private theorem lifted_record_is_lifted (m : List (Attr × QualifiedType)) :
+theorem lifted_record_is_lifted (m : List (Attr × QualifiedType)) :
   Lifted (.record (.mk m)) (.record (.mk (m.map (λ (k, v) => (k, QualifiedType.liftBoolTypes v)))))
 := by
   match m with
@@ -146,10 +151,9 @@ theorem lifted_type_is_lifted (ty : CedarType) :
   case record rty =>
     simp only [RecordType.liftBoolTypes]
     rw [Data.Map.mapOnValues₂_eq_mapOnValues]
-    simp only [Data.Map.mapOnValues]
     cases rty
     case mk atys =>
-    simp only [Data.Map.toList_mk_id]
+    simp only [Data.Map.mapOnValues_mk]
     cases atys
     case nil => simp [Lifted.record_nil]
     case cons aty atys =>
@@ -301,7 +305,7 @@ theorem lifted_type_is_top {ty₁ ty₂ : CedarType} :
       simp [h₂] at h₁
       simp only [CedarType.liftBoolTypes, RecordType.liftBoolTypes, CedarType.record.injEq]
       rw [Data.Map.mapOnValues₂_eq_mapOnValues, Data.Map.mapOnValues₂_eq_mapOnValues]
-      simp only [Data.Map.mapOnValues, Data.Map.mk.injEq]
+      simp only [Data.Map.mapOnValues_mk, Data.Map.mk.injEq]
       exact lifted_record_type_is_top (lubRecordType_is_lub_of_record_types h₁)
     case _ =>
       split at heq
@@ -342,6 +346,11 @@ theorem lift_bool_types_record_eq_map_on_values {rty : Data.Map Attr QualifiedTy
   RecordType.liftBoolTypes rty = rty.mapOnValues QualifiedType.liftBoolTypes
 := by
   simp only [RecordType.liftBoolTypes, Data.Map.mapOnValues₂_eq_mapOnValues]
+
+theorem lift_bool_types_record_eq {rty : Data.Map Attr QualifiedType} :
+  CedarType.liftBoolTypes (.record rty) = .record (RecordType.liftBoolTypes rty)
+:= by
+  simp only [CedarType.liftBoolTypes]
 
 theorem wf_type_iff_wf_liftBoolTypes {env : TypeEnv} :
   ∀ {ty : CedarType},

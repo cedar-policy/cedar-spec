@@ -13,6 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+module
 
 import Cedar.Slice.PolicySlice
 import Cedar.Thm.Authorization.Authorizer
@@ -52,7 +53,7 @@ theorem isAuthorized_eq_for_sound_policy_slice (req : Request) (entities : Entit
   have hf := satisfiedPolicies_eq_for_sound_policy_slice .forbid h₀
   have hp := satisfiedPolicies_eq_for_sound_policy_slice .permit h₀
   have he := errorPolicies_eq_for_sound_policy_slice h₀
-  simp [isAuthorized, hf, hp, he]
+  exact isAuthorized_eq_of_satisfied_and_error_policies_eq hf hp he
 
 /--
 A sound bound analysis produces sound policy slices.
@@ -94,34 +95,25 @@ theorem scope_bound_is_sound (policy : Policy) :
   intro request entities
   unfold scopeAnalysis
   unfold satisfiedBound
-  unfold Scope.bound
   unfold inSomeOrNone
   simp only [decide_eq_true_eq]
   apply And.intro <;>
   intro h₁ <;>
   apply And.intro
   case left.left =>
-    generalize h₂ : policy.principalScope.scope = s
-    cases s <;> simp <;>
-    apply satisfied_implies_principal_scope h₁ <;>
-    simp only [Scope.bound, h₂]
+    cases h₂ : policy.principalScope.scope.bound <;> simp
+    exact satisfied_implies_principal_scope h₁ h₂
   case left.right =>
-    generalize h₂ : policy.resourceScope.scope = s
-    cases s <;> simp <;>
-    apply satisfied_implies_resource_scope h₁ <;>
-    simp only [Scope.bound, h₂]
+    cases h₂ : policy.resourceScope.scope.bound <;> simp
+    exact satisfied_implies_resource_scope h₁ h₂
   case right.left =>
-    generalize h₂ : policy.principalScope.scope = s
     replace ⟨err, h₁⟩ := if_hasError_then_exists_error h₁
-    cases s <;> simp <;>
-    apply error_implies_principal_scope_in h₁ <;>
-    simp only [Scope.bound, h₂]
+    cases h₂ : policy.principalScope.scope.bound <;> simp
+    exact error_implies_principal_scope_in h₁ h₂
   case right.right =>
-    generalize h₂ : policy.resourceScope.scope = s
     replace ⟨err, h₁⟩ := if_hasError_then_exists_error h₁
-    cases s <;> simp <;>
-    apply error_implies_resource_scope_in h₁ <;>
-    simp only [Scope.bound, h₂]
+    cases h₂ : policy.resourceScope.scope.bound <;> simp
+    exact error_implies_resource_scope_in h₁ h₂
 
 /--
 Scope-based bound analysis is sound.
