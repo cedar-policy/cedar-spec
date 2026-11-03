@@ -191,10 +191,9 @@ private unsafe def BindingEnv.memoize (s : BindingEnv) (t : Term)
 /-
   Bottom-up serialization of a `Term` with memoization of compound terms.
 
-  Compound terms (`some`, `set`, `record`, `app`) are memoized by object
-  identity: each compound object is emitted once as a definition
-  `{"id": <id>, "body": <shallow json>}`, and terms that contain it use the
-  reference `{"ref": <id>}`.
+  Compound terms (`some`, `set`, `record`, `app`) are memoized by pointer equality:
+  shared terms are emitted as definitions: `{"id": <id>, "body": <shallow json>}`,
+  terms that reference those shared terms use the reference `{"ref": <id>}`.
 -/
 mutual
 
