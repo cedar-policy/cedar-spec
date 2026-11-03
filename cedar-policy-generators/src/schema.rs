@@ -19,7 +19,7 @@ use crate::abac::{
 };
 use crate::err::{while_doing, Error, Result};
 use crate::expr::ExprGenerator;
-use crate::hierarchy::Hierarchy;
+use crate::hierarchy::{arbitrary_edges, Hierarchy, TYPE_EDGE_BUDGET};
 use crate::request::Request;
 use crate::settings::ABACSettings;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_range, size_hint_for_ratio};
@@ -1183,25 +1183,25 @@ impl Schema {
                 })
                 .collect::<Result<Vec<_>>>()?;
         // fill in member-relationships. This is the entity-type hierarchy, so cycles are allowed.
-        for (_, entity_type) in &mut entity_types {
-            match entity_type.kind {
-                EntityTypeKind::Standard(StandardEntityType {
-                    ref mut member_of_types,
-                    ..
-                }) => {
-                    for name in &entity_type_ids {
-                        // Ratio is `1 / (n + 6)` so that total numbers of edges scales linearly
-                        // with number of entity types rather than the number of possible edges (n^2).
-                        // The `+ 6` is an arbitrary bias to further reduce the total number of
-                        // edges present after TC computation.
-                        if u.ratio::<usize>(1, entity_type_ids.len() + 6)? {
-                            let etype = ast::InternalName::from(ast::Name::from(name.clone()));
-                            member_of_types.push(etype);
-                        }
-                    }
-                }
-                // Enumerated entity types do not have any parents
-                EntityTypeKind::Enum { .. } => {}
+        // The candidate edges are every standard entity type to every entity type name; at most
+        // `2 * TYPE_EDGE_BUDGET` of them are taken, so the type graph's transitive closure stays small,
+        // which bounds the allowed parent types per entity and keeps the generated entity hierarchy
+        // sparse.
+        let standard: Vec<usize> = entity_types
+            .iter()
+            .enumerate()
+            .filter(|(_, (_, ty))| matches!(ty.kind, EntityTypeKind::Standard(_)))
+            .map(|(i, _)| i)
+            .collect();
+        let num_names = entity_type_ids.len();
+        for e in arbitrary_edges(u, standard.len() * num_names, TYPE_EDGE_BUDGET)? {
+            let (child, parent) = (standard[e / num_names], &entity_type_ids[e % num_names]);
+            if let EntityTypeKind::Standard(StandardEntityType {
+                ref mut member_of_types,
+                ..
+            }) = entity_types[child].1.kind
+            {
+                member_of_types.push(ast::InternalName::from(ast::Name::from(parent.clone())));
             }
         }
 
@@ -1313,24 +1313,23 @@ impl Schema {
                 ))
             })
             .collect::<Result<Vec<_>>>()?;
-        // fill in member-relationships for actions; see notes for entity types
+        // fill in member-relationships for actions; see notes for entity types. The candidate edges
+        // are each action to every later one, so the action hierarchy is a DAG.
         if settings.enable_action_groups_and_attrs {
-            for i in 0..actions.len() {
-                for name in action_names[(i + 1)..].iter() {
-                    if u.ratio::<u8>(1, 2)? {
-                        actions[i]
-                            .1
-                            .member_of
-                            .as_mut()
-                            .expect(
-                                "`member_of` is always `Some` when action groups are permitted.",
-                            )
-                            .push(
-                                json_schema::ActionEntityUID::default_type(name.clone())
-                                    .qualify_with(namespace.as_ref().map(AsRef::as_ref)),
-                            );
-                    }
-                }
+            let candidates: Vec<(usize, usize)> = (0..actions.len())
+                .flat_map(|i| ((i + 1)..action_names.len()).map(move |j| (i, j)))
+                .collect();
+            for e in arbitrary_edges(u, candidates.len(), TYPE_EDGE_BUDGET)? {
+                let (i, j) = candidates[e];
+                actions[i]
+                    .1
+                    .member_of
+                    .as_mut()
+                    .expect("`member_of` is always `Some` when action groups are permitted.")
+                    .push(
+                        json_schema::ActionEntityUID::default_type(action_names[j].clone())
+                            .qualify_with(namespace.as_ref().map(AsRef::as_ref)),
+                    );
             }
         }
 
