@@ -25,6 +25,8 @@ import Cedar.Thm.Validation.EnvironmentValidation
 import Cedar.Thm.Validation.Levels
 import Cedar.Thm.Validation.SubstituteAction
 import Cedar.Thm.Validation.Typechecker
+import Cedar.Thm.Validation.Pruning.EnvFilter
+import Cedar.Thm.Validation.Pruning.TemplateValidation
 import Cedar.Thm.Authorization
 
 /-!
