@@ -14,14 +14,19 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.WellTyped.Expr.Definition
-import Cedar.Thm.WellTyped.Expr.Typechecking
-import Cedar.Thm.WellTyped.Expr.TypeLifting
-import Cedar.Thm.Validation.Typechecker.WF
+module
+
+public import Cedar.Thm.WellTyped.Expr.Definition
+public import Cedar.Thm.WellTyped.Expr.Typechecking
+public import Cedar.Thm.WellTyped.Expr.TypeLifting
+public import Cedar.Thm.Validation.Typechecker.WF
+import all Cedar.Validation.TypedExpr -- unfolds `TypedExpr.typeOf`
 
 /-!
 This file contains the theorems that `TypedExpr.WellTyped` implies `CedarType.WellFormed`.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -46,12 +51,8 @@ theorem well_typed_implies_wf_type
       constructor
     rename_i hwt_uid
     simp only [EntityType.WellFormed, ActionSchema.IsActionEntityType]
-    simp only [EntitySchema.isValidEntityUID] at hwt_uid
     rcases hwt_uid with hets | hacts
-    · split at hets
-      · rename_i hsome
-        simp only [EntitySchema.contains, Option.isSome, hsome, true_or]
-      · contradiction
+    · exact Or.inl (EntitySchema.isValidEntityUID_implies_contains hets)
     · rename_i uid
       apply Or.inr
       exists uid
@@ -105,7 +106,7 @@ theorem well_typed_implies_wf_type
     simp only [← hattr_ty]
     have hwf_attrs := wf_env_implies_wf_attrs hwf_env hattrs
     have hwf_attrs_lift := wf_type_iff_wf_liftBoolTypes.mp hwf_attrs
-    simp only [CedarType.liftBoolTypes, hattrs_lift] at hwf_attrs_lift
+    simp only [lift_bool_types_record_eq, hattrs_lift] at hwf_attrs_lift
     have hwf_attr := wf_record_implies_wf_attr hwf_attrs_lift hattr
     apply qty_wf_implies_type_of_wf
     exact hwf_attr

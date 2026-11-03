@@ -13,12 +13,16 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+module
 
-import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Typechecker
+import all Cedar.Validation.Typechecker -- unfolds `ResultType.typeOf`
 
 /-!
 This file defines the top-level soundness property for the type checker.
 --/
+
+@[expose] public section
 
 namespace Cedar.Thm
 

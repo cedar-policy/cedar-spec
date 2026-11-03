@@ -14,12 +14,18 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Data.LT
-import Cedar.Thm.Validation.Typechecker.Basic
+module
+
+public import Cedar.Thm.Data.LT
+public import Cedar.Thm.Validation.Typechecker.Basic
+import all Cedar.Validation.Typechecker -- unfolds `typeOf` and its helpers
+import all Cedar.Validation.TypedExpr -- unfolds `TypedExpr.typeOf`
 
 /-!
 This file proves that typechecking of `.binaryApp .less` and `binaryApp .lessEq` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 

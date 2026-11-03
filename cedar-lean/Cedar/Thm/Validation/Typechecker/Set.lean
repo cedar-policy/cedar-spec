@@ -14,14 +14,21 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Data.List
-import Cedar.Thm.Data.LT
-import Cedar.Thm.Validation.Typechecker.Basic
-import Cedar.Thm.Validation.Typechecker.LUB
+module
+
+public import Cedar.Thm.Data.List
+public import Cedar.Thm.Data.LT
+public import Cedar.Thm.Validation.Typechecker.Basic
+import Batteries.Data.Except
+import all Cedar.Validation.Typechecker -- unfolds `typeOf` and its helpers
+import all Cedar.Validation.TypedExpr -- unfolds `TypedExpr.typeOf`
+public import Cedar.Thm.Validation.Typechecker.LUB
 
 /-!
 This file proves that typechecking of `.set` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -70,9 +77,7 @@ theorem type_of_set_tail
         simp only [Option.bind_some_fun] at h₅
         rw [eq_comm, lub_comm] at h₅
         have h₆ := lub_left_subty h₅
-        simp only [subty] at h₆
-        split at h₆ <;> simp at h₆
-        subst h₆
+        replace h₆ := subty_iff_lub?_eq_some.mp h₆
         exists ty'
 
 theorem type_of_set_inversion {xs : List Expr} {c c' : Capabilities} {env : TypeEnv} {tx : TypedExpr}

@@ -14,11 +14,17 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Validation.Typechecker.Basic
+module
+
+public import Cedar.Thm.Validation.Typechecker.Basic
+import all Cedar.Validation.Typechecker -- unfolds `typeOf` and its helpers
+import all Cedar.Validation.TypedExpr -- unfolds `TypedExpr.typeOf`
 
 /-!
 This file proves that typechecking of `.binaryApp .getTag` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -99,11 +105,11 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
   | inl h =>
     replace ⟨entry, hf₂, _, _, _, h₂⟩  := h
     simp only [InstanceOfEntityTags] at h₂
-    simp [EntitySchema.tags?, Option.map_eq_some_iff] at ht
+    simp [EntitySchema.tags?_eq_map_find?, Option.map_eq_some_iff] at ht
     replace ⟨_, ht₁, ht₂⟩ := ht
     simp only [hf₂, Option.some.injEq] at ht₁
     subst ht₁
-    simp only [EntitySchemaEntry.tags?] at h₂ ht₂
+    simp only [EntitySchemaEntry.tags?_eq] at h₂ ht₂
     split at ht₂
     simp only [ht₂] at h₂
     have hf₃ := Map.findOrErr_returns d.tags s Error.tagDoesNotExist
@@ -122,7 +128,7 @@ theorem type_of_getTag_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {e
     · cases ht₂
   | inr h =>
     replace ⟨h₃, _, ⟨_, hacts, _⟩⟩ := h
-    simp only [EntitySchema.tags?, Option.map] at ht
+    simp only [EntitySchema.tags?_eq_map_find?, Option.map] at ht
     split at ht
     · apply False.elim
       apply wf_env_disjoint_ets_acts h₂.wf_env

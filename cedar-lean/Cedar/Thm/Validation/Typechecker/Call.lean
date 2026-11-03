@@ -14,11 +14,18 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Validation.Typechecker.Basic
+module
+
+public import Cedar.Thm.Validation.Typechecker.Basic
+import Batteries.Data.Except
+import all Cedar.Validation.Typechecker -- unfolds `typeOf` and its helpers
+import all Cedar.Validation.TypedExpr -- unfolds `TypedExpr.typeOf`
 
 /-!
 This file proves that typechecking of `.call` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -33,7 +40,7 @@ theorem type_of_call_args_inversion {xs : List Expr} {txs : List TypedExpr} {c :
 match xs with
 | [] => by
   replace htxs : txs = [] :=
-    by simpa [List.mapM₁, pure, Except.pure] using htxs
+    by simpa [List.mapM₁_def, pure, Except.pure] using htxs
   subst htxs
   constructor
 | x :: xs => by
@@ -49,7 +56,7 @@ match xs with
   · rename_i r _ _
     exists r.snd
   · have ih := @type_of_call_args_inversion xs
-    simp [ih, htxs', List.mapM₁]
+    simp [ih, htxs', List.mapM₁_def]
 
 theorem type_of_call_inversion {xs : List Expr} {c c' : Capabilities} {env : TypeEnv} {tx : TypedExpr}
   (htx : typeOf (Expr.call xfn xs) c env = Except.ok (tx, c')) :
@@ -113,7 +120,7 @@ theorem type_of_call_decimal_is_sound {xs : List Expr} {c₁ c₂ : Capabilities
   have ⟨d, h₅⟩ := h₅
   exists .ext d
   constructor
-  · simp [EvaluatesTo, evaluate, List.mapM₁, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
+  · simp [EvaluatesTo, evaluate, List.mapM₁_def, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
   · exact decimal_is_instance_of_decimal
 
 theorem type_of_call_datetime_inversion {xs : List Expr} {c c' : Capabilities} {env : TypeEnv} {ty : TypedExpr}
@@ -150,7 +157,7 @@ theorem type_of_call_datetime_is_sound {xs : List Expr} {c₁ c₂ : Capabilitie
   have ⟨dt, h₅⟩ := h₅
   exists .ext dt
   constructor
-  · simp [EvaluatesTo, evaluate, List.mapM₁, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
+  · simp [EvaluatesTo, evaluate, List.mapM₁_def, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
   · exact datetime_is_instance_of_datetime
 
 theorem type_of_call_duration_inversion {xs : List Expr} {c c' : Capabilities} {env : TypeEnv} {ty : TypedExpr}
@@ -185,7 +192,7 @@ theorem type_of_call_duration_is_sound {xs : List Expr} {c₁ c₂ : Capabilitie
   have ⟨dt, h₅⟩ := h₅
   exists .ext dt
   constructor
-  · simp [EvaluatesTo, evaluate, List.mapM₁, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
+  · simp [EvaluatesTo, evaluate, List.mapM₁_def, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
   · exact duration_is_instance_of_duration
 
 theorem type_of_call_ip_inversion {xs : List Expr} {c c' : Capabilities} {env : TypeEnv} {ty : TypedExpr}
@@ -222,7 +229,7 @@ theorem type_of_call_ip_is_sound {xs : List Expr} {c₁ c₂ : Capabilities} {en
   have ⟨ip, h₅⟩ := h₅
   exists .ext ip
   constructor
-  · simp [EvaluatesTo, evaluate, List.mapM₁, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
+  · simp [EvaluatesTo, evaluate, List.mapM₁_def, List.mapM, List.mapM.loop, call, res, h₅, Coe.coe]
   · exact ipaddr_is_instance_of_ipaddr
 
 theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env : TypeEnv} {ty₁ ty₂ : TypedExpr}
@@ -232,7 +239,7 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
     (typeOf x₁ c env).typeOf = .ok (ty₁.typeOf, c₁) ∧
     (typeOf x₂ c env).typeOf = .ok (ty₂.typeOf, c₂)
 := by
-  simp [List.mapM₁] at h₁
+  simp [List.mapM₁_def] at h₁
   cases xs
   case nil =>
     simp [List.mapM, List.mapM.loop, pure, Except.pure] at h₁
@@ -326,7 +333,7 @@ theorem type_of_call_decimal_comparator_is_sound {xfn : ExtFun} {xs : List Expr}
   rw [h₄]
   subst h₅ h₆
   apply And.intro empty_guarded_capabilities_invariant
-  simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
+  simp only [EvaluatesTo, evaluate, List.mapM₁_def, List.attach_def, List.pmap, List.mapM_cons,
     List.mapM_nil, pure_bind, bind_assoc]
   have ih₁ := ih x₁
   have ih₂ := ih x₂
@@ -580,7 +587,7 @@ theorem type_of_call_toTime_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
   rw [h₄]
   subst h₅ h₆
   apply And.intro empty_guarded_capabilities_invariant
-  simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
+  simp only [EvaluatesTo, evaluate, List.mapM₁_def, List.attach_def, List.pmap, List.mapM_cons,
     List.mapM_nil, pure_bind, bind_assoc]
   have ih₁ := ih x₁
   simp only [List.mem_singleton, TypeOfIsSound, forall_const] at ih₁
@@ -638,7 +645,7 @@ theorem type_of_call_toDate_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
   rw [h₄]
   subst h₅ h₆
   apply And.intro empty_guarded_capabilities_invariant
-  simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
+  simp only [EvaluatesTo, evaluate, List.mapM₁_def, List.attach_def, List.pmap, List.mapM_cons,
     List.mapM_nil, pure_bind, bind_assoc]
   have ih₁ := ih x₁
   simp only [List.mem_singleton, TypeOfIsSound, forall_const] at ih₁
@@ -706,7 +713,7 @@ theorem type_of_call_offset_is_sound {xs : List Expr} {c₁ c₂ : Capabilities}
     rw [h₄]
     subst h₅ h₆
     apply And.intro empty_guarded_capabilities_invariant
-    simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
+    simp only [EvaluatesTo, evaluate, List.mapM₁_def, List.attach_def, List.pmap, List.mapM_cons,
       List.mapM_nil, pure_bind, bind_assoc]
     have ih₁ := ih x₁
     simp only [List.mem_cons, true_or, TypeOfIsSound, forall_const] at ih₁
@@ -785,7 +792,7 @@ theorem type_of_call_durationSince_is_sound {xs : List Expr} {c₁ c₂ : Capabi
     rw [h₄]
     subst h₅ h₆
     apply And.intro empty_guarded_capabilities_invariant
-    simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
+    simp only [EvaluatesTo, evaluate, List.mapM₁_def, List.attach_def, List.pmap, List.mapM_cons,
       List.mapM_nil, pure_bind, bind_assoc]
     have ih₁ := ih x₁
     simp only [List.mem_cons, true_or, TypeOfIsSound, forall_const] at ih₁
@@ -865,7 +872,7 @@ theorem type_of_call_ipAddr_recognizer_is_sound {xfn : ExtFun} {xs : List Expr} 
   rw [h₄]
   subst h₅ h₆
   apply And.intro empty_guarded_capabilities_invariant
-  simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
+  simp only [EvaluatesTo, evaluate, List.mapM₁_def, List.attach_def, List.pmap, List.mapM_cons,
     List.mapM_nil, pure_bind, bind_assoc]
   have ih₁ := ih x₁
   simp [TypeOfIsSound] at ih₁
@@ -938,7 +945,7 @@ theorem type_of_call_duration_converter_is_sound {xfn : ExtFun} {xs : List Expr}
   rw [h₄]
   subst h₅ h₆
   apply And.intro empty_guarded_capabilities_invariant
-  simp only [EvaluatesTo, evaluate, List.mapM₁, List.attach_def, List.pmap, List.mapM_cons,
+  simp only [EvaluatesTo, evaluate, List.mapM₁_def, List.attach_def, List.pmap, List.mapM_cons,
     List.mapM_nil, pure_bind, bind_assoc]
   have ih₁ := ih x₁
   simp [TypeOfIsSound] at ih₁

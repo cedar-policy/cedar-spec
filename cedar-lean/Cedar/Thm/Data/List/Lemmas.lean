@@ -585,6 +585,11 @@ theorem mapM_pmap_subtype_snd [Monad m] [LawfulMonad m]
   rw [← List.mapM'_eq_mapM]
   induction xs <;> simp [*]
 
+/-- Equation lemma for `List.mapM₁`, for clients that cannot unfold it. -/
+public theorem mapM₁_def [Monad m] {α β} (xs : List α) (f : {x : α // x ∈ xs} → m β) :
+  xs.mapM₁ f = xs.attach.mapM f
+:= by unfold mapM₁; rfl
+
 public theorem mapM₁_eq_mapM [Monad m] [LawfulMonad m]
   (f : α → m β)
   (as : List α) :

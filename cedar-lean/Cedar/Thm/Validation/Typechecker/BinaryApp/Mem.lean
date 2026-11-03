@@ -14,13 +14,21 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Data.LT
-import Cedar.Thm.Authorization.Evaluator
-import Cedar.Thm.Validation.Typechecker.Basic
+module
+
+public import Cedar.Thm.Data.LT
+public import Cedar.Thm.Authorization.Evaluator
+public import Cedar.Thm.Validation.Typechecker.Basic
+import Batteries.Data.Except
+import all Cedar.Validation.Typechecker -- unfolds `typeOf` and its helpers
+import all Cedar.Validation.Types -- unfolds `TypeEnv.descendentOf`, `ActionSchema.contains`, ...
+import all Cedar.Validation.TypedExpr -- unfolds `TypedExpr.typeOf`
 
 /-!
 This file proves that typechecking of `.binaryApp .mem` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -119,7 +127,7 @@ theorem acts_maybeDescendentOf_false_implies_not_ancestor_type
     Prod.forall,
   ] at hdesc
   have hnot_ans := hdesc euid entry (Map.find?_mem_toList hacts_entry) rfl
-  simp only [Set.any, List.any_eq_false, beq_iff_eq] at hnot_ans
+  simp only [Set.any_eq_false, beq_iff_eq] at hnot_ans
   have ⟨data', hdata', heq_ans⟩ := hwf.wf_action_data hacts_entry
   simp only [hdata', Option.some.injEq] at hent_found
   simp only [hent_found] at heq_ans
@@ -288,10 +296,9 @@ theorem entity_type_in_false_implies_inₛ_false
     specialize h₃ euid h₄
     simp [h₃] at h₂
   case inr =>
-    simp only [Set.contains, Set.elts, Entities.ancestorsOrEmpty, Set.empty, List.elem_eq_mem,
-      decide_eq_true_eq] at h₅
+    simp only [Set.contains_prop_bool_equiv, Entities.ancestorsOrEmpty] at h₅
     cases h₆ : Map.find? entities euid <;>
-    simp only [h₆, List.not_mem_nil] at h₅
+    simp only [h₆, Set.not_mem_empty] at h₅
     rename_i data
     cases h₁.instance_of_schema_entry h₆ with
     | inl h₁ =>
@@ -302,10 +309,7 @@ theorem entity_type_in_false_implies_inₛ_false
       specialize h₃ euid' h₄ ; subst h₃
       split at h₂ <;> rename_i h₉ <;> simp [h₁] at h₉
       subst h₉
-      rw [← Set.mem_elts_iff_mem_set] at h₇
-      simp only [Set.contains, Set.elts] at h₂ h₇
-      rw [← List.elem_iff] at h₇
-      rw [h₂] at h₇
+      simp only [Set.not_contains_prop_bool_equiv] at h₂
       contradiction
     | inr h₁ =>
       have ⟨h₁, _, ⟨entry, h₉, _⟩⟩ := h₁
@@ -443,7 +447,7 @@ theorem type_of_mem_is_soundₛ {x₁ x₂ : Expr} {c₁ c₁' c₂' : Capabilit
   have ⟨vs, hset, _⟩ := instance_of_set_type_is_set hty₂
   subst hset
   simp only [apply₂, inₛ]
-  simp only [Set.mapOrErr, Set.elts]
+  simp only [Set.mapOrErr_eq_match, Set.elts]
   have ⟨euids, h₇, hty₇⟩ := entity_set_type_implies_set_of_entities hty₂
   simp only [h₇, Except.bind_ok, Except.ok.injEq, false_or, exists_eq_left', reduceCtorEq]
   apply InstanceOfType.instance_of_bool

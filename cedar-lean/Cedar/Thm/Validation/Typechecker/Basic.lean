@@ -14,15 +14,21 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Validation
-import Cedar.Thm.Tactics
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.WellTyped.Expr.WF
+module
+
+public import Cedar.Spec
+public import Cedar.Validation
+public import Cedar.Thm.Tactics
+public import Cedar.Thm.Data.List
+import Batteries.Data.List.Lemmas
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.WellTyped.Expr.WF
 
 /-!
 This file contains useful definitions and lemmas about the `Typechecker` functions.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 

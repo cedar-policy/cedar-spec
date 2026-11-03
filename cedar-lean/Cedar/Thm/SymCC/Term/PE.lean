@@ -391,7 +391,7 @@ public theorem pe_ifSome_none_body {g : Term} {ty : TermType} :
   ifSome g (Term.none ty) = Term.none ty
 := by
   simp only [ifSome, typeOf_term_none, noneOf, Factory.ite, Factory.ite.simplify, decide_true,
-    Bool.or_true, if_true]
+    Bool.or_true, ite_true]
 
 /-- If every guard is a `some`, folding `ifSome` collapses to the body. -/
 public theorem pe_foldr_ifSome_all_some {l : List Term} {P : Term} {ty : TermType}

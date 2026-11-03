@@ -14,15 +14,20 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Validation
-import Cedar.Thm.Data.Control
-import Cedar.Thm.Data.Map
+module
+
+public import Cedar.Spec
+public import Cedar.Validation
+public import Cedar.Thm.Data.Control
+public import Cedar.Thm.Data.Map
+import all Cedar.Validation.Subtyping -- lemmas about the internals of the LUB functions
 
 /-!
 This file contains useful definitions and lemmas about the
 least upper bound (LUB) functions on Cedar types.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -88,7 +93,7 @@ theorem lubRecord_find_implied_by_find_left {a : Attr} {qty₁ : QualifiedType} 
     Map.find? (Map.mk rty) a = .some qty ∧
     lubQualifiedType qty₁ qty₂ = .some qty)
 := by
-  simp [Map.find?, Map.toList] at *
+  simp [Map.find?, Map.toList_mk_id] at *
   induction h₁
   case nil => simp [List.find?] at h₂
   case cons a' hd hd₁ hd₂ tl tl₁ tl₂ h₃ _ ih =>
@@ -134,6 +139,10 @@ theorem lubRecordType_nil_some {rty₁ rty₂ : List (Attr × QualifiedType)} :
 := by
   cases rty₁ <;> simp [lubRecordType]
 
+theorem lubBool_eq_ite {bty₁ bty₂ : BoolType} :
+  lubBool bty₁ bty₂ = if bty₁ = bty₂ then bty₁ else .anyBool
+:= by unfold lubBool; rfl
+
 theorem lubBool_comm {bty₁ bty₂ : BoolType} :
   lubBool bty₁ bty₂ = lubBool bty₂ bty₁
 := by
@@ -176,6 +185,10 @@ theorem lubRecord_comm {rty₁ rty₂ : List (Attr × Qualified CedarType)} :
     rename_i a₁ hd₁ tl₁ a₂ hd₂ tl₂ h₃ ; subst h₃
     by_contra
     apply h₂ a₁ hd₂ tl₂ a₁ hd₁ tl₁ <;> rfl
+
+theorem lub?_entity {ety₁ ety₂ : EntityType} :
+  (CedarType.entity ety₁ ⊔ CedarType.entity ety₂) = if ety₁ = ety₂ then some (CedarType.entity ety₁) else none
+:= by simp [lub?]
 
 theorem lub_comm {ty₁ ty₂ : CedarType} :
   (ty₁ ⊔ ty₂) = (ty₂ ⊔ ty₁)
@@ -386,6 +399,12 @@ theorem lubQualifiedType_trans {qty₁ qty₂ qty₃ : QualifiedType} :
   }
 
 end
+
+theorem subty_iff_lub?_eq_some {ty₁ ty₂ : CedarType} :
+  ty₁ ⊑ ty₂ ↔ (ty₁ ⊔ ty₂) = some ty₂
+:= by
+  unfold subty
+  split <;> simp_all
 
 theorem subty_trans {ty₁ ty₂ ty₃ : CedarType} :
   ty₁ ⊑ ty₂ → ty₂ ⊑ ty₃ → ty₁ ⊑ ty₃

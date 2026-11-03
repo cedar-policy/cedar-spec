@@ -14,11 +14,17 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Validation.Typechecker.Basic
+module
+
+public import Cedar.Thm.Validation.Typechecker.Basic
+import all Cedar.Validation.Typechecker -- unfolds `typeOf` and its helpers
+import all Cedar.Validation.TypedExpr -- unfolds `TypedExpr.typeOf`
 
 /-!
 This file proves that typechecking of `.getAttr` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -82,7 +88,7 @@ theorem type_of_getAttr_is_sound_for_records {x₁ : Expr} {a : Attr} {c₁ c₁
 := by
   have ⟨r, h₆⟩ := instance_of_record_type_is_record h₅
   subst h₆
-  simp [getAttr, attrsOf, Map.findOrErr]
+  simp [getAttr, attrsOf, Map.findOrErr_eq_match]
   split_type_of h₃ ; rename_i h₃ hl₃ hr₃
   simp only [typeOf, typeOfGetAttr, getAttrInRecord, List.empty_eq, bind, Except.bind] at h₂
   cases h₈ : Map.find? r a
@@ -146,7 +152,7 @@ theorem type_of_getAttr_is_sound_for_entities {x₁ : Expr} {a : Attr} {c₁ c�
 := by
   have ⟨uid, h₇, h₈⟩ := instance_of_entity_type_is_entity h₆
   subst h₈
-  simp [getAttr, attrsOf, Entities.attrs, Map.findOrErr]
+  simp [getAttr, attrsOf, Entities.attrs, Map.findOrErr_eq_match]
   split_type_of h₄ ; rename_i h₄ hl₄ hr₄
   cases h₈ : Map.find? entities uid
   case none =>

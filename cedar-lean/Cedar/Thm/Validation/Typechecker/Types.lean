@@ -14,16 +14,23 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Validation
-import Cedar.Thm.Data.Control
-import Cedar.Thm.Data.Set
-import Cedar.Thm.Validation.Typechecker.LUB
-import Cedar.Thm.Validation.Typechecker.WF
+module
+
+public import Cedar.Spec
+public import Cedar.Validation
+public import Cedar.Thm.Data.Control
+public import Cedar.Thm.Data.Set
+public import Cedar.Thm.Validation.Typechecker.LUB
+public import Cedar.Thm.Validation.Typechecker.WF
+import all Cedar.Validation.Types -- unfolds the schema accessors
+import all Cedar.Validation.Subtyping -- unfolds `subty`, `lub?`, ...
+import all Cedar.Validation.Typechecker -- unfolds `typeOf` and its helpers
 
 /-!
 This file contains useful definitions and lemmas about Cedar types.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -425,12 +432,11 @@ theorem entity_type_is_inhabited {env : TypeEnv} {ety : EntityType}
         exists (EntityUID.mk ety eid)
         simp only [InstanceOfEntityType, EntityUID.WellFormed, true_and]
         apply Or.inl
-        simp only [Membership.mem] at heid
         simp [
           EntitySchema.isValidEntityUID,
           hentry,
           EntitySchemaEntry.isValidEntityEID,
-          Set.contains, Membership.mem, heid,
+          heid,
         ]
     case _ => contradiction
   -- Action entity
@@ -455,7 +461,7 @@ theorem instance_of_record_nil {env : TypeEnv} :
   InstanceOfType env (Value.record (Map.mk [])) (CedarType.record (Map.mk []))
 := by
   apply InstanceOfType.instance_of_record <;>
-  simp [Map.contains, Map.find?]
+  simp [Map.contains_eq_isSome_find?, Map.find?]
 
 theorem instance_of_record_cons {env : TypeEnv} {hd : Attr × Qualified CedarType} {tl : List (Attr × Qualified CedarType)} {rhd : Value} {rtl : List (Attr × Value)}
   (h₁ : InstanceOfType env rhd (Qualified.getType hd.snd))
@@ -467,15 +473,15 @@ theorem instance_of_record_cons {env : TypeEnv} {hd : Attr × Qualified CedarTyp
   case h₁ =>
     intro a
     specialize h₂ a
-    simp [Map.contains, Map.find?, List.find?]
-    simp [Map.contains, Map.find?, Map.toList] at h₂
+    simp [Map.contains_eq_isSome_find?, Map.find?, List.find?]
+    simp [Map.contains_eq_isSome_find?, Map.find?, Map.toList_mk_id] at h₂
     cases h₅ : hd.fst == a <;> simp
     exact h₂
   case h₂ =>
     intro a v qty
     specialize h₃ a v qty
     simp [Map.find?, List.find?]
-    simp [Map.find?, Map.toList] at h₃
+    simp [Map.find?, Map.toList_mk_id] at h₃
     cases h₅ : hd.fst == a <;> simp
     case false => exact h₃
     case true =>
@@ -485,8 +491,8 @@ theorem instance_of_record_cons {env : TypeEnv} {hd : Attr × Qualified CedarTyp
   case h₃ =>
     intro a qty
     specialize h₄ a qty
-    simp [Map.contains, Map.find?, List.find?]
-    simp [Map.contains, Map.find?, Map.toList] at h₄
+    simp [Map.contains_eq_isSome_find?, Map.find?, List.find?]
+    simp [Map.contains_eq_isSome_find?, Map.find?, Map.toList_mk_id] at h₄
     cases h₅ : hd.fst == a <;> simp
     exact h₄
 
@@ -631,7 +637,7 @@ theorem sizeOf_attr_type_lt_sizeOf_record_type {a : Attr} {qty : QualifiedType }
     case h₁ =>
       apply @Nat.lt_trans _ (sizeOf rty)
       case h₁ =>
-        simp [Map.find?, Map.toList] at h₂
+        simp [Map.find?, Map.toList_mk_id] at h₂
         split at h₂ <;> simp at h₂
         rename_i a' qty' h₃ ; rw [eq_comm] at h₂ ; subst h₂
         have h₄ := List.mem_of_find?_eq_some h₃

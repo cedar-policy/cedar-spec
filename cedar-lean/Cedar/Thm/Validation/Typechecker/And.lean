@@ -14,11 +14,18 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Validation.Typechecker.Basic
+module
+
+public import Cedar.Thm.Validation.Typechecker.Basic
+import Batteries.Data.Except
+import all Cedar.Validation.Typechecker -- unfolds `typeOf` and its helpers
+import all Cedar.Validation.TypedExpr -- unfolds `TypedExpr.typeOf`
 
 /-!
 This file proves that typechecking of `.and` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -69,7 +76,7 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Ty
       cases bty₁
       case ff => contradiction
       all_goals
-        simp [hty₂, lubBool]
+        simp [hty₂, lubBool_eq_ite]
     case h_3 bty₂ h₄ h₅ hty₂ =>
       exists .anyBool, res₂.fst
       apply And.intro (by simp)
@@ -77,7 +84,7 @@ theorem type_of_and_inversion {x₁ x₂ : Expr} {c c' : Capabilities} {env : Ty
       have _ : bty₂ = .anyBool := by
         cases bty₂ <;> simp at h₄ h₅ ⊢
       subst bty₂
-      cases bty₁ <;> simp [hty₂, lubBool]
+      cases bty₁ <;> simp [hty₂, lubBool_eq_ite]
 
 theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env : TypeEnv} {tx : TypedExpr} {request : Request} {entities : Entities}
   (h₁ : CapabilitiesInvariant c₁ request entities)
