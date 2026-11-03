@@ -1,5 +1,5 @@
 import Lean.Data.Json.FromToJson
-import Std.Data.HashMap
+import Lean.Util.PtrSet
 
 import Cedar.Spec
 import Cedar.Spec.Json
@@ -142,22 +142,20 @@ instance : Lean.ToJson Cedar.Spec.Prim where
   | .entityUID uid => Lean.Json.mkObj [("entityUID", Lean.toJson uid)]
 
 /--
-  Local hashable for Terms.
-  This is only used by the bottom-up serialization: no large terms should be hashed with this.
--/
-instance : Hashable Term where
-  hash t := hash (reprStr t)
-
-/--
   An environment with bindings, with already converted Json terms, and the
   next id to use for a new binding.
 -/
-structure BindingEnv where
-  memo : Std.HashMap Term String
+private unsafe structure BindingEnv where
+  -- Memo table keyed by address. This ensures a constant time lookup, but it
+  -- means the JSON encoding only shares terms where they were shared by the
+  -- in-memory representation. This is acceptable because we know the in-memory
+  -- representation is suitably small, and are memoizing on serialization to
+  -- ensure the JSON representation is not larger.
+  memo : Lean.PtrMap Term String
   defs : List Lean.Json
   next : Nat
 
-def BindingEnv.empty : BindingEnv := ⟨Std.HashMap.emptyWithCapacity, [], 0⟩
+private unsafe def BindingEnv.empty : BindingEnv := ⟨Lean.mkPtrMap, [], 0⟩
 
 /-- Build a reference to a compound term that has already been bound. -/
 private def idRef (id : String) : Lean.Json :=
@@ -165,10 +163,10 @@ private def idRef (id : String) : Lean.Json :=
 
 /--
   Given the already-computed shallow `body` json for a compound term `t`,
-  bind `t` in the table under a fresh id and return a reference `{"tid": <id>}`
+  bind `t` in the table under a fresh id and return a reference `{"ref": <id>}`
   to be used in place of `body`.
 -/
-private def BindingEnv.bind (s : BindingEnv) (t : Term) (body : Lean.Json) :
+private unsafe def BindingEnv.bind (s : BindingEnv) (t : Term) (body : Lean.Json) :
     (Lean.Json × BindingEnv) :=
   let id := s!"t{s.next}" -- a fresh id
   let definition := Lean.Json.mkObj [("id", Lean.Json.str id), ("body", body)]
@@ -178,84 +176,75 @@ private def BindingEnv.bind (s : BindingEnv) (t : Term) (body : Lean.Json) :
     next := s.next + 1 }
   (idRef id, s)
 
+/--
+  Return the reference for the compound term `t` if this object was already
+  serialized, otherwise serialize it with `k` and bind it.
+-/
+private unsafe def BindingEnv.memoize (s : BindingEnv) (t : Term)
+    (k : BindingEnv → (Lean.Json × BindingEnv)) : (Lean.Json × BindingEnv) :=
+  match s.memo.find? t with
+  | .some id => (idRef id, s)
+  | .none =>
+    let (body, s) := k s
+    s.bind t body
+
 /-
   Bottom-up serialization of a `Term` with memoization of compound terms.
 
-  Compound terms (`some`, `set`, `record`, `app`) are memoized:
-  shared terms are emitted as definitions: `{"id": <id>, "body": <shallow json>}`,
-  terms that reference those shared terms use the reference `{"ref": <id>}`.
+  Compound terms (`some`, `set`, `record`, `app`) are memoized by object
+  identity: each compound object is emitted once as a definition
+  `{"id": <id>, "body": <shallow json>}`, and terms that contain it use the
+  reference `{"ref": <id>}`.
 -/
 mutual
 
-def termToJsonBindings : Term → BindingEnv → (Lean.Json × BindingEnv)
+private unsafe def termToJsonBindings : Term → BindingEnv → (Lean.Json × BindingEnv)
   | .prim p, s => (Lean.Json.mkObj [("prim", Lean.toJson p)], s)
   | .var v,  s => (Lean.Json.mkObj [("var",  Lean.toJson v)], s)
   | .none t, s => (Lean.Json.mkObj [("none", Lean.toJson t)], s)
-  | t@(.some inner), s =>
-    match s.memo[t]? with
-    | .some id => (idRef id, s)
-    | .none =>
-      let (ref, s) := termToJsonBindings inner s
-      s.bind t (Lean.Json.mkObj [("some", ref)])
-  | t@(.set elts eltsTy), s =>
-    match s.memo[t]? with
-    | .some id => (idRef id, s)
-    | .none =>
-      let (refs, s) := termListToJsonBindings elts.elts s
-      let body := Lean.Json.mkObj [
-        ("set",
-          Lean.Json.mkObj [
-            ("elts", Lean.Json.arr refs.toArray),
-            ("eltsTy", Lean.toJson eltsTy)
-          ])
-      ]
-      s.bind t body
-  | t@(.record m), s =>
-    match s.memo[t]? with
-    | .some id => (idRef id, s)
-    | .none =>
-      let (entries, s) := termRecordToJsonBindings m.toList s
-      s.bind t (Lean.Json.mkObj [("record", Lean.Json.arr entries.toArray)])
-  | t@(.app op args retTy), s =>
-    match s.memo[t]? with
-    | .some id => (idRef id, s)
-    | .none =>
-      let (refs, s) := termListToJsonBindings args s
-      let main := Lean.Json.mkObj [
-        ("app",
-          Lean.Json.mkObj [
-            ("op",   Lean.toJson op),
-            ("args", Lean.Json.arr refs.toArray),
-            ("retTy", Lean.toJson retTy)
-          ])
-      ]
-      s.bind t main
-termination_by t => sizeOf t
-decreasing_by
-  all_goals simp_wf
-  · have := Set.sizeOf_lt_of_elts elts
-    omega
-  · have := Map.sizeOf_lt_of_toList m
-    omega
-  · omega
+  | t@(.some inner), s => s.memoize t fun s =>
+    let (ref, s) := termToJsonBindings inner s
+    (Lean.Json.mkObj [("some", ref)], s)
+  | t@(.set elts eltsTy), s => s.memoize t fun s =>
+    let (refs, s) := termListToJsonBindings elts.elts s
+    let body := Lean.Json.mkObj [
+      ("set",
+        Lean.Json.mkObj [
+          ("elts", Lean.Json.arr refs.toArray),
+          ("eltsTy", Lean.toJson eltsTy)
+        ])
+    ]
+    (body, s)
+  | t@(.record m), s => s.memoize t fun s =>
+    let (entries, s) := termRecordToJsonBindings m.toList s
+    (Lean.Json.mkObj [("record", Lean.Json.arr entries.toArray)], s)
+  | t@(.app op args retTy), s => s.memoize t fun s =>
+    let (refs, s) := termListToJsonBindings args s
+    let body := Lean.Json.mkObj [
+      ("app",
+        Lean.Json.mkObj [
+          ("op",   Lean.toJson op),
+          ("args", Lean.Json.arr refs.toArray),
+          ("retTy", Lean.toJson retTy)
+        ])
+    ]
+    (body, s)
 
 /-- Serialize a list of child terms left to right, threading state. -/
-def termListToJsonBindings : List Term → BindingEnv → (List Lean.Json × BindingEnv)
+private unsafe def termListToJsonBindings : List Term → BindingEnv → (List Lean.Json × BindingEnv)
   | [], s => ([], s)
   | t :: ts, s =>
     let (ref, s) := termToJsonBindings t s
     let (refs, s) := termListToJsonBindings ts s
     (ref :: refs, s)
-termination_by ts => sizeOf ts
 
 /-- Serialize record entries as `[key, ref]` pairs left to right, threading state. -/
-def termRecordToJsonBindings : List (Attr × Term) → BindingEnv → (List Lean.Json × BindingEnv)
+private unsafe def termRecordToJsonBindings : List (Attr × Term) → BindingEnv → (List Lean.Json × BindingEnv)
   | [], s => ([], s)
   | (k, v) :: ats, s =>
     let (ref, s) := termToJsonBindings v s
     let (entries, s) := termRecordToJsonBindings ats s
     (Lean.Json.arr #[Lean.Json.str k, ref] :: entries, s)
-termination_by ats => sizeOf ats
 
 end
 
@@ -268,14 +257,14 @@ end
   A deserializer can take advantage of the structure by building terms left-to-right, using shared
   memory representations following the explicit term sharing.
 -/
-def termToJson (t : Term) : Lean.Json :=
+unsafe def termToJson (t : Term) : Lean.Json :=
   let (root, s) := termToJsonBindings t BindingEnv.empty
   Lean.Json.mkObj [
     ("defs", Lean.Json.arr s.defs.reverse.toArray),
     ("root", root)
   ]
 
-instance : Lean.ToJson Term where
+unsafe instance : Lean.ToJson Term where
   toJson := termToJson
 
 deriving instance Lean.ToJson for Cedar.SymCC.Error
