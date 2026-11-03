@@ -14,13 +14,21 @@
  limitations under the License.
 -/
 
-import Cedar.Validation.EnvironmentValidator
-import Cedar.Thm.Validation.Validator
+module
+
+public import Cedar.Validation.EnvironmentValidator
+import all Cedar.Validation.EnvironmentValidator -- unfolds the `validateWellFormed` family
+import all Cedar.Validation.Validator -- unfolds `Schema.environment?`
+import all Cedar.Validation.Types -- unfolds `ActionSchema.contains`
+public import Cedar.Thm.Validation.Validator
+import Batteries.Data.List.Lemmas
 
 /-!
 This file proves that various `*.validateWellFormed` functions
 correctly implement their spec versions.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -87,7 +95,7 @@ theorem validate_attrs_well_formed_is_sound
           exact type_validate_well_formed_is_sound hwf_hd
         | inr htl =>
           have hwf_tl : (Map.mk tl).WellFormed := Map.wf_implies_tail_wf hwf
-          have := (Map.in_list_iff_find?_some hwf_tl).mp htl
+          have := (Map.in_list_iff_find?_some hwf_tl).mp (by rw [Map.toList_mk_id]; exact htl)
           exact validate_attrs_well_formed_is_sound hwf_tl hok this
     | required attr_ty =>
       simp only [h, bind, Except.bind] at hok
@@ -106,7 +114,7 @@ theorem validate_attrs_well_formed_is_sound
         | inr htl =>
           have hwf_tl : (Map.mk tl).WellFormed
           := Map.wf_implies_tail_wf hwf
-          have := (Map.in_list_iff_find?_some hwf_tl).mp htl
+          have := (Map.in_list_iff_find?_some hwf_tl).mp (by rw [Map.toList_mk_id]; exact htl)
           exact validate_attrs_well_formed_is_sound hwf_tl hok this
 termination_by sizeOf rty
 decreasing_by
@@ -151,7 +159,10 @@ theorem type_validate_well_formed_is_sound
       constructor
       · exact hwf_rty
       · intros _ _ hfind
-        exact validate_attrs_well_formed_is_sound hwf_rty hok hfind
+        have hok' : validateAttrsWellFormed env rty.1 = .ok () := by
+          obtain ⟨l⟩ := rty
+          simpa using hok
+        exact validate_attrs_well_formed_is_sound hwf_rty hok' hfind
     case _ => simp only [reduceCtorEq] at hok
 
 termination_by sizeOf ty
@@ -335,7 +346,7 @@ theorem action_schema_entry_validate_well_formed_is_sound
   have := List.forM_ok_implies_all_ok' hwf_princ_tys
   constructor
   intros ety hmem_princ
-  specialize this ety (List.contains_iff_mem.mp hmem_princ)
+  specialize this ety ((Set.mem_elts_iff_mem_set _ _).mpr (Set.contains_prop_bool_equiv.mp hmem_princ))
   exact entity_type_validate_well_formed_is_sound this
   -- Each resource entity type is well-formed
   split at hok
@@ -344,7 +355,7 @@ theorem action_schema_entry_validate_well_formed_is_sound
   have := List.forM_ok_implies_all_ok' hwf_res_tys
   constructor
   intros ety hmem_res
-  specialize this ety (List.contains_iff_mem.mp hmem_res)
+  specialize this ety ((Set.mem_elts_iff_mem_set _ _).mpr (Set.contains_prop_bool_equiv.mp hmem_res))
   exact entity_type_validate_well_formed_is_sound this
   -- Each ancestor is an action entity
   split at hok
@@ -379,12 +390,7 @@ theorem action_schema_validate_acyclic_action_hierarchy_is_sound
   rename_i hnot_find
   simp only [Bool.not_eq_true] at hnot_find
   intros hfind
-  simp only [
-    Set.contains, List.elem_eq_contains,
-    List.contains_eq_mem,
-    decide_eq_false_iff_not,
-  ] at hnot_find
-  contradiction
+  exact absurd hfind (Set.not_contains_prop_bool_equiv.mp hnot_find)
 
 theorem action_schema_validate_transitive_action_hierarchy_is_sound
   {acts : ActionSchema}
@@ -710,11 +716,11 @@ theorem action_schema_entry_validate_well_formed_is_complete
   case principals =>
     intro ety hmem
     exact entity_type_validate_well_formed_is_complete
-      (hprincipal_tys ety (List.contains_iff_mem.mpr hmem))
+      (hprincipal_tys ety (Set.contains_prop_bool_equiv.mpr ((Set.mem_elts_iff_mem_set _ _).mp hmem)))
   case resources =>
     intro ety hmem
     exact entity_type_validate_well_formed_is_complete
-      (hresource_tys ety (List.contains_iff_mem.mpr hmem))
+      (hresource_tys ety (Set.contains_prop_bool_equiv.mpr ((Set.mem_elts_iff_mem_set _ _).mp hmem)))
   case ancestors =>
     intro uid hmem
     simp [hancestor_acts uid ((Set.mem_elts_iff_mem_set _ _).mp hmem)]

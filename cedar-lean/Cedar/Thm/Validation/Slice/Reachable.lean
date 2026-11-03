@@ -14,21 +14,26 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Data.MapUnion
-import Cedar.Thm.Validation.Levels.CheckLevel
-import Cedar.Thm.Validation.Validator
+module
 
-import Cedar.Thm.Validation.Slice.Reachable.Basic
-import Cedar.Thm.Validation.Slice.Reachable.BinaryApp
-import Cedar.Thm.Validation.Slice.Reachable.GetAttr
-import Cedar.Thm.Validation.Slice.Reachable.IfThenElse
-import Cedar.Thm.Validation.Slice.Reachable.Record
-import Cedar.Thm.Validation.Slice.Reachable.Var
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Data.MapUnion
+public import Cedar.Thm.Validation.Levels.CheckLevel
+public import Cedar.Thm.Validation.Validator
+import Batteries.Data.Except
+
+public import Cedar.Thm.Validation.Slice.Reachable.Basic
+public import Cedar.Thm.Validation.Slice.Reachable.BinaryApp
+public import Cedar.Thm.Validation.Slice.Reachable.GetAttr
+public import Cedar.Thm.Validation.Slice.Reachable.IfThenElse
+public import Cedar.Thm.Validation.Slice.Reachable.Record
+public import Cedar.Thm.Validation.Slice.Reachable.Var
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -162,7 +167,7 @@ theorem checked_eval_entity_reachable {e : Expr} {n nmax: Nat} {c c' : Capabilit
   case lit =>
     have hi : euid ∈ request.sliceEUIDs := by
       have hact := checked_eval_entity_lit_is_action hr ht he hl ha
-      simp [hact, Request.sliceEUIDs, Set.mem_union, Set.mem_make]
+      simp [hact, mem_sliceEUIDs_request, Set.mem_make]
     exact ReachableIn.in_start hi
 
   case var =>

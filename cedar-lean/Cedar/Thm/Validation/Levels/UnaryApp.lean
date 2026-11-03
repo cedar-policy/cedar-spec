@@ -14,17 +14,21 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Typechecker.Basic
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Validation.Levels.Basic
+module
+
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Typechecker.Basic
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Validation.Levels.Basic
 
 /-!
 This file proves that level checking for `.unaryApp` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 

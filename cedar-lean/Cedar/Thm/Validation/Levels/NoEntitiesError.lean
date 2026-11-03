@@ -14,16 +14,22 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Data.Control
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Validation.Slice
-import Cedar.Thm.Validation.Slice.Reachable
-import Cedar.Thm.Validation.Levels.Basic
-import Cedar.Thm.Validation.Levels.CheckLevel
+module
+
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+public import Cedar.Thm.Data.Control
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Validation.Slice
+public import Cedar.Thm.Validation.Slice.Reachable
+public import Cedar.Thm.Validation.Levels.Basic
+public import Cedar.Thm.Validation.Levels.CheckLevel
+import Batteries.Data.Except
+import all Cedar.Spec.Slice -- unfolds `Entities.closedAtLevel`
+import all Cedar.Validation.Typechecker -- unfolds `typeOf`
+import all Cedar.Validation.Validator -- unfolds `typecheckPolicyWithLevel`, `typecheckPolicy`
 
 /-!
 # Level checking rules out `entityDoesNotExist` errors (issue #642)
@@ -74,6 +80,8 @@ that with `EntitiesClosedAtLevel` gives `checked_eval_entity_exists`, the single
 lemma consumed by the two dereferencing cases (`getAttr` on an entity, `.getTag`).
 Everything else is plumbing.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -416,7 +424,7 @@ theorem apply₂_ne_dne_of_not_getTag {op : BinaryOp} (hop : op ≠ .getTag) (v�
     | (simp ; done)
     | contradiction
     | (unfold intOrErr ; split <;> simp)
-    | (unfold inₛ Set.mapOrErr ; split <;> simp)
+    | (unfold inₛ ; simp only [Set.mapOrErr_eq_match] ; split <;> simp)
     | (simp [hasTag] ; done)
 
 theorem level_based_no_dne_binary_app {op : BinaryOp} {e₁ e₂ : Expr} {n : Nat} {c₀ c₁ : Capabilities} {env : TypeEnv} {request : Request} {entities : Entities}
@@ -448,7 +456,7 @@ theorem level_based_no_dne_binary_app {op : BinaryOp} {e₁ e₂ : Expr} {n : Na
         | ( rename_i uid tag
             have hcont := checked_eval_entity_exists hc hr htx₁ hl₁ hv₁eq (.euid uid) hcl
             obtain ⟨ ed, hed ⟩ := Map.contains_iff_some_find?.mp hcont
-            simp only [apply₂, getTag, Entities.tags, Map.findOrErr, hed, Except.bind_ok]
+            simp only [apply₂, getTag, Entities.tags, Map.findOrErr_eq_match, hed, Except.bind_ok]
             split <;> simp ) )
   case hasTag hel hl₁ hl₂ =>
     apply bind_ne_error (ihe₁ (n := hel + 1) hc hr hcl htx₁ (entity_access_at_level_then_at_level hl₁))
@@ -505,7 +513,7 @@ theorem level_based_no_dne_get_attr_entity {e : Expr} {tx₁ : TypedExpr} {ty : 
   · simp [he]
   · have hcont := checked_eval_entity_exists hc hr ht hl₁ he (.euid euid) hcl
     obtain ⟨ ed, hed ⟩ := Map.contains_iff_some_find?.mp hcont
-    simp only [he, Except.bind_ok, getAttr, attrsOf, Entities.attrs, Map.findOrErr, hed]
+    simp only [he, Except.bind_ok, getAttr, attrsOf, Entities.attrs, Map.findOrErr_eq_match, hed]
     split <;> simp
 
 /--
@@ -537,7 +545,7 @@ theorem level_based_no_dne_get_attr_record {e : Expr} {tx₁ : TypedExpr} {ty : 
   · rw [hrty] at hi
     obtain ⟨ attrs, hv ⟩ := instance_of_record_type_is_record hi
     subst hv
-    simp only [he, Except.bind_ok, getAttr, attrsOf, Map.findOrErr]
+    simp only [he, Except.bind_ok, getAttr, attrsOf, Map.findOrErr_eq_match]
     split <;> simp
 
 /--
@@ -671,15 +679,15 @@ theorem level_based_no_dne_call {xfn : ExtFun} {xs : List Expr} {n : Nat} {c₀ 
     rename_i _ _ target head tail _
     split
     all_goals
-      cases hm : List.mapM
-        (fun x => match x with
-          | Value.ext (Ext.ipaddr a) => Except.ok a
-          | _ => Except.error Error.typeError) (head :: tail) with
-      | error e =>
-        obtain ⟨ y, _, hy ⟩ := List.mapM_error_implies_exists_error hm
-        have he : e = Error.typeError := by split at hy <;> simp_all
-        simp [he]
-      | ok rs => simp
+      simp only [bind, Except.bind]
+      first
+      | (simp ; done)
+      | (split
+         · rename_i e hm
+           obtain ⟨ y, _, hy ⟩ := List.mapM_error_implies_exists_error hm
+           have he : e = Error.typeError := by split at hy <;> simp_all
+           simp [he]
+         · simp)
     )
   intro hmapm
   obtain ⟨ x, hx, hxe ⟩ := List.mapM_error_implies_exists_error hmapm

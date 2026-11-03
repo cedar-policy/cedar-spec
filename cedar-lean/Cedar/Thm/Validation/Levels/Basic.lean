@@ -14,8 +14,12 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.Validation.Typechecker.Basic
-import Cedar.Thm.Validation.Levels.CheckLevel
+module
+
+public import Cedar.Thm.Validation.Typechecker.Basic
+public import Cedar.Thm.Validation.Levels.CheckLevel
+
+@[expose] public section
 
 namespace Cedar.Thm
 

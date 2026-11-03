@@ -14,15 +14,19 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Data.MapUnion
-import Cedar.Thm.Validation.Levels.CheckLevel
+module
 
-import Cedar.Thm.Validation.Slice.Reachable.Basic
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Data.MapUnion
+public import Cedar.Thm.Validation.Levels.CheckLevel
+
+public import Cedar.Thm.Validation.Slice.Reachable.Basic
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -40,7 +44,7 @@ theorem reachable_attr_step {n : Nat} {euid euid' : EntityUID} {start : Set Enti
   case in_start n' hi =>
     have he₄ : euid' ∈ ed.sliceEUIDs := by
       suffices h : ∃ v ∈ ed.attrs.values, euid' ∈ v.sliceEUIDs by
-        simp [h, EntityData.sliceEUIDs, Set.mem_union, List.mem_mapUnion_iff_mem_exists]
+        exact mem_sliceEUIDs_entityData.mpr (.inl h)
       cases he₂
       rename_i v a path ha hv
       exists v
@@ -87,7 +91,7 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
     simp only [getAttr, attrsOf] at he
     simp_do_let (entities.attrs euid') as he₂ at he
     rename_i attrs
-    simp only [Map.findOrErr] at he
+    simp only [Map.findOrErr_eq_match] at he
     split at he <;> simp only [reduceCtorEq, Except.ok.injEq] at he
     subst he
     rename_i v hv
@@ -111,7 +115,7 @@ theorem checked_eval_entity_reachable_get_attr {e : Expr} {n : Nat} {c c' : Capa
       rw [he₁] at he'
       cases he' <;> rename_i he' <;> simp only [reduceCtorEq, Except.ok.injEq, false_or] at he'
       subst he'
-      simp only [getAttr, attrsOf, Map.findOrErr, Except.bind_ok] at he
+      simp only [getAttr, attrsOf, Map.findOrErr_eq_match, Except.bind_ok] at he
       split at he <;> simp only [reduceCtorEq, Except.ok.injEq] at he
       rename_i v hv
       subst he

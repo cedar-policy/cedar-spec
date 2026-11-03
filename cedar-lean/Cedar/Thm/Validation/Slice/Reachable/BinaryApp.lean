@@ -14,16 +14,20 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Data.MapUnion
-import Cedar.Thm.Validation.Levels.CheckLevel
+module
 
-import Cedar.Thm.Validation.Slice.Reachable.Basic
-import Cedar.Thm.Tactics
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Data.MapUnion
+public import Cedar.Thm.Validation.Levels.CheckLevel
+
+public import Cedar.Thm.Validation.Slice.Reachable.Basic
+public import Cedar.Thm.Tactics
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -42,7 +46,7 @@ theorem reachable_tag_step {n : Nat} {euid euid' : EntityUID} {start : Set Entit
   case in_start n' hi =>
     have he₄ : euid' ∈ ed.sliceEUIDs := by
       suffices h : ∃ v ∈ ed.tags.values, euid' ∈ v.sliceEUIDs by
-        simp [h, EntityData.sliceEUIDs, Set.mem_union, List.mem_mapUnion_iff_mem_exists]
+        exact mem_sliceEUIDs_entityData.mpr (.inr h)
       exists tv
       constructor
       · exact Map.find?_some_implies_in_values he₂
@@ -77,7 +81,7 @@ theorem checked_eval_entity_reachable_get_tag {e₁ e₂: Expr} {n : Nat} {c c' 
   rename_i hl₁ hl₂
   simp only [getTag] at he
   simp_do_let (entities.tags euid') as he₃ at he
-  simp only [Map.findOrErr] at he
+  simp only [Map.findOrErr_eq_match] at he
   split at he <;> simp only [reduceCtorEq, Except.ok.injEq] at he
   subst he
   rename_i hv

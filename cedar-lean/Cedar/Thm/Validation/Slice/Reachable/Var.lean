@@ -14,15 +14,19 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Data.MapUnion
-import Cedar.Thm.Validation.Levels.CheckLevel
+module
 
-import Cedar.Thm.Validation.Slice.Reachable.Basic
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Data.MapUnion
+public import Cedar.Thm.Validation.Levels.CheckLevel
+
+public import Cedar.Thm.Validation.Slice.Reachable.Basic
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -36,15 +40,12 @@ theorem var_entity_reachable {var : Var} {v : Value} {n : Nat} {request : Reques
   ReachableIn entities request.sliceEUIDs euid (n + 1)
 := by
   have hi : euid ∈ request.sliceEUIDs := by
-    rw [Request.sliceEUIDs, Set.mem_union, Set.mem_make]
+    rw [mem_sliceEUIDs_request, Set.mem_make]
     cases var <;> simp only [evaluate, Except.ok.injEq] at he <;> subst he <;> cases ha
     case principal | action | resource => simp
     case context v a path hf' hv =>
-      suffices h : ∃ kv ∈ request.context.toList, euid ∈ kv.snd.sliceEUIDs by
-        unfold Value.sliceEUIDs
-        right
-        simp only [Map.deprecated_toList_def, Prod.exists] at h -- `Map.deprecated_toList_def` is currently necessary because `Value.sliceEUIDs` is defined using `Data.Map` internals
-        simpa [List.mapUnion₃_eq_mapUnion λ (x : Attr × Value) => (x.snd.sliceEUIDs), List.mem_mapUnion_iff_mem_exists] using h
+      right
+      rw [mem_sliceEUIDs_record]
       exists (a, v)
       constructor
       · exact Map.find?_mem_toList hf'

@@ -1,8 +1,15 @@
-import Cedar.Validation.RequestEntityValidator
-import Cedar.Validation.EnvironmentValidator
-import Cedar.Thm.Validation.EnvironmentValidation
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Validation.Validator
+module
+
+public import Cedar.Validation.RequestEntityValidator
+import all Cedar.Validation.RequestEntityValidator -- unfolds `instanceOfType` and friends
+import all Cedar.Validation.Types -- unfolds `TypeEnv.schema` and `EntitySchemaEntry.isValidEntityEID`
+import all Cedar.Validation.EnvironmentValidator -- unfolds `Schema.validateWellFormed`
+public import Cedar.Validation.EnvironmentValidator
+public import Cedar.Thm.Validation.EnvironmentValidation
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Validation.Validator
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -71,9 +78,8 @@ theorem instance_of_type_refl {v : Value} {ty : CedarType} {env : TypeEnv} :
         CedarType.set.injEq, imp_false, forall_apply_eq_imp_iff, forall_eq'] at *
       subst s sty
       rw [Set.all₁_eq_all (f := (instanceOfType · _ env.schema))] at h₀
-      simp only [Set.all, List.all_eq_true] at h₀
+      rw [Set.all_eq_true] at h₀
       intro v hv
-      simp only [Set.mem_elts_iff_mem_set] at h₀
       exact instance_of_type_refl (h₀ v hv)
     all_goals contradiction
   | record r =>
@@ -98,7 +104,7 @@ theorem instance_of_type_refl {v : Value} {ty : CedarType} {env : TypeEnv} :
         simp only [Prod.mk.sizeOf_spec] at hin
         omega
       specialize h₄ ⟨(k, v), h₆⟩
-      simp only [List.attach₂, List.mem_pmap_subtype] at h₄
+      simp only [List.mem_attach₂_iff] at h₄
       have h₇ := h₄ (Map.find?_mem_toList h₁)
       cases h₈ : rty.find? k with
       | none =>
@@ -111,12 +117,10 @@ theorem instance_of_type_refl {v : Value} {ty : CedarType} {env : TypeEnv} :
         exact instance_of_type_refl h₇
       intro k qty h₁ h₂
       have ⟨⟨_, h₄⟩, h₅⟩ := h₀ ; clear h₀
-      simp only [List.attach₂] at h₄
       simp only [requiredAttributePresent, Bool.ite_true_right, Bool.decide_eq_true] at h₅
       specialize h₅ (k, qty)
       simp only [h₁, Bool.or_eq_true, Bool.not_eq_true'] at h₅
       have h₆ := Map.find?_mem_toList h₁
-      simp only [Map.toList] at h₆
       cases h₅ h₆ with
       | inl h₅ =>
         rw [h₂] at h₅
@@ -206,11 +210,9 @@ theorem instance_of_schema_refl {entities : Entities} {env : TypeEnv} :
       · exact instance_of_type_refl h₃
       · split at h₀ <;> try simp only [reduceCtorEq] at h₀
         rename_i h₄
-        simp only [Set.all, List.all_eq_true] at h₄
+        rw [Set.all_eq_true] at h₄
         constructor
         · intro anc ancin
-          simp only [Set.contains, List.elem_eq_mem] at h₄
-          rw [← Set.mem_elts_iff_mem_set] at ancin
           replace h₄ := h₄ anc ancin
           simp at h₄
           exact h₄.left
@@ -248,7 +250,7 @@ theorem instance_of_schema_refl {entities : Entities} {env : TypeEnv} :
     cases h₂ : Map.find? entities uid <;> simp only [ite_eq_left_iff, Bool.not_eq_true,
       reduceCtorEq, imp_false, Bool.not_eq_false] at h₀
     case some data => exists data
-    case none => simp [Map.contains, h₂] at h₀
+    case none => simp [Map.contains_eq_isSome_find?, h₂] at h₀
 
 theorem instance_of_well_formed_env {env : TypeEnv} {request : Request} {entities : Entities} :
   env.validateWellFormed = .ok () →
@@ -344,7 +346,9 @@ theorem instanceOfType_mono {s₁ s₂ : Schema}
         | some qty =>
           simp only [hq] at hval
           apply ih v qty.getType _ hval
-          have hmem' : (k, v) ∈ r.1 := List.mem_attach₂ hmem
+          have hmem' : (k, v) ∈ r.1 := by
+            obtain ⟨l⟩ := r
+            simpa using List.mem_attach₂ hmem
           have hlt' := Map.sizeOf_lt_of_value hmem'
           simp only [Value.record.sizeOf_spec] at hlt
           omega

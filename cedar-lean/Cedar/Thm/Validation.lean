@@ -13,19 +13,21 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+module
 
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Validation.Levels
-import Cedar.Thm.Validation.Slice
-import Cedar.Thm.Validation.Validator
-import Cedar.Thm.Validation.RequestEntityValidation
-import Cedar.Thm.Validation.EnvironmentValidation
-import Cedar.Thm.Validation.Levels
-import Cedar.Thm.Validation.SubstituteAction
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Authorization
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+public import Cedar.Thm.Validation.Levels
+public import Cedar.Thm.Validation.Slice
+public import Cedar.Thm.Validation.Validator
+public import Cedar.Thm.Validation.RequestEntityValidation
+public import Cedar.Thm.Validation.EnvironmentValidation
+public import Cedar.Thm.Validation.Levels
+public import Cedar.Thm.Validation.SubstituteAction
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Authorization
+import all Cedar.Validation.Validator -- unfolds `validate`
 
 /-!
 This file contains the top-level correctness properties for the Cedar validator.
@@ -33,6 +35,8 @@ We show that if validation succeeds for a set of policies, then for any request
 consistent with the schema, evaluating a policy in this set either produces a
 boolean value, or throws one of the errors in the set of valid errors.
 --/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -126,14 +130,8 @@ theorem error_of_mem_erroringPolicies {ps : Policies} {request : Request} {entit
   (h : pid ∈ (isAuthorized request entities ps).erroringPolicies) :
   ∃ p ∈ ps, p.id = pid ∧ ∃ e, evaluate p.toExpr request entities = .error e
 := by
-  unfold isAuthorized errorPolicies errored at h
-  simp only [apply_ite, ite_self, Set.mem_make, List.mem_filterMap,
-    Option.ite_none_right_eq_some, Option.some.injEq] at h
-  obtain ⟨p, hp, herr, hid⟩ := h
-  refine ⟨p, hp, hid, ?_⟩
-  cases heq : evaluate p.toExpr request entities with
-  | ok v => simp [hasError, heq] at herr
-  | error e => exact ⟨e, rfl⟩
+  obtain ⟨p, hp, hid, herr⟩ := exists_hasError_of_mem_erroringPolicies h
+  exact ⟨p, hp, hid, if_hasError_then_exists_error herr⟩
 
 /--
 `Response`-level form of `validate_with_level_no_dne` (issue #642): for a policy
