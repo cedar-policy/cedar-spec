@@ -14,13 +14,18 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Data.MapUnion
-import Cedar.Thm.Validation.Levels.CheckLevel
+module
+
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Data.MapUnion
+public import Cedar.Thm.Validation.Levels.CheckLevel
+import all Cedar.Spec.Slice -- unfolds `Value.sliceEUIDs`
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -47,6 +52,31 @@ inductive Value.EuidViaPath : Value → List Attr → EntityUID → Prop where
     (hv : EuidViaPath v path euid) :
     EuidViaPath (.record attrs)  (a :: path) euid
 
+theorem mem_sliceEUIDs_record {m : Map Attr Value} {euid : EntityUID} :
+  euid ∈ (Value.record m).sliceEUIDs ↔ ∃ kv ∈ m.toList, euid ∈ kv.snd.sliceEUIDs
+:= by
+  obtain ⟨avs⟩ := m
+  rw [Value.sliceEUIDs]
+  simp only [List.mapUnion₃_eq_mapUnion (λ e : (Attr × Value) => e.snd.sliceEUIDs),
+    List.mem_mapUnion_iff_mem_exists, Map.toList_mk_id, Prod.exists]
+
+theorem mem_sliceEUIDs_entityData {ed : EntityData} {euid : EntityUID} :
+  euid ∈ ed.sliceEUIDs ↔
+    (∃ v ∈ ed.attrs.values, euid ∈ v.sliceEUIDs) ∨ (∃ v ∈ ed.tags.values, euid ∈ v.sliceEUIDs)
+:= by
+  simp [EntityData.sliceEUIDs, Set.mem_union, List.mem_mapUnion_iff_mem_exists]
+
+theorem mem_sliceEUIDs_request {r : Request} {euid : EntityUID} :
+  euid ∈ r.sliceEUIDs ↔
+    euid ∈ Set.make [r.principal, r.action, r.resource] ∨ euid ∈ (Value.record r.context).sliceEUIDs
+:= by
+  simp only [Request.sliceEUIDs, Set.mem_union]
+
+theorem mem_sliceEUIDs_entityUID {uid : EntityUID} :
+  uid ∈ (Value.prim (.entityUID uid)).sliceEUIDs
+:= by
+  simp [Value.sliceEUIDs, Set.mem_singleton]
+
 theorem in_val_then_val_slice {v path euid}
   (hv : Value.EuidViaPath v path euid)
   : euid ∈ v.sliceEUIDs
@@ -54,13 +84,9 @@ theorem in_val_then_val_slice {v path euid}
   cases v
   case prim p =>
     cases hv
-    simp [Value.sliceEUIDs, Set.mem_singleton]
+    exact mem_sliceEUIDs_entityUID
   case record attrs =>
-    suffices h : ∃ kv ∈ attrs.toList, euid ∈ kv.snd.sliceEUIDs by
-      unfold Value.sliceEUIDs
-      simp only [Prod.exists] at h
-      simp only [List.mapUnion₃_eq_mapUnion (λ e : (Attr × Value) => e.snd.sliceEUIDs), List.mem_mapUnion_iff_mem_exists, Prod.exists]
-      exact h
+    rw [mem_sliceEUIDs_record]
     cases path <;> cases hv
     rename_i a _ v ha hv
     exists (a, v)
@@ -93,7 +119,7 @@ theorem entities_attrs_then_find? {entities: Entities} {attrs : Map Attr Value} 
   (he : entities.attrs uid = .ok attrs)
   : ∃ ed, entities.find? uid = some ed ∧ ed.attrs = attrs
 := by
-  simp only [Entities.attrs, Map.findOrErr] at he
+  simp only [Entities.attrs, Map.findOrErr_eq_match] at he
   split at he <;> simp only [Except.bind_err, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at he
   rename_i ed h₁
   exists ed
@@ -102,7 +128,7 @@ theorem entities_tags_then_find? {entities: Entities} {tags : Map Tag Value} {ui
   (he : entities.tags uid = .ok tags)
   : ∃ ed, entities.find? uid = some ed ∧ ed.tags = tags
 := by
-  simp only [Entities.tags, Map.findOrErr] at he
+  simp only [Entities.tags, Map.findOrErr_eq_match] at he
   split at he <;> simp only [Except.bind_err, Except.bind_ok, reduceCtorEq, Except.ok.injEq] at he
   rename_i ed h₁
   exists ed

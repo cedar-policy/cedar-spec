@@ -14,16 +14,21 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Data.MapUnion
-import Cedar.Thm.Validation.Levels.CheckLevel
-import Cedar.Thm.Validation.Validator
+module
 
-import Cedar.Thm.Validation.Slice.Reachable
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Data.MapUnion
+public import Cedar.Thm.Validation.Levels.CheckLevel
+public import Cedar.Thm.Validation.Validator
+
+public import Cedar.Thm.Validation.Slice.Reachable
+import all Cedar.Spec.Slice -- unfolds `Value.sliceEUIDs`, `EntityData.sliceEUIDs`, ...
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -92,9 +97,7 @@ theorem checked_eval_entity_in_slice  {n : Nat} {c c' : Capabilities} {tx : Type
   replace hmake : Map.mk eds = Map.make eds := by
     have hsorted := eids.wf_iff_sorted.mp slice_at_level_request_well_formed
     have hsbfst : eds.SortedBy Prod.fst := List.filterMap_key_id_sortedBy_key hsorted
-    have hwf : (Map.mk eds).WellFormed := by
-      simpa [Map.wf_iff_sorted] using hsbfst
-    simpa [Map.WellFormed] using hwf
+    rw [Map.make_eq_mk_canonicalize, List.sortedBy_implies_canonicalize_eq hsbfst]
   rw [←hmake]
   exact Map.find?_filterMap_key_id hi
 

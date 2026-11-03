@@ -14,13 +14,17 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
+module
 
-import Cedar.Thm.Authorization.Evaluator
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Slice.Reachable.Basic
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+
+public import Cedar.Thm.Authorization.Evaluator
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Slice.Reachable.Basic
+
+@[expose] public section
 
 namespace Cedar.Thm
 

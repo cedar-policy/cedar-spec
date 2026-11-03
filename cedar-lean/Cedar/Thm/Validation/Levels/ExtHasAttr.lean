@@ -1,20 +1,26 @@
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Typechecker.Basic
-import Cedar.Thm.Validation.Typechecker.IfThenElse
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Validation.Slice
-import Cedar.Thm.Validation.Levels.Basic
-import Cedar.Thm.Validation.Levels.CheckLevel
-import Cedar.Thm.Validation.Levels.ReachableChild
-import Cedar.Thm.Validation.Levels.SliceHelpers
-import Cedar.Thm.WellTyped.Expr.Typechecking
+module
+
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Typechecker.Basic
+public import Cedar.Thm.Validation.Typechecker.IfThenElse
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Validation.Slice
+public import Cedar.Thm.Validation.Levels.Basic
+public import Cedar.Thm.Validation.Levels.CheckLevel
+public import Cedar.Thm.Validation.Levels.ReachableChild
+public import Cedar.Thm.Validation.Levels.SliceHelpers
+public import Cedar.Thm.WellTyped.Expr.Typechecking
+import all Cedar.Validation.Levels -- unfolds `extHasAttrChainCost`
+import all Cedar.Validation.Typechecker -- unfolds `typeOf`
 
 /-!
 This file proves that level checking for `.extHasAttr` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -44,9 +50,7 @@ theorem reachable_implies_find_agree
     have hmake : Map.mk eds = Map.make eds := by
       have hsorted := eids.wf_iff_sorted.mp slice_at_level_request_well_formed
       have hsbfst : eds.SortedBy Prod.fst := List.filterMap_key_id_sortedBy_key hsorted
-      have hwf : (Map.mk eds).WellFormed := by
-        simpa [Map.wf_iff_sorted] using hsbfst
-      simpa [Map.WellFormed] using hwf
+      rw [Map.make_eq_mk_canonicalize, List.sortedBy_implies_canonicalize_eq hsbfst]
     rw [←hmake]
     exact (Map.find?_filterMap_key_id hi).symm ▸ hf
 
@@ -128,12 +132,12 @@ theorem hasAttrs_loop_entity_sound
             cases h₃ with
             | inl h =>
               obtain ⟨x, h₅, _, h₆, _⟩ := h
-              exact ⟨x.attrs, by simp [EntitySchema.attrs?, ← huidty.1.symm, h₅], h₆⟩
+              exact ⟨x.attrs, by simp [EntitySchema.attrs?_eq_map_find?, ← huidty.1.symm, h₅], h₆⟩
             | inr h =>
               -- Action entity: data.attrs = .empty, contradicts hfinda
               obtain ⟨h₅, _⟩ := h
               rw [h₅] at h₂
-              simp [Map.find?, Map.empty] at h₂
+              simp at h₂
           obtain ⟨x, h₅, h₆⟩ := h₄
           obtain ⟨x₁, h₈, h₉⟩ := instance_of_found_attribute h₆ h₂
           cases hqty : x₁.getType with
@@ -149,7 +153,7 @@ theorem hasAttrs_loop_entity_sound
               omega
             · -- reach: uid2 is reachable at (sliceLevel - cost)
               have hmem : uid2 ∈ ed.sliceEUIDs :=
-                sliceEUIDs_entity_attr h₂ uid2 (by simp [Value.sliceEUIDs, Set.mem_singleton])
+                sliceEUIDs_entity_attr h₂ uid2 mem_sliceEUIDs_entityUID
               have hcost_eq : extHasAttrChainCost env (.entity ety) (a :: b :: bs) =
                   1 + extHasAttrChainCost env (.entity nextEty) (b :: bs) := by
                 simp [extHasAttrChainCost, h₅, h₈, hqty]

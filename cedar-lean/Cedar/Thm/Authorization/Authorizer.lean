@@ -153,6 +153,16 @@ theorem alternate_errorPolicies_equiv_errorPolicies (policies : Policies) (reque
     exists p
     simp only [h₁, errored, h₂, reduceIte, h₃, and_self]
 
+theorem exists_hasError_of_mem_erroringPolicies {ps : Policies} {request : Request} {entities : Entities} {pid : PolicyID}
+  (h : pid ∈ (isAuthorized request entities ps).erroringPolicies) :
+  ∃ p ∈ ps, p.id = pid ∧ hasError p request entities = true
+:= by
+  unfold isAuthorized errorPolicies errored at h
+  simp only [apply_ite, ite_self, Set.mem_make, List.mem_filterMap,
+    Option.ite_none_right_eq_some, Option.some.injEq] at h
+  obtain ⟨p, hp, herr, hid⟩ := h
+  exact ⟨p, hp, hid, herr⟩
+
 theorem principal_eval_ok_means_principal_in_uid {policy : Policy} {request : Request} {entities : Entities} {uid: EntityUID} :
   evaluate policy.principalScope.toExpr request entities = .ok true →
   policy.principalScope.scope.bound = .some uid →

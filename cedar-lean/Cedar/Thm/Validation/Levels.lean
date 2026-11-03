@@ -13,31 +13,36 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Authorization.Authorizer
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Validation.Validator
-import Cedar.Thm.Validation.RequestEntityValidation
+module
 
-import Cedar.Thm.Validation.Levels.Basic
-import Cedar.Thm.Validation.Levels.CheckLevel
-import Cedar.Thm.Validation.Levels.IfThenElse
-import Cedar.Thm.Validation.Levels.GetAttr
-import Cedar.Thm.Validation.Levels.HasAttr
-import Cedar.Thm.Validation.Levels.ExtHasAttr
-import Cedar.Thm.Validation.Levels.UnaryApp
-import Cedar.Thm.Validation.Levels.BinaryApp
-import Cedar.Thm.Validation.Levels.And
-import Cedar.Thm.Validation.Levels.Or
-import Cedar.Thm.Validation.Levels.Record
-import Cedar.Thm.Validation.Levels.Set
-import Cedar.Thm.Validation.Levels.Call
-import Cedar.Thm.Validation.Levels.NoEntitiesError
-import Cedar.Thm.Validation.Levels.ReachableChild
-import Cedar.Thm.Validation.Levels.SliceHelpers
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+public import Cedar.Thm.Authorization.Authorizer
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Validation.Validator
+public import Cedar.Thm.Validation.RequestEntityValidation
+
+public import Cedar.Thm.Validation.Levels.Basic
+public import Cedar.Thm.Validation.Levels.CheckLevel
+public import Cedar.Thm.Validation.Levels.IfThenElse
+public import Cedar.Thm.Validation.Levels.GetAttr
+public import Cedar.Thm.Validation.Levels.HasAttr
+public import Cedar.Thm.Validation.Levels.ExtHasAttr
+public import Cedar.Thm.Validation.Levels.UnaryApp
+public import Cedar.Thm.Validation.Levels.BinaryApp
+public import Cedar.Thm.Validation.Levels.And
+public import Cedar.Thm.Validation.Levels.Or
+public import Cedar.Thm.Validation.Levels.Record
+public import Cedar.Thm.Validation.Levels.Set
+public import Cedar.Thm.Validation.Levels.Call
+public import Cedar.Thm.Validation.Levels.NoEntitiesError
+public import Cedar.Thm.Validation.Levels.ReachableChild
+public import Cedar.Thm.Validation.Levels.SliceHelpers
+import all Cedar.Validation.Validator -- unfolds `validateWithLevel`, `typecheckPolicyWithLevel`, ...
+
+@[expose] public section
 
 namespace Cedar.Thm
 

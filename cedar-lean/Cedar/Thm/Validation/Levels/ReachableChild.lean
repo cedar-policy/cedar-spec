@@ -1,4 +1,8 @@
-import Cedar.Thm.Validation.Slice.Reachable
+module
+
+public import Cedar.Thm.Validation.Slice.Reachable
+
+@[expose] public section
 
 namespace Cedar.Thm
 

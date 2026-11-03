@@ -14,14 +14,19 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Data
-import Cedar.Thm.Validation.SubstituteAction
-import Cedar.Thm.WellTyped.Expr.Definition
-import Cedar.Thm.WellTyped.Expr.Typechecking
+module
+
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+import all Cedar.Validation.Validator -- unfolds `typecheckPolicy` and `typecheckPolicyWithEnvironments`
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Data
+public import Cedar.Thm.Validation.SubstituteAction
+public import Cedar.Thm.WellTyped.Expr.Definition
+public import Cedar.Thm.WellTyped.Expr.Typechecking
+
+@[expose] public section
 
 namespace Cedar.Thm
 

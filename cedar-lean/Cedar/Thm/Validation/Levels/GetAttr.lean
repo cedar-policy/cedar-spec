@@ -14,20 +14,24 @@
  limitations under the License.
 -/
 
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Typechecker.Basic
-import Cedar.Thm.Validation.Typechecker.IfThenElse
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Validation.Slice
-import Cedar.Thm.Validation.Levels.Basic
-import Cedar.Thm.Validation.Levels.CheckLevel
+module
+
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Typechecker.Basic
+public import Cedar.Thm.Validation.Typechecker.IfThenElse
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Validation.Slice
+public import Cedar.Thm.Validation.Levels.Basic
+public import Cedar.Thm.Validation.Levels.CheckLevel
 
 /-!
 This file proves that level checking for `.getAttr` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
@@ -60,7 +64,7 @@ theorem level_based_slicing_is_sound_get_attr_entity {e : Expr} {tx₁: TypedExp
   unfold EvaluatesTo at he
   rcases he with he | he | he | he <;> simp only [he, Except.bind_err]
   have hfeq := checked_eval_entity_find_entities_eq_find_slice hc hr ht hl₁ he
-  simp [hfeq, getAttr, attrsOf, Entities.attrs, Map.findOrErr]
+  simp [hfeq, getAttr, attrsOf, Entities.attrs, Map.findOrErr_eq_match]
 
 theorem level_based_slicing_is_sound_get_attr_record {e : Expr} {tx : TypedExpr} {ty : CedarType} {a : Attr} {n : Nat} {c₀: Capabilities} {env : TypeEnv} {request : Request} {entities : Entities}
   (hc : CapabilitiesInvariant c₀ request entities)

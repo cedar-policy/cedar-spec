@@ -14,7 +14,25 @@
  limitations under the License.
 -/
 
-import Cedar.Validation
+module
+
+public import Cedar.Validation
+public import Cedar.Thm.Data.Map
+import all Cedar.Data.List -- unfolds `List.attach₂`
+import all Cedar.Validation.Levels -- unfolds `checkLevel` and `checkEntityAccessLevel`
+
+@[expose] public section
+
+namespace List
+
+-- TODO: move to Cedar.Thm.Data.List.Lemmas
+public theorem mem_attach₂_iff [SizeOf α] [SizeOf β] {xs : List (α × β)} {pair : {x : α × β // sizeOf x.snd < 1 + sizeOf xs}} :
+  pair ∈ xs.attach₂ ↔ pair.val ∈ xs
+:= by
+  unfold attach₂
+  exact List.mem_pmap_subtype _ _ _ _
+
+end List
 
 namespace Cedar.Thm
 
@@ -320,7 +338,7 @@ theorem entity_access_level_spec {tx : TypedExpr} {env : TypeEnv} {n nmax : Nat}
           · intros
             rename_i a tx _ h₂
             replace h₂ : (a, tx) ∈ atxs := by
-              simpa [List.attach₂] using h₂
+              simpa [List.mem_attach₂_iff] using h₂
             have ih := @level_spec tx
             exact ih.mp (h₃ _ h₂)
         · intro ⟨ h₁, h₂ ⟩
@@ -333,7 +351,7 @@ theorem entity_access_level_spec {tx : TypedExpr} {env : TypeEnv} {n nmax : Nat}
             replace h₂ : atx.snd.checkLevel env nmax = true := by
               specialize h₂ atx.fst atx.snd hSizeOf
               replace h₂ : atx ∈ atxs → atx.snd.checkLevel env nmax = true := by
-                simpa [List.attach₂] using h₂
+                simpa [List.mem_attach₂_iff] using h₂
               exact h₂ hatx
             have ih := @level_spec atx.snd
             exact ih.mpr h₂
@@ -569,7 +587,7 @@ theorem level_spec {tx : TypedExpr} {env : TypeEnv} {n : Nat}:
     apply Iff.intro
     · intro h₁ a tx h₂ h₃
       replace h₃ : (a, tx) ∈ attrs :=
-        by simpa [List.attach₂] using h₃
+        by simpa [List.mem_attach₂_iff] using h₃
       cases h₁
       rename_i h₄
       specialize h₄ (a, tx) h₃
@@ -585,7 +603,7 @@ theorem level_spec {tx : TypedExpr} {env : TypeEnv} {n : Nat}:
       replace h₁ : atx.snd.checkLevel env n := by
         specialize h₁ atx.fst atx.snd hSizeOf
         replace h₁ : atx ∈ attrs → atx.snd.checkLevel env n= true := by
-          simpa [List.attach₂] using h₁
+          simpa [List.mem_attach₂_iff] using h₁
         exact h₁ h₂
       have ih := @level_spec atx.snd
       exact ih.mpr h₁

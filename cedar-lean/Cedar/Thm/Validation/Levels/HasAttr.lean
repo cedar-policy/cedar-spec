@@ -1,17 +1,21 @@
-import Cedar.Spec
-import Cedar.Data
-import Cedar.Validation
-import Cedar.Thm.Validation.Typechecker
-import Cedar.Thm.Validation.Typechecker.Basic
-import Cedar.Thm.Validation.Typechecker.IfThenElse
-import Cedar.Thm.Validation.Typechecker.Types
-import Cedar.Thm.Validation.Slice
-import Cedar.Thm.Validation.Levels.Basic
-import Cedar.Thm.Validation.Levels.CheckLevel
+module
+
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.Validation
+public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Typechecker.Basic
+public import Cedar.Thm.Validation.Typechecker.IfThenElse
+public import Cedar.Thm.Validation.Typechecker.Types
+public import Cedar.Thm.Validation.Slice
+public import Cedar.Thm.Validation.Levels.Basic
+public import Cedar.Thm.Validation.Levels.CheckLevel
 
 /-!
 This file proves that level checking for `.hasAttr` expressions is sound.
 -/
+
+@[expose] public section
 
 namespace Cedar.Thm
 
