@@ -136,6 +136,16 @@ public theorem mem_attach₂ [SizeOf α] [SizeOf β] {as : List (α × β)} {pai
   replace ⟨a, b, h, _⟩ := h ; subst pair
   simp [h]
 
+public theorem mem_attach₂_iff [SizeOf α] [SizeOf β] {xs : List (α × β)} {pair : {x : α × β // sizeOf x.snd < 1 + sizeOf xs}} :
+  pair ∈ xs.attach₂ ↔ pair.val ∈ xs
+:= by
+  constructor
+  · exact mem_attach₂
+  · intro h
+    unfold attach₂
+    rw [mem_pmap]
+    exact ⟨pair.val, h, rfl⟩
+
 @[simp]
 public theorem all_attach₂ [SizeOf α] [SizeOf β] {as : List (α × β)} {f : (α × β) → Bool} :
   as.attach₂.all (λ ⟨pair, _⟩ => f pair) = as.all f

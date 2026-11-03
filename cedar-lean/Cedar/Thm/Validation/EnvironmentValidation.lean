@@ -545,9 +545,7 @@ theorem environment_some_mem_environments {schema : Schema}
         (λ (principal, resource) => {
           principal, action, resource,
           context := ase.context}))
-    have hp' := Set.contains_prop_bool_equiv.mp hp
-    have hr' := Set.contains_prop_bool_equiv.mp hr
-    simp [Set.toList, List.pair_mem_product, Set.mem_elts_iff_mem_set, hp', hr']
+    simp [Set.toList, Set.mem_elts_iff_mem_set, ← Set.contains_prop_bool_equiv, hr, hp]
 
 /-! ### Completeness: well-formed environments pass the executable checks -/
 

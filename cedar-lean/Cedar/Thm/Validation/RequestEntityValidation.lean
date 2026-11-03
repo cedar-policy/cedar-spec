@@ -8,7 +8,6 @@ public import Cedar.Validation.EnvironmentValidator
 public import Cedar.Thm.Validation.EnvironmentValidation
 public import Cedar.Thm.Validation.Typechecker.Types
 public import Cedar.Thm.Validation.Validator
-public import Cedar.Thm.Validation.Levels.CheckLevel -- for `List.mem_attach₂_iff`
 
 @[expose] public section
 

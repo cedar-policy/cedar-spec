@@ -18,21 +18,10 @@ module
 
 public import Cedar.Validation
 public import Cedar.Thm.Data.Map
-import all Cedar.Data.List -- unfolds `List.attach₂`
+public import Cedar.Thm.Data.List.Lemmas
 import all Cedar.Validation.Levels -- unfolds `checkLevel` and `checkEntityAccessLevel`
 
 @[expose] public section
-
-namespace List
-
--- TODO: move to Cedar.Thm.Data.List.Lemmas
-public theorem mem_attach₂_iff [SizeOf α] [SizeOf β] {xs : List (α × β)} {pair : {x : α × β // sizeOf x.snd < 1 + sizeOf xs}} :
-  pair ∈ xs.attach₂ ↔ pair.val ∈ xs
-:= by
-  unfold attach₂
-  exact List.mem_pmap_subtype _ _ _ _
-
-end List
 
 namespace Cedar.Thm
 
