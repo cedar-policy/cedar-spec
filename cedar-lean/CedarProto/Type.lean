@@ -40,12 +40,14 @@ structure RecordType where
   attrs : Array (String × (Qualified ProtoType))
 deriving Repr, Inhabited
 
+/-- `ref i` stands for entry `i` of the `typeDefs` of the enclosing `Schema`. -/
 inductive ProtoType where
   | prim (p : PrimType)
   | set (elTy : ProtoType)
   | entity (ety : Spec.Proto.Name)
   | record (rty : RecordType)
   | ext (extTy : Spec.Proto.Name)
+  | ref (idx : UInt32)
 deriving Repr, Inhabited
 end
 
@@ -149,15 +151,25 @@ partial def merge (x1 x2 : ProtoType) : ProtoType :=
   | _, _ => x2
 end
 
-partial def toCedarType : ProtoType → Except String CedarType
+@[inline]
+def mergeRef (result : ProtoType) (x : UInt32) : ProtoType :=
+  match result with
+  | .ref i => .ref (Field.merge i x)
+  | _ => .ref x
+
+/-- `ref i` stands for `defs[i]`. Every occurrence shares the same object. -/
+partial def toCedarType (defs : Array CedarType) : ProtoType → Except String CedarType
   | .prim .bool => .ok (.bool .anyBool)
   | .prim .long => .ok .int
   | .prim .string => .ok .string
-  | .set t => do .ok (.set (← t.toCedarType))
+  | .set t => do .ok (.set (← t.toCedarType defs))
   | .entity e => .ok (.entity e.toName)
   | .record r => do
-    let attrs ← r.attrs.mapM λ (k,v) => do .ok (k, ← v.map toCedarType |>.transpose)
+    let attrs ← r.attrs.mapM λ (k,v) => do .ok (k, ← v.map (toCedarType defs) |>.transpose)
     .ok (.record $ Data.mapOfArray attrs)
+  | .ref i => match defs[i.toNat]? with
+    | some ty => .ok ty
+    | none => .error s!"type_ref {i} does not refer to an earlier entry of type_defs"
   | .ext n => match n.id with -- ignoring n.path because currently no extension types have nonempty namespaces
     | "ipaddr" => .ok (.ext .ipAddr)
     | "decimal" => .ok (.ext .decimal)
@@ -212,6 +224,9 @@ partial def ProtoType.parseField (t : Tag) : BParsec (MergeFn ProtoType) := do
   | 5 =>
     let x : Spec.Proto.Name ← Field.guardedParse t
     pureMergeFn (ProtoType.mergeExt · x)
+  | 6 =>
+    let x : UInt32 ← Field.guardedParse t
+    pureMergeFn (ProtoType.mergeRef · x)
   | _ =>
     t.wireType.skip
     pure ignore
@@ -226,7 +241,7 @@ instance : Message RecordType := {
 }
 
 def toRecordType (r : RecordType) : Except String Validation.RecordType :=
-  match ProtoType.toCedarType (.record r) with
+  match ProtoType.toCedarType #[] (.record r) with
   | .ok (.record r') => .ok r'
   | .ok _ => .error "Error converted record type to non-record type"
   | .error s => .error s
