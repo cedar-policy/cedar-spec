@@ -85,6 +85,18 @@ test = false
 doc = false
 
 [[bin]]
+name = "is-authorized-str"
+path = "fuzz_targets/is-authorized-str.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "is-authorized-str-bytes"
+path = "fuzz_targets/is-authorized-str-bytes.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "roundtrip"
 path = "fuzz_targets/roundtrip.rs"
 test = false
@@ -141,6 +153,12 @@ doc = false
 [[bin]]
 name = "simple-parser"
 path = "fuzz_targets/simple-parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "policy-parser-drt"
+path = "fuzz_targets/policy-parser-drt.rs"
 test = false
 doc = false
 

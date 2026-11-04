@@ -27,8 +27,9 @@ use crate::datatypes::{
 };
 use crate::err::FfiError;
 use crate::lean_object::{
-    OwnedLeanObject, call_lean_ffi_takes_obj_and_protobuf,
+    OwnedLeanObject, call_lean_ffi_function, call_lean_ffi_takes_obj_and_protobuf,
     call_lean_ffi_takes_obj_protobuf_and_string, call_lean_ffi_takes_protobuf,
+    call_lean_ffi_tri_function,
 };
 use crate::messages::*;
 
@@ -52,6 +53,10 @@ mod test_implementation;
 #[link(name = "Cedar_Protobuf", kind = "static")]
 #[link(name = "Cedar_CedarProto", kind = "static")]
 #[link(name = "batteries_Batteries", kind = "static")]
+#[link(
+    name = "LeanParserGenerator_LeanParserGeneratorRuntime",
+    kind = "static"
+)]
 #[link(name = "Cedar_CedarFFI", kind = "static")]
 unsafe extern "C" {
     fn runCheckNeverErrors(schema: *mut lean_object, req: *mut lean_object) -> *mut lean_object;
@@ -224,6 +229,7 @@ unsafe extern "C" {
     ) -> *mut lean_object;
 
     fn isAuthorized(req: *mut lean_object) -> *mut lean_object;
+    fn isAuthorizedP(req: *mut lean_object) -> *mut lean_object;
     fn validate(req: *mut lean_object) -> *mut lean_object;
     fn levelValidate(req: *mut lean_object) -> *mut lean_object;
     fn printEvaluation(req: *mut lean_object) -> *mut lean_object;
@@ -297,6 +303,14 @@ unsafe extern "C" {
     fn initialize_Cedar_CedarFFI(builtin: u8, ob: *mut lean_object) -> *mut lean_object;
 
     fn loadProtobufSchema(req: *mut lean_object) -> *mut lean_object;
+
+    fn parsePolicies(req: *mut lean_object) -> *mut lean_object;
+
+    fn isAuthorizedStr(
+        policy_text: *mut lean_object,
+        entities_json: *mut lean_object,
+        request_json: *mut lean_object,
+    ) -> *mut lean_object;
 
     #[cfg(test)]
     static ffiTestString: *mut lean_object;
@@ -1372,6 +1386,61 @@ impl CedarLeanFfi {
             )),
         }
     }
+
+    pub fn parse_policies_timed(&self, src: &str) -> Result<TimedResult<bool>, FfiError> {
+        let arg = OwnedLeanObject::new_array_from_buf(src.as_bytes());
+        let response = unsafe { call_lean_ffi_function(parsePolicies, arg) };
+        match response.as_borrowed().deserialize_into()? {
+            ResultDef::Ok(t) => Ok(TimedResult::from_def(t)),
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
+    }
+
+    pub fn parse_policies(&self, src: &str) -> Result<bool, FfiError> {
+        Ok(self.parse_policies_timed(src)?.take_result())
+    }
+
+    /// Calls the lean backend to authorize entirely from strings: the policies
+    /// as Cedar source text, and the entities and request as Cedar JSON. All
+    /// three are parsed/deserialized on the Lean side (verified policy parser +
+    /// `Lean.Data.Json`-based entity/request readers), with no protobuf.
+    pub fn is_authorized_str_timed(
+        &self,
+        policy_text: &str,
+        entities_json: &str,
+        request_json: &str,
+    ) -> Result<TimedResult<AuthorizationResponse>, FfiError> {
+        let policy_arg = OwnedLeanObject::new_array_from_buf(policy_text.as_bytes());
+        let entities_arg = OwnedLeanObject::new_array_from_buf(entities_json.as_bytes());
+        let request_arg = OwnedLeanObject::new_array_from_buf(request_json.as_bytes());
+        let response = unsafe {
+            call_lean_ffi_tri_function(isAuthorizedStr, policy_arg, entities_arg, request_arg)
+        };
+        match response
+            .as_borrowed()
+            .deserialize_into::<ResultDef<TimedDef<AuthorizationResponseInner>>>()?
+        {
+            ResultDef::Ok(resp) => {
+                let tdef = TimedDef {
+                    data: AuthorizationResponse::from_inner(resp.data)?,
+                    duration: resp.duration,
+                };
+                Ok(TimedResult::from_def(tdef))
+            }
+            ResultDef::Error(s) => Err(FfiError::LeanBackendError(s)),
+        }
+    }
+
+    pub fn is_authorized_str(
+        &self,
+        policy_text: &str,
+        entities_json: &str,
+        request_json: &str,
+    ) -> Result<AuthorizationResponse, FfiError> {
+        Ok(self
+            .is_authorized_str_timed(policy_text, entities_json, request_json)?
+            .take_result())
+    }
 }
 
 /// uninitialize lean thread when done
@@ -1390,6 +1459,10 @@ mod test {
     #[link(name = "Cedar_Protobuf", kind = "static")]
     #[link(name = "Cedar_CedarProto", kind = "static")]
     #[link(name = "batteries_Batteries", kind = "static")]
+    #[link(
+        name = "LeanParserGenerator_LeanParserGeneratorRuntime",
+        kind = "static"
+    )]
     #[link(name = "Cedar_CedarFFI", kind = "static")]
     unsafe extern "C" {}
 
@@ -2119,6 +2192,35 @@ mod test {
             .validate_entities(&schema, &entities)
             .expect("Lean call unexpectedly failed for validate_entities");
         assert_eq!(res, ValidationResponse::Ok(()));
+    }
+
+    #[test]
+    fn test_parse_policies() {
+        let ffi = CedarLeanFfi::new();
+
+        // Lean and Rust should agree on whether each input parses and translates
+        // to an AST. The last three cover U+000B/U+000C, whitespace under Rust's `\s`.
+        for src in [
+            "permit(principal, action, resource);",
+            "forbid(principal, action, resource) when { 1 + 2 == 3 };",
+            "permit(principal, action, resource) when { principal has foo };",
+            "this is not a policy @@@",
+            "permit(principal, action, resource)",
+            "",
+            "\u{b}",
+            "\u{c}",
+            "permit(principal,\u{b}action, resource);",
+        ] {
+            let lean_ok = ffi
+                .parse_policies(src)
+                .expect("Lean call unexpectedly failed for parse_policies");
+            let rust_ok = cedar_policy_core::parser::parse_policyset(src).is_ok();
+            assert_eq!(
+                lean_ok, rust_ok,
+                "Lean and Rust disagree on parse+translate success for {src:?} \
+                 (lean_ok = {lean_ok}, rust_ok = {rust_ok})"
+            );
+        }
     }
 
     #[test]

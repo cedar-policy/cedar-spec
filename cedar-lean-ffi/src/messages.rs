@@ -157,6 +157,18 @@ impl proto::AuthorizationRequest {
     }
 }
 
+/// Serialize an authorization request whose policies are raw Cedar source text.
+/// Lean parses `policy_text` with its own parser before authorizing.
+impl proto::AuthorizationRequestFromPolicyText {
+    pub(crate) fn new(policy_text: &str, entities: &Entities, request: &Request) -> Self {
+        Self {
+            request: Some(cedar_policy::proto::models::Request::from(request)),
+            policy_text: policy_text.to_string(),
+            entities: Some(cedar_policy::proto::models::Entities::from(entities)),
+        }
+    }
+}
+
 /// Serialize an Expression evaluation request (checked or unchecked)
 impl proto::EvaluationRequestChecked {
     pub(crate) fn new(expr: &Expression, entities: &Entities, request: &Request) -> Self {
