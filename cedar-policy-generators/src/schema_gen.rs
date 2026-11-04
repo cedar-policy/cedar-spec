@@ -352,7 +352,7 @@ impl<'a> ValidatorSchema<'a> {
             attributes,
             attributes_by_type,
             settings,
-            constant_pool: u.arbitrary()?,
+            constant_pool: ConstantPool::arbitrary_for_settings(settings, u)?,
             ext_funcs: AvailableExtensionFunctions::create(settings),
         })
     }
