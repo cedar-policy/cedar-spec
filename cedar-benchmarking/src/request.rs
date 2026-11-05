@@ -50,10 +50,6 @@ pub fn generate_requests(
     let u = &mut bytes.unstructured(4096);
     let hierarchy: Hierarchy = entities.clone().into();
     let settings = ABACSettings::type_directed();
-    #[expect(
-        deprecated,
-        reason = "from_raw_schemafrag is the only available constructor"
-    )]
     let schema =
         cedar_policy_generators::schema::Schema::from_raw_schemafrag(schema.clone(), settings, u)
             .expect("should be a valid schema fragment");
