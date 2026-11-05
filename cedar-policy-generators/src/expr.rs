@@ -1426,7 +1426,6 @@ mod tests {
 
     /// Arities of every `isInRange` call the type-directed generator produces
     /// when asked for boolean expressions.
-    #[allow(deprecated)]
     fn generated_is_in_range_arities() -> Vec<usize> {
         let fragment = json_schema::Fragment::<RawName>::from_json_file(SCHEMA_STR.as_bytes())
             .expect("schema str should be valid");
