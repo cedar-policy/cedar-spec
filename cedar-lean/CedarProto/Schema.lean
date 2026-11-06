@@ -27,7 +27,7 @@ open Proto
 
 namespace Cedar.Validation.Proto
 
-/-- `ProtoType.ref i` stands for `typeDefs[i]`. In `typeDefs[j]` it must have `i < j`. -/
+/-- `ProtoType.ref i` stands for `typeDefs[i]`. In `typeDefs[j]`, decoding fails unless `i < j`. -/
 structure Schema where
   ets : Repeated EntityDecl
   acts : Repeated ActionDecl
@@ -88,7 +88,7 @@ private def attrsToCedarType (defs : Array CedarType) (attrs : Proto.Map String 
     .ok (k, v)
   .ok $ Data.mapOfArray attrs
 
-/-- Entry `j` only sees the entries before it, so forward references fail. -/
+/-- Entry `j` only sees the entries before it, so forward and self references fail. -/
 def typeDefsToCedarTypes (typeDefs : Array ProtoType) : Except String (Array CedarType) :=
   typeDefs.foldlM (λ defs def_ => do .ok (defs.push (← def_.toCedarType defs))) #[]
 

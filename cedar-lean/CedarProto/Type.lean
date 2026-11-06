@@ -40,13 +40,13 @@ structure RecordType where
   attrs : Array (String × (Qualified ProtoType))
 deriving Repr, Inhabited
 
-/-- `ref i` stands for entry `i` of the `typeDefs` of the enclosing `Schema`. -/
 inductive ProtoType where
   | prim (p : PrimType)
   | set (elTy : ProtoType)
   | entity (ety : Spec.Proto.Name)
   | record (rty : RecordType)
   | ext (extTy : Spec.Proto.Name)
+  /-- Entry `idx` of the `typeDefs` of the enclosing `Schema`. -/
   | ref (idx : UInt32)
 deriving Repr, Inhabited
 end
@@ -157,7 +157,7 @@ def mergeRef (result : ProtoType) (x : UInt32) : ProtoType :=
   | .ref i => .ref (Field.merge i x)
   | _ => .ref x
 
-/-- `ref i` stands for `defs[i]`. Every occurrence shares the same object. -/
+/-- `ref i` stands for `defs[i]`, and is an error if `i` is out of range. -/
 partial def toCedarType (defs : Array CedarType) : ProtoType → Except String CedarType
   | .prim .bool => .ok (.bool .anyBool)
   | .prim .long => .ok .int

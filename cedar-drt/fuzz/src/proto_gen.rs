@@ -500,8 +500,8 @@ impl ModelGenerator {
         Ok(models::Entities { entities })
     }
 
-    /// May refer to the first `num_defs` entries of `type_defs`, and sometimes
-    /// to entry `num_defs`, which decoding rejects.
+    /// May refer to the first `num_defs` entries of `type_defs`, and with
+    /// probability 1/16 per reference to entry `num_defs`, which decoding rejects.
     pub fn arbitrary_model_type<'a>(
         &self,
         u: &mut Unstructured<'a>,
