@@ -79,6 +79,7 @@ jobs:
     uses: ./.github/workflows/build_and_test_drt_reusable.yml
     with:
       cedar_spec_repository: ${{ github.repository }}
+      run_fuzz_smoke: true
       cedar_spec_ref: ${{ github.ref }}
       cedar_policy_ref: ${{ needs.get-branch-name.outputs.branch_name }}
 
