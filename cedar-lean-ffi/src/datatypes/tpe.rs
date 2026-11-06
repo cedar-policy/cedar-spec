@@ -411,6 +411,21 @@ mod convert {
                 let right = it.next().unwrap();
                 Ok(pst::Expr::BinaryOp { op, left, right })
             }
+            n @ 2.. => {
+                if !matches!(xfn, ExtFun::IsInRange) {
+                    return Err(ResidualConversionError::UnsupportedExtArity(n));
+                }
+                let mut it = pst_args.into_iter();
+                #[expect(clippy::unwrap_used, reason = "length checked")]
+                let left = it.next().unwrap();
+                #[expect(clippy::unwrap_used, reason = "length checked")]
+                let rights = NonEmpty::collect(it).unwrap();
+                Ok(pst::Expr::VariadicOp {
+                    op: pst::VariadicOp::IsInRange,
+                    left,
+                    rights,
+                })
+            }
             n => Err(ResidualConversionError::UnsupportedExtArity(n)),
         }
     }
