@@ -18,6 +18,15 @@ jobs:
     outputs:
       branch_name: ${{ steps.get_branch_name.outputs.branch_name }}
 
+  test_fuzz_manager:
+    name: Test fuzz-manager cancellation cleanup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout cedar-spec
+        uses: actions/checkout@v7
+      - name: Check cleanup including real subprocesses
+        run: python3 -W error -m unittest discover -s cedar-drt -p test_fuzz_manager.py -v
+
   build_and_test_lean:
     name: Build and test Lean
     runs-on: ubuntu-latest
