@@ -500,10 +500,13 @@ impl ModelGenerator {
         Ok(models::Entities { entities })
     }
 
+    /// May refer to the first `num_defs` entries of `type_defs`, and with
+    /// probability 1/16 per reference to entry `num_defs`, which decoding rejects.
     pub fn arbitrary_model_type<'a>(
         &self,
         u: &mut Unstructured<'a>,
         max_depth: usize,
+        num_defs: usize,
     ) -> arbitrary::Result<models::Type> {
         use models::r#type;
         if max_depth == 0 {
@@ -512,10 +515,14 @@ impl ModelGenerator {
                 data: Some(r#type::Data::Prim(prim)),
             });
         }
-        let choice: u8 = u.int_in_range(0..=4)?;
+        let choice: u8 = u.int_in_range(0..=if num_defs > 0 { 5 } else { 4 })?;
         let data = match choice {
             0 => r#type::Data::Prim(u.int_in_range(0..=2)?),
-            1 => r#type::Data::SetElem(Box::new(self.arbitrary_model_type(u, max_depth - 1)?)),
+            1 => r#type::Data::SetElem(Box::new(self.arbitrary_model_type(
+                u,
+                max_depth - 1,
+                num_defs,
+            )?)),
             2 => r#type::Data::Entity(self.arbitrary_model_name(u)?),
             3 => {
                 let num_attrs: usize = u.int_in_range(0..=self.max_attrs)?;
@@ -524,13 +531,25 @@ impl ModelGenerator {
                         Ok((
                             self.pick_ident(u)?,
                             models::AttributeType {
-                                attr_type: Some(self.arbitrary_model_type(u, max_depth - 1)?),
+                                attr_type: Some(self.arbitrary_model_type(
+                                    u,
+                                    max_depth - 1,
+                                    num_defs,
+                                )?),
                                 is_required: u.arbitrary()?,
                             },
                         ))
                     })
                     .collect::<arbitrary::Result<std::collections::HashMap<_, _>>>()?;
                 r#type::Data::Record(r#type::Record { attrs })
+            }
+            5 => {
+                let index = if u.ratio(1, 16)? {
+                    num_defs
+                } else {
+                    u.int_in_range(0..=num_defs - 1)?
+                };
+                r#type::Data::TypeRef(index.try_into().unwrap_or(u32::MAX))
             }
             _ => r#type::Data::Ext(self.arbitrary_model_name(u)?),
         };
@@ -541,6 +560,10 @@ impl ModelGenerator {
         &self,
         u: &mut Unstructured<'a>,
     ) -> arbitrary::Result<models::Schema> {
+        let num_type_defs: usize = u.int_in_range(0..=3)?;
+        let type_defs = (0..num_type_defs)
+            .map(|i| self.arbitrary_model_type(u, self.max_type_depth, i))
+            .collect::<arbitrary::Result<Vec<_>>>()?;
         let num_entity_decls: usize = u.int_in_range(1..=self.max_entity_decls)?;
         let entity_decls = (0..num_entity_decls)
             .map(|_| {
@@ -550,7 +573,11 @@ impl ModelGenerator {
                         Ok((
                             self.pick_ident(u)?,
                             models::AttributeType {
-                                attr_type: Some(self.arbitrary_model_type(u, self.max_type_depth)?),
+                                attr_type: Some(self.arbitrary_model_type(
+                                    u,
+                                    self.max_type_depth,
+                                    num_type_defs,
+                                )?),
                                 is_required: u.arbitrary()?,
                             },
                         ))
@@ -561,7 +588,7 @@ impl ModelGenerator {
                     .map(|_| self.arbitrary_model_name(u))
                     .collect::<arbitrary::Result<Vec<_>>>()?;
                 let tags = if u.ratio(1, 3)? {
-                    Some(self.arbitrary_model_type(u, 1)?)
+                    Some(self.arbitrary_model_type(u, 1, num_type_defs)?)
                 } else {
                     None
                 };
@@ -587,7 +614,11 @@ impl ModelGenerator {
                         Ok((
                             self.pick_ident(u)?,
                             models::AttributeType {
-                                attr_type: Some(self.arbitrary_model_type(u, self.max_type_depth)?),
+                                attr_type: Some(self.arbitrary_model_type(
+                                    u,
+                                    self.max_type_depth,
+                                    num_type_defs,
+                                )?),
                                 is_required: u.arbitrary()?,
                             },
                         ))
@@ -621,6 +652,7 @@ impl ModelGenerator {
         Ok(models::Schema {
             entity_decls,
             action_decls,
+            type_defs,
         })
     }
 }

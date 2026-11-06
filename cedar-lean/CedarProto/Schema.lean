@@ -27,9 +27,11 @@ open Proto
 
 namespace Cedar.Validation.Proto
 
+/-- `ProtoType.ref i` stands for `typeDefs[i]`. In `typeDefs[j]`, decoding fails unless `i < j`. -/
 structure Schema where
   ets : Repeated EntityDecl
   acts : Repeated ActionDecl
+  typeDefs : Repeated ProtoType
 deriving Repr, Inhabited
 
 deriving instance Hashable for Spec.Name
@@ -64,11 +66,13 @@ instance : Message Schema := {
     match t.fieldNum with
     | 1 => parseFieldElement t ets (update ets)
     | 2 => parseFieldElement t acts (update acts)
+    | 3 => parseFieldElement t typeDefs (update typeDefs)
     | _ => let _ ← t.wireType.skip ; pure ignore
 
   merge x y := {
     ets  := Field.merge x.ets  y.ets
     acts := Field.merge x.acts y.acts
+    typeDefs := Field.merge x.typeDefs y.typeDefs
   }
 }
 
@@ -78,14 +82,19 @@ def option_transpose : Option (Except ε α) → Except ε (Option α)
   | some (.ok a) => .ok (some a)
   | some (.error e) => .error e
 
-private def attrsToCedarType (attrs : Proto.Map String (Qualified ProtoType)) : Except String (Data.Map Spec.Attr (Qualified CedarType)) := do
+private def attrsToCedarType (defs : Array CedarType) (attrs : Proto.Map String (Qualified ProtoType)) : Except String (Data.Map Spec.Attr (Qualified CedarType)) := do
   let attrs ← attrs.mapM λ (k,v) => do
-    let v ← v.map ProtoType.toCedarType |>.transpose
+    let v ← v.map (ProtoType.toCedarType defs) |>.transpose
     .ok (k, v)
   .ok $ Data.mapOfArray attrs
 
+/-- Entry `j` only sees the entries before it, so forward and self references fail. -/
+def typeDefsToCedarTypes (typeDefs : Array ProtoType) : Except String (Array CedarType) :=
+  typeDefs.foldlM (λ defs def_ => do .ok (defs.push (← def_.toCedarType defs))) #[]
+
 /-- Decode definitions and `external` declarations. -/
 def toPartialSchema (schema : Schema) : Except String Validation.PartialSchema := do
+  let defs ← typeDefsToCedarTypes schema.typeDefs
   let descendantMap := Std.HashMap.emptyWithCapacity.insertMany $ schema.ets.map λ decl => (decl.name.toName, Std.HashSet.ofArray $ decl.descendants.map Spec.Proto.Name.toName)
   let ancestorMap := descendantsToAncestors descendantMap
   let ets ← schema.ets.mapM λ decl => do
@@ -95,8 +104,8 @@ def toPartialSchema (schema : Schema) : Except String Validation.PartialSchema :
       if decl.external then .ok $ .external ancestors
       else if decl.enums.isEmpty then .ok $ .defined $ .standard {
         ancestors
-        attrs := ← attrsToCedarType decl.attrs
-        tags := ← option_transpose $ decl.tags.map ProtoType.toCedarType
+        attrs := ← attrsToCedarType defs decl.attrs
+        tags := ← option_transpose $ decl.tags.map (ProtoType.toCedarType defs)
       }
       else .ok $ .defined $ .enum $ Data.setOfArray decl.enums
     .ok (name, pese)
@@ -110,7 +119,7 @@ def toPartialSchema (schema : Schema) : Except String Validation.PartialSchema :
         appliesToPrincipal := Data.setOfArray $ decl.principalTypes.map Spec.Proto.Name.toName
         appliesToResource := Data.setOfArray $ decl.resourceTypes.map Spec.Proto.Name.toName
         ancestors
-        context := ← attrsToCedarType decl.context
+        context := ← attrsToCedarType defs decl.context
       }
     .ok (decl.name, pase)
   .ok { ets := Data.mapOfArray ets, acts := Data.mapOfArray acts }
