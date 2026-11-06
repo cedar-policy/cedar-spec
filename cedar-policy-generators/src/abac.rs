@@ -417,7 +417,7 @@ impl AvailableExtensionFunctions {
                     .expect("should be a valid identifier"),
                 is_constructor: false,
                 parameter_types: vec![Type::ipaddr(), Type::ipaddr()],
-                is_variadic: cfg!(feature = "variadic-is-in-range"),
+                is_variadic: true,
                 return_ty: Type::bool(),
             },
             AvailableExtensionFunction {
