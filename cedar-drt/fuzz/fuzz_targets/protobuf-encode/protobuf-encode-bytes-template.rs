@@ -17,7 +17,7 @@
 #![no_main]
 
 use cedar_drt_inner::fuzz_target;
-use cedar_drt_inner::props::template_protobuf_decodes;
+use cedar_drt_inner::props::{POLICY_PARSE_DEPTH_LIMIT, template_protobuf_decodes};
 
 use cedar_policy::Template;
 use cedar_policy::proto::traits::{EncodeError, Protobuf};
@@ -26,7 +26,8 @@ use cedar_policy::proto::traits::{EncodeError, Protobuf};
 // Property: if parsing succeeds, encoding to protobuf must not panic,
 // and decoding the encoded bytes must produce an equivalent Template.
 fuzz_target!(|input: String| {
-    let Ok(template) = input.parse::<Template>() else {
+    let Ok(template) = Template::parse_with_depth_limit(None, &input, POLICY_PARSE_DEPTH_LIMIT)
+    else {
         return;
     };
     let buf = match template.encode() {
