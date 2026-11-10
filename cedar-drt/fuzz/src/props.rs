@@ -20,10 +20,13 @@ use crate::roundtrip_entities::pretty_assert_entities_deep_eq;
 use crate::schemas::Equiv;
 use cedar_policy::proto::traits::{DecodeError, Protobuf};
 use cedar_policy::{
-    Entities, Entity, Expression, Policy, PolicySet, Request, RestrictedExpression, Schema,
-    Template,
+    Entities, Entity, Expression, ParseErrors, Policy, PolicySet, Request, RestrictedExpression,
+    Schema, Template,
 };
 use cedar_policy_core::validator::ValidatorSchema;
+
+// A safe value to parse policies while avoiding stack overflows during conversions.
+pub const POLICY_PARSE_DEPTH_LIMIT: usize = 100;
 
 /// An [`Entity`] should roundrtrip through serialization with json and then deserialization.
 /// The [`Entity`] gets converted to a singleton [`Entities`].
@@ -89,17 +92,28 @@ pub fn template_to_cedar_parses(original: Template) {
 
 /// A [`PolicySet`] should print to Cedar and parse again. This function panics for inputs where
 /// it does not.
-/// This also returns the [`PolicySet`] reconstructed by printing and parsing.
-pub fn policyset_to_cedar_parses(original: PolicySet) -> PolicySet {
+/// This function uses the `.._with_depth` variant of the parse functions and ignores
+/// policies that are beyond the depth limit.
+/// When parsing succeeds, this also returns the [`PolicySet`] reconstructed by printing and parsing.
+/// When parsing fails it either:
+/// - returns the error when it hit the parsing depth limit, or
+/// - panics for any other parse error (the test should fail)
+pub fn policyset_to_cedar_parses(original: PolicySet) -> Result<PolicySet, ParseErrors> {
     let mut reconstructed = PolicySet::new();
 
     // Templates: print each to text, parse back with original ID
     for template in original.templates() {
         let id = template.id().clone();
         let text = template.to_string();
-        let parsed = Template::parse(Some(id.clone()), &text).unwrap_or_else(|e| {
-            panic!("Failed to parse template from text:\n{text}\nError: {e:?}")
-        });
+        let parsed = match Template::parse_with_depth_limit(
+            Some(id.clone()),
+            &text,
+            POLICY_PARSE_DEPTH_LIMIT,
+        ) {
+            Ok(t) => t,
+            Err(e) if is_depth_limit_error(&e) => return Err(e),
+            Err(e) => panic!("Failed to parse template from text:\n{text}\nError: {e:?}"),
+        };
         reconstructed
             .add_template(parsed)
             .unwrap_or_else(|e| panic!("Failed to add template {id}: {e:?}"));
@@ -115,15 +129,27 @@ pub fn policyset_to_cedar_parses(original: PolicySet) -> PolicySet {
         } else {
             let id = policy.id().clone();
             let text = policy.to_string();
-            let parsed = Policy::parse(Some(id.clone()), &text).unwrap_or_else(|e| {
-                panic!("Failed to parse policy from text:\n{text}\nError: {e:?}")
-            });
+            let parsed = match Policy::parse_with_depth_limit(
+                Some(id.clone()),
+                &text,
+                POLICY_PARSE_DEPTH_LIMIT,
+            ) {
+                Ok(p) => p,
+                Err(e) if is_depth_limit_error(&e) => return Err(e),
+                Err(e) => panic!("Failed to parse policy from text:\n{text}\nError: {e:?}"),
+            };
             reconstructed
                 .add(parsed)
                 .unwrap_or_else(|e| panic!("Failed to add policy {id}: {e:?}"));
         }
     }
-    reconstructed
+    Ok(reconstructed)
+}
+
+fn is_depth_limit_error(errs: &ParseErrors) -> bool {
+    errs.iter().any(|e|
+            // we can't match the error kind through the public API
+            e.to_string().contains("exceeds the configured limit"))
 }
 
 /// A [`Request`]'s context values should each print to Cedar and re-parse. This tests that

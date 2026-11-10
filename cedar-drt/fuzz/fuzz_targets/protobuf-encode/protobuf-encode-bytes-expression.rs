@@ -17,7 +17,7 @@
 #![no_main]
 
 use cedar_drt_inner::fuzz_target;
-use cedar_drt_inner::props::expression_protobuf_decodes;
+use cedar_drt_inner::props::{POLICY_PARSE_DEPTH_LIMIT, expression_protobuf_decodes};
 
 use cedar_policy::Expression;
 use cedar_policy::proto::traits::{EncodeError, Protobuf};
@@ -27,7 +27,8 @@ use cedar_policy::proto::traits::{EncodeError, Protobuf};
 // and decoding the encoded bytes must succeed and produce an Expression
 // that prints to Cedar and re-parses.
 fuzz_target!(|input: String| {
-    let Ok(expression) = input.parse::<Expression>() else {
+    let Ok(expression) = Expression::parse_with_depth_limit(&input, POLICY_PARSE_DEPTH_LIMIT)
+    else {
         return;
     };
     let buf = match expression.encode() {

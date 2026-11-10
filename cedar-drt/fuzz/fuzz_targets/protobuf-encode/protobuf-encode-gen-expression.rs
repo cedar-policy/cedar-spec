@@ -40,7 +40,7 @@ impl<'a> Arbitrary<'a> for FuzzTargetInput {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         let schema: schema::Schema = schema::Schema::arbitrary(SETTINGS.clone(), u)?;
         let hierarchy = schema.arbitrary_hierarchy(u)?;
-        let mut expr_gen = schema.exprgenerator(Some(&hierarchy));
+        let expr_gen = schema.exprgenerator(Some(&hierarchy));
         let expr = expr_gen.generate_expr(SETTINGS.max_depth, u)?;
         Ok(Self {
             expression: Expression::from(expr),

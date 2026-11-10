@@ -37,7 +37,9 @@ fuzz_target!(|input: PolicySetFuzzTargetInput| {
         .unwrap_or_else(|e| panic!("Failed to create PolicySet from PST.\nError: {:?}", e));
 
     // Deconstruct and reconstruct via text
-    let reconstructed = policyset_to_cedar_parses(policy_set);
+    let Ok(reconstructed) = policyset_to_cedar_parses(policy_set) else {
+        return;
+    };
 
     // Reconstructed to PST using to_pst, should maintain ids
     let roundtripped = reconstructed
