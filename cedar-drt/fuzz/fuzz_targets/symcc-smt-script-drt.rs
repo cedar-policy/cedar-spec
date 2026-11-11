@@ -24,7 +24,7 @@ use cedar_drt_inner::{
     },
 };
 use cedar_lean_ffi::CedarLeanFfi;
-use cedar_policy_symcc::{CompiledPolicySet, always_allows_asserts};
+use cedar_policy_symcc::{CompiledPolicySet, CompiledSchema, always_allows_asserts};
 
 // Fuzz target checking that the Rust and Lean implementations produce the same
 // SMTLIB scripts for a given set of `Term`s (in this case, `Term`s generated as
@@ -34,9 +34,12 @@ fuzz_target!(|input: SinglePolicyFuzzTargetInput<128>| {
     if let Ok((schema, policyset)) = input.into_inputs_as_pset() {
         let lean_ffi = CedarLeanFfi::new();
         let lean_schema = lean_ffi.load_lean_schema_object(&schema).unwrap();
+        let Ok(compiled_schema) = CompiledSchema::new(&schema) else {
+            return;
+        };
         for req_env in schema.request_envs() {
             // We let Rust compile the policies as it's faster than Lean
-            if let Ok(cps) = CompiledPolicySet::compile(&policyset, &req_env, &schema) {
+            if let Ok(cps) = CompiledPolicySet::compile(&policyset, &req_env, &compiled_schema) {
                 let rust_asserts = always_allows_asserts(&cps);
                 assert_smtlib_scripts_match(
                     RUNTIME.block_on(smtlib_of_check_asserts(&rust_asserts)),
