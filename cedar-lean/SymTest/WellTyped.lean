@@ -194,7 +194,8 @@ def testFailsOnIllTyped (p : Policy) : List (TestCase SolverM) :=
       -- caller in the unoptimized case had passed their policies through `wellTypedPolicy`
       -- (as they properly should) rather than feeding them to `verifyNeverErrors` directly.
       ⟨λ _ =>
-        let compileResult := CompiledPolicy.compile p Γ
+        let (cs, reqty) := compileTypeEnv Γ
+        let compileResult := CompiledPolicy.compile p cs reqty
         -- no need to actually check that `verifyNeverErrorsOpt` succeeds,
         -- because it is infallible (doesn't return a Result/Except type). Tests
         -- in other modules check the end-to-end behavior of the optimized path.
@@ -212,7 +213,8 @@ def testSucceedsOnWellTyped (p : Policy) (expected : Bool) : List (TestCase Solv
       ⟩,
     test (desc ++ " (optimized)")
       ⟨λ _ => do
-        let cp ← CompiledPolicy.compile p Γ |> IO.ofExcept
+        let (cs, reqty) := compileTypeEnv Γ
+        let cp ← CompiledPolicy.compile p cs reqty |> IO.ofExcept
         checkEq (← checkNeverErrorsOpt cp) expected
       ⟩,
   ]
