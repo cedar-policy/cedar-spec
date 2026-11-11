@@ -23,6 +23,7 @@ use cedar_policy::{
 };
 use cedar_policy_core::entities::{EntityJsonParser, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::extensions::Extensions;
+use cedar_policy_symcc::CompiledSchema;
 use cedar_policy_symcc::{
     always_allows_asserts, err::Error as SymccError, solver::WriterSolver, CedarSymCompiler,
     CompiledPolicySet,
@@ -341,6 +342,7 @@ impl BenchmarkExecutor {
         let src = std::fs::read_to_string(policy_file).into_diagnostic()?;
         let policies = src.parse::<PolicySet>()?;
         let schema = Self::load_cedar_schema(cedar_schema_file)?;
+        let compiled_schema = CompiledSchema::new(&schema)?;
         let request_envs = schema.request_envs().collect::<Vec<_>>();
         let runtime = tokio::runtime::Builder::new_current_thread()
             .build()
@@ -349,8 +351,9 @@ impl BenchmarkExecutor {
         Ok(self.benchmark(
             |request_envs| {
                 for request_env in request_envs {
-                    let compiled = CompiledPolicySet::compile(&policies, request_env, &schema)
-                        .expect("symbolic compilation failed");
+                    let compiled =
+                        CompiledPolicySet::compile(&policies, request_env, &compiled_schema)
+                            .expect("symbolic compilation failed");
                     let asserts = always_allows_asserts(&compiled);
                     // Also time encoding to SMT-lib encoding
                     let mut encoder = CedarSymCompiler::new(WriterSolver { w: Vec::new() })

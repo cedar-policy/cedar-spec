@@ -56,7 +56,7 @@ cedar-policy = { version = "4", path = "../cedar/cedar-policy", features = [
     "tpe",
 ] }
 cedar-policy-core = { version = "4", path = "../cedar/cedar-policy-core" }
-cedar-policy-symcc = { version = "0.7.0", path = "../cedar/cedar-policy-symcc" }
+cedar-policy-symcc = { path = "../cedar/cedar-policy-symcc" }
 cedar-policy-generators = { version = "4", path = "../cedar-policy-generators", features = [
     "cedar-policy",
 ] }
