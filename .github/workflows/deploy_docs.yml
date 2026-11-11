@@ -38,6 +38,13 @@ jobs:
         working-directory: ./cedar-lean
         shell: bash
         run: source ~/.profile && lake -R -Kenv=dev update
+      # See the comment on the same step in ci.yml.
+      - name: Allow memory overcommit
+        shell: bash
+        run: |
+              sysctl vm.overcommit_memory vm.overcommit_ratio
+              grep -E 'MemTotal|SwapTotal|CommitLimit|Committed_AS' /proc/meminfo
+              sudo sysctl -w vm.overcommit_memory=1
       - name: Build docs
         working-directory: ./cedar-lean
         shell: bash

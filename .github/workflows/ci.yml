@@ -78,6 +78,15 @@ jobs:
         working-directory: ./cedar-lean
         shell: bash
         run: source ~/.profile && lake exe CedarUnitTests && lake exe CedarSymTests
+      # Every Lean thread reserves a 1GB stack, and Lake forks one doc-gen4 process per module
+      # while running dozens of threads. On the runner, `fork` then fails with ENOMEM on commit
+      # accounting even though physical memory use stays low. Disable the overcommit check.
+      - name: Allow memory overcommit
+        shell: bash
+        run: |
+              sysctl vm.overcommit_memory vm.overcommit_ratio
+              grep -E 'MemTotal|SwapTotal|CommitLimit|Committed_AS' /proc/meminfo
+              sudo sysctl -w vm.overcommit_memory=1
       - name: Build docs
         working-directory: ./cedar-lean
         shell: bash
