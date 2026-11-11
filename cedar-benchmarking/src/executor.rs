@@ -18,9 +18,15 @@ use crate::output::TimingInfo;
 use crate::request::generate_requests;
 use crate::tasks::{BenchmarkTask, Target};
 use cedar_policy::proto::traits::Protobuf;
-use cedar_policy::{Authorizer, PolicySet, Request, Schema};
+use cedar_policy::{
+    Authorizer, PartialEntities, PartialEntityUid, PartialRequest, PolicySet, Request, Schema,
+};
 use cedar_policy_core::entities::{EntityJsonParser, NoEntitiesSchema, TCComputation};
 use cedar_policy_core::extensions::Extensions;
+use cedar_policy_symcc::{
+    always_allows_asserts, err::Error as SymccError, solver::WriterSolver, CedarSymCompiler,
+    CompiledPolicySet,
+};
 use core::hint::black_box;
 use core::time::Duration;
 use miette::{Context, IntoDiagnostic};
@@ -81,6 +87,23 @@ impl BenchmarkExecutor {
                 json_schema_file,
                 entities_file,
             ),
+            BenchmarkTask::Tpe {
+                policy_file,
+                cedar_schema_file,
+                json_schema_file,
+                entities_file,
+                ..
+            } => self.bench_tpe(
+                policy_file,
+                cedar_schema_file,
+                json_schema_file,
+                entities_file,
+            ),
+            BenchmarkTask::SymbolicCompilation {
+                policy_file,
+                cedar_schema_file,
+                ..
+            } => self.bench_symbolic_compilation(policy_file, cedar_schema_file),
             BenchmarkTask::EntityParseWithSchema {
                 cedar_schema_file,
                 entities_file,
@@ -247,6 +270,100 @@ impl BenchmarkExecutor {
                 }
             },
             &requests,
+        ))
+    }
+
+    fn bench_tpe(
+        self,
+        policy_file: &Path,
+        cedar_schema_file: &Path,
+        json_schema_file: &Path,
+        entities_file: &Path,
+    ) -> miette::Result<TimingInfo> {
+        let src = std::fs::read_to_string(policy_file).into_diagnostic()?;
+        let policies = src.parse::<PolicySet>()?;
+        let schema = Self::load_cedar_schema(cedar_schema_file)?;
+        let requests = Self::generate_auth_requests(json_schema_file, entities_file)?;
+        let partial_requests = requests
+            .into_iter()
+            .map(|request| {
+                PartialRequest::new(
+                    PartialEntityUid::new(
+                        request
+                            .principal()
+                            .expect("generated principal is concrete")
+                            .type_name()
+                            .clone(),
+                        None,
+                    ),
+                    request
+                        .action()
+                        .expect("generated action is concrete")
+                        .clone(),
+                    PartialEntityUid::new(
+                        request
+                            .resource()
+                            .expect("generated resource is concrete")
+                            .type_name()
+                            .clone(),
+                        None,
+                    ),
+                    None,
+                    &schema,
+                )
+                .into_diagnostic()
+            })
+            .collect::<miette::Result<Vec<_>>>()?;
+        let entities_str = std::fs::read_to_string(entities_file).into_diagnostic()?;
+        let entities = cedar_policy::Entities::from_json_str(&entities_str, Some(&schema))
+            .into_diagnostic()?;
+        let partial_entities =
+            PartialEntities::from_concrete(entities, &schema).into_diagnostic()?;
+
+        Ok(self.benchmark(
+            |requests| {
+                for request in requests {
+                    let response = policies
+                        .tpe(request, &partial_entities, &schema)
+                        .expect("TPE failed");
+                    black_box(response);
+                }
+            },
+            &partial_requests,
+        ))
+    }
+
+    fn bench_symbolic_compilation(
+        self,
+        policy_file: &Path,
+        cedar_schema_file: &Path,
+    ) -> miette::Result<TimingInfo> {
+        let src = std::fs::read_to_string(policy_file).into_diagnostic()?;
+        let policies = src.parse::<PolicySet>()?;
+        let schema = Self::load_cedar_schema(cedar_schema_file)?;
+        let request_envs = schema.request_envs().collect::<Vec<_>>();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .into_diagnostic()?;
+
+        Ok(self.benchmark(
+            |request_envs| {
+                for request_env in request_envs {
+                    let compiled = CompiledPolicySet::compile(&policies, request_env, &schema)
+                        .expect("symbolic compilation failed");
+                    let asserts = always_allows_asserts(&compiled);
+                    // Also time encoding to SMT-lib encoding
+                    let mut encoder = CedarSymCompiler::new(WriterSolver { w: Vec::new() })
+                        .expect("SMT encoder construction failed");
+                    match runtime.block_on(encoder.check_unsat(&asserts)) {
+                        // WriterSolver always returns SolverUnknown
+                        Ok(_) | Err(SymccError::SolverUnknown) => {}
+                        Err(error) => panic!("SMT encoding failed: {error}"),
+                    }
+                    black_box(encoder.solver_mut().w.as_slice());
+                }
+            },
+            &request_envs,
         ))
     }
 
