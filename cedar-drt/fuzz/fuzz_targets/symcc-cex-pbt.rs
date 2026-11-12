@@ -21,16 +21,19 @@ use cedar_drt_inner::{
     symcc::{CexError, RUNTIME, SinglePolicyFuzzTargetInput, get_cex, get_solver, reproduce},
 };
 use cedar_policy::Decision;
-use cedar_policy_symcc::CompiledPolicySet;
+use cedar_policy_symcc::{CompiledPolicySet, CompiledSchema};
 
 // Fuzzing target checking that counterexamples generated are true counterexamples
 fuzz_target!(|input: SinglePolicyFuzzTargetInput<128>| {
     initialize_log();
     if let Ok((schema, policyset)) = input.into_inputs_as_pset() {
+        let Ok(compiled_schema) = CompiledSchema::new(&schema) else {
+            return;
+        };
         for req_env in schema.request_envs() {
             // We let Rust compile the policies as it's faster than Lean.
             // also note that we do the compilation (and reproduction) while _not_ holding the `get_solver()` lock
-            if let Ok(cps) = CompiledPolicySet::compile(&policyset, &req_env, &schema) {
+            if let Ok(cps) = CompiledPolicySet::compile(&policyset, &req_env, &compiled_schema) {
                 RUNTIME.block_on(async {
                     let mut solver_guard = get_solver().await;
                     match get_cex(solver_guard.symcc.check_always_allows_with_counterexample_opt(&cps)).await {

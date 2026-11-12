@@ -1500,19 +1500,11 @@ mod tests {
             arities.iter().all(|arity| *arity >= 2),
             "isInRange needs a target plus at least one range, got arities {arities:?}"
         );
-        if cfg!(feature = "variadic-is-in-range") {
-            assert!(
-                arities.iter().any(|arity| *arity > 2),
-                "with the variadic feature on the generator should exercise more than one \
-                 range, but every generated call had arity 2 ({} calls)",
-                arities.len()
-            );
-        } else {
-            assert!(
-                arities.iter().all(|arity| *arity == 2),
-                "with the variadic feature off isInRange takes exactly two arguments, got \
-                 arities {arities:?}"
-            );
-        }
+        assert!(
+            arities.iter().any(|arity| *arity > 2),
+            "the generator should exercise more than one range, but every generated call \
+             had arity 2 ({} calls)",
+            arities.len()
+        );
     }
 }

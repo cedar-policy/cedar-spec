@@ -22,7 +22,7 @@ use cedar_drt_inner::{
 };
 use cedar_lean_ffi::CedarLeanFfi;
 use cedar_policy::Decision;
-use cedar_policy_symcc::CompiledPolicySet;
+use cedar_policy_symcc::{CompiledPolicySet, CompiledSchema};
 
 // Fuzz target checking that the Rust and Lean implementations produce the same
 // counterexamples for SAT results (in this case, for Implies queries on
@@ -32,10 +32,14 @@ fuzz_target!(|input: TwoPolicyFuzzTargetInput<32>| {
     if let Ok((schema, policyset1, policyset2)) = input.into_inputs_as_psets() {
         let lean_ffi = CedarLeanFfi::new();
         let lean_schema = lean_ffi.load_lean_schema_object(&schema).unwrap();
+        let Ok(compiled_schema) = CompiledSchema::new(&schema) else {
+            return;
+        };
         for req_env in schema.request_envs() {
             // We let Rust compile the policies as it's faster than Lean
-            if let Ok(cpset1) = CompiledPolicySet::compile(&policyset1, &req_env, &schema)
-                && let Ok(cpset2) = CompiledPolicySet::compile(&policyset2, &req_env, &schema)
+            if let Ok(cpset1) = CompiledPolicySet::compile(&policyset1, &req_env, &compiled_schema)
+                && let Ok(cpset2) =
+                    CompiledPolicySet::compile(&policyset2, &req_env, &compiled_schema)
             {
                 RUNTIME.block_on(async {
                     let mut solver_guard = get_solver().await;

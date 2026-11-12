@@ -225,6 +225,27 @@ def render(targets: dict[str, FuzzStats], term_width: int):
 
 # ─── Runner ──────────────────────────────────────────────────────────────────
 
+async def terminate_process_group(proc):
+    """Stop Cargo and its fuzzing descendants on cancellation (POSIX)."""
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    timed_out = False
+    try:
+        await asyncio.wait_for(proc.wait(), timeout=5)
+    except asyncio.TimeoutError:
+        timed_out = True
+    finally:
+        # Cargo might exit while a descendant ignores SIGTERM.
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    if timed_out:
+        await proc.wait()
+
+
 async def run_target(
     name: str,
     label: str,
@@ -242,6 +263,7 @@ async def run_target(
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
         cwd=str(Path(__file__).parent),
+        start_new_session=True,
     )
 
     output_lines: list[str] = []
@@ -257,9 +279,7 @@ async def run_target(
         await proc.wait()
     except asyncio.CancelledError:
         stats.status = "stopped"
-        if proc.returncode is None:
-            proc.terminate()
-            await proc.wait()
+        await terminate_process_group(proc)
         return
 
     if proc.returncode != 0 and stats.status != "done":

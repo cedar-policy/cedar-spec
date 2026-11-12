@@ -47,5 +47,5 @@ fuzz_target!(|input: ProtoPolicySetInput| {
     // Once we have a PolicySet, printing and parsing it back should succeed.
     // We are testing that validation through the Cedar text parsing path is not stronger than the
     // validation in proto.
-    policyset_to_cedar_parses(policy_set);
+    let _ = policyset_to_cedar_parses(policy_set);
 });

@@ -17,7 +17,7 @@
 #![no_main]
 
 use cedar_drt_inner::fuzz_target;
-use cedar_drt_inner::props::policyset_protobuf_decodes;
+use cedar_drt_inner::props::{POLICY_PARSE_DEPTH_LIMIT, policyset_protobuf_decodes};
 
 use cedar_policy::PolicySet;
 use cedar_policy::proto::traits::{EncodeError, Protobuf};
@@ -26,7 +26,8 @@ use cedar_policy::proto::traits::{EncodeError, Protobuf};
 // Property: if parsing succeeds, encoding to protobuf must not panic,
 // and decoding the encoded bytes must produce an equivalent PolicySet.
 fuzz_target!(|input: String| {
-    let Ok(policy_set) = input.parse::<PolicySet>() else {
+    let Ok(policy_set) = PolicySet::from_str_with_depth_limit(&input, POLICY_PARSE_DEPTH_LIMIT)
+    else {
         return;
     };
     let buf = match policy_set.encode() {
