@@ -14,13 +14,17 @@
  limitations under the License.
 -/
 
-import Cedar.TPE.Input
-import Cedar.TPE.Residual
-import Cedar.TPE.Evaluator
-import Cedar.Spec.Response
-import Cedar.Spec.Policy
-import Cedar.Validation.Types
-import Cedar.Data
+module
+
+public import Cedar.TPE.Input
+public import Cedar.TPE.Residual
+public import Cedar.TPE.Evaluator
+public import Cedar.Spec.Response
+public import Cedar.Spec.Policy
+public import Cedar.Validation.Types
+public import Cedar.Data
+
+public section
 
 namespace Cedar.Spec
 
@@ -94,6 +98,7 @@ structure Response where
 
 /-- Compute an authorization decision (if possible) from a list of partially
     evaluated policies. Also used for batched evaluation.  -/
+@[expose] -- makes the `where` helpers public; proofs refer to them
 def isAuthorizedFromResiduals (residuals : List ResidualPolicy) : Response :=
   let satisfiedForbids := satisfiedPolicies .forbid residuals
   let falseForbids := falsePolicies .forbid residuals
@@ -138,6 +143,7 @@ def isAuthorizedFromResiduals (residuals : List ResidualPolicy) : Response :=
     falsePolicies (effect : Effect) (policies : List ResidualPolicy) : Set PolicyID :=
       Set.make (policies.filterMap (ResidualPolicy.falseWithEffect effect))
 
+@[expose] -- makes the `where` helpers public; proofs refer to them
 def isAuthorized (schema : Schema) (policies : List Policy) (req : PartialRequest) (es : PartialEntities) : Except Error Response :=
   do
     let residualPolicies ← evaluatePolicies schema policies req es
@@ -153,6 +159,7 @@ requests and entities. This implementation of this function is fully analogous
 to the concrete `isAuthorized` function, only working with residuals instead of
 policies.
 -/
+@[expose] -- makes the `where` helpers public; proofs refer to them
 def Response.reauthorize (response : Response) (req : Request) (es : Entities) : Spec.Response :=
   let forbids := satisfiedPolicies .forbid response.residuals req es
   let permits := satisfiedPolicies .permit response.residuals req es
