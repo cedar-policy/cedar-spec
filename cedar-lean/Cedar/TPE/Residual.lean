@@ -14,9 +14,13 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Expr
-import Cedar.Spec.Value
-import Cedar.Validation.TypedExpr
+module
+
+public import Cedar.Spec.Expr
+public import Cedar.Spec.Value
+public import Cedar.Validation.TypedExpr
+
+public section
 
 namespace Cedar.Spec
 

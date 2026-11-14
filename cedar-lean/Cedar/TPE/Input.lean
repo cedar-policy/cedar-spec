@@ -14,12 +14,16 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Expr
-import Cedar.Spec.Request
-import Cedar.Spec.Value
-import Cedar.Validation.RequestEntityValidator
-import Cedar.Validation.EnvironmentValidator
-import Cedar.Validation.TypedExpr
+module
+
+public import Cedar.Spec.Expr
+public import Cedar.Spec.Request
+public import Cedar.Spec.Value
+public import Cedar.Validation.RequestEntityValidator
+public import Cedar.Validation.EnvironmentValidator
+public import Cedar.Validation.TypedExpr
+
+public section
 
 namespace Cedar.TPE
 
@@ -158,6 +162,7 @@ inductive ConcretizationError
   | entitiesDoNotMatch
   | invalidEnvironment
 
+@[expose] -- makes the `where` helpers public; proofs refer to them
 def isValidAndConsistent (schema : Schema) (req₁ : Request) (es₁ : Entities) (req₂ : PartialRequest) (es₂ : PartialEntities) : Except ConcretizationError Unit :=
   match validatePartialRequest schema req₂ with
   | .ok env => do requestIsValidAndConsistent env; entitiesIsValidAndConsistent env; envIsWellFormed env

@@ -14,8 +14,12 @@
  limitations under the License.
 -/
 
-import Cedar.TPE.Input
-import Cedar.TPE.Residual
+module
+
+public import Cedar.TPE.Input
+public import Cedar.TPE.Residual
+
+public section
 
 namespace Cedar.TPE
 
@@ -43,6 +47,7 @@ def someOrSelf : Option Value → CedarType → Residual → Residual
   | .some v, ty, _   => .val v ty
   | .none,   _, self => self
 
+@[expose] -- makes the `where` helpers public; proofs refer to them
 def varₚ (req : PartialRequest) (var : Var) (ty : CedarType) : Residual :=
   match var with
   | .principal => varₒ req.principal.asEntityUID
@@ -120,6 +125,7 @@ def tryDecideResidual₂ (env : TypeEnv) (op₂ : BinaryOp) (r₁ r₂ : Residua
     | _, _, _                                 => .none
   else .none
 
+@[expose] -- makes the `where` helpers public; proofs refer to them
 def apply₂ (env : TypeEnv) (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : PartialEntities) (ty : CedarType) : Residual :=
   match r₁, r₂ with
   | .error _, _ | _, .error _ => .error ty
@@ -202,6 +208,7 @@ def hasAttr (env : TypeEnv) (r : Residual) (a : Attr) (es : PartialEntities) (ty
   | .none   => .hasAttr r a ty
 
 
+@[expose] -- makes the `where` helpers public; proofs refer to them
 def extHasAttr (env : TypeEnv) (r : Residual) (a : Attr) (as : List Attr)
   (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with

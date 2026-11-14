@@ -14,19 +14,23 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.WellTyped.Residual
-import Cedar.Thm.WellTyped.Expr.Typechecking
-import Cedar.TPE.Residual
-import Cedar.Thm.TPE.Conversion
-import Cedar.Data.Map
+module
 
-import Cedar.Thm.WellTyped.Expr.Definition
-import Cedar.Thm.WellTyped.Expr.TypeLifting
-import Cedar.Thm.WellTyped.Expr.WF
+public import Cedar.Thm.WellTyped.Residual
+public import Cedar.Thm.WellTyped.Expr.Typechecking
+public import Cedar.TPE.Residual
+public import Cedar.Thm.TPE.Conversion
+public import Cedar.Data.Map
+
+public import Cedar.Thm.WellTyped.Expr.Definition
+public import Cedar.Thm.WellTyped.Expr.TypeLifting
+public import Cedar.Thm.WellTyped.Expr.WF
 
 /-!
 This file contains well-typedness theorems of `TypedExpr`
 -/
+
+public section
 
 namespace Cedar.Thm
 

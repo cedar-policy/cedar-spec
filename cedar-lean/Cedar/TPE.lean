@@ -14,7 +14,9 @@
  limitations under the License.
 -/
 
-import Cedar.TPE.Input
-import Cedar.TPE.Residual
-import Cedar.TPE.Evaluator
-import Cedar.TPE.BatchedEvaluator
+module
+
+public import Cedar.TPE.Input
+public import Cedar.TPE.Residual
+public import Cedar.TPE.Evaluator
+public import Cedar.TPE.BatchedEvaluator

@@ -14,13 +14,16 @@
  limitations under the License.
 -/
 
+module
 
-import Cedar.Spec
-import Cedar.Data
-import Cedar.TPE.Authorizer
-import Cedar.TPE.Residual
-import Cedar.TPE.Evaluator
-import Cedar.TPE.Input
+public import Cedar.Spec
+public import Cedar.Data
+public import Cedar.TPE.Authorizer
+public import Cedar.TPE.Residual
+public import Cedar.TPE.Evaluator
+public import Cedar.TPE.Input
+
+public section
 
 namespace Cedar.TPE
 
