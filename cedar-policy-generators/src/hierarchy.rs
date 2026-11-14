@@ -351,10 +351,10 @@ impl TryFrom<Hierarchy> for cedar_policy::Entities {
 
 impl From<Entities> for Hierarchy {
     fn from(entities: Entities) -> Hierarchy {
-        Hierarchy::new(
-            entities.into_iter().map(|e| (e.uid().clone(), e)).collect(),
-            [],
-        )
+        let mut entities: IndexMap<EntityUID, Entity> =
+            entities.into_iter().map(|e| (e.uid().clone(), e)).collect();
+        entities.sort_keys();
+        Hierarchy::new(entities, [])
     }
 }
 
