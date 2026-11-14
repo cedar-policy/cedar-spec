@@ -196,7 +196,7 @@ Convert a parsed message to a `Residual`.
 partial def toResidual (r : ProtoResidual) : Except String Residual := do
   let some protoTy := r.ty
     | .error s!"Residual: missing `ty` on a {repr r.kind} node"
-  let ty ← protoTy.toCedarType
+  let ty ← protoTy.toCedarType #[]
   let kids := (← r.children.mapM toResidual).toList
   let arity (n : Nat) : Except String Unit :=
     if kids.length == n then .ok ()
