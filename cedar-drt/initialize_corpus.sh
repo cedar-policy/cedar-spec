@@ -37,6 +37,18 @@ if [ $# -ne 1 ]; then
     print_usage
 fi
 
+# Write the string tested by each `testValid<SUFFIX>` and `testInvalid<SUFFIX>`
+# case in a Lean unit test file to its own corpus entry. Uses `printf` rather
+# than `echo` so that entries do not end with a newline.
+#   $1: Lean unit test file
+#   $2: SUFFIX of the Lean test helpers (may be empty)
+seed_from_lean_tests() {
+  sed -En "s/.*test(Inv|V)alid$2 \"([^\"]*)\".*/\2/p" "$1" |
+  while IFS= read -r s ; do
+    printf '%s' "$s" > "$corpus_dir/$(uuidgen)"
+  done
+}
+
 initialize_corpus() {
   corpus_dir="./fuzz/corpus/$1/"
   mkdir -p "$corpus_dir"
@@ -77,6 +89,18 @@ initialize_corpus() {
     for f in ../cedar/**/entities.json; do
       cp "$f" "$corpus_dir/$(uuidgen)-$(basename "$f")"
     done ;;
+
+  decimal-parser-drt)
+    seed_from_lean_tests ../cedar-lean/UnitTest/Decimal.lean ;;
+
+  ip-parser-drt)
+    seed_from_lean_tests ../cedar-lean/UnitTest/IPAddr.lean ;;
+
+  datetime-parser-drt)
+    seed_from_lean_tests ../cedar-lean/UnitTest/Datetime.lean Datetime ;;
+
+  duration-parser-drt)
+    seed_from_lean_tests ../cedar-lean/UnitTest/Datetime.lean Duration ;;
 
   *)
     echo "Nothing to do for fuzz target $1"
