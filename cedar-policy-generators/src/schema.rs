@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-use crate::abac::{ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type};
+use crate::abac::{
+    restrict_str, ABACRequest, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type,
+};
 use crate::err::{while_doing, Error, Result};
 use crate::expr::ExprGenerator;
 use crate::hierarchy::{arbitrary_edges, Hierarchy, TYPE_EDGE_BUDGET};
@@ -1014,8 +1016,7 @@ impl Schema {
             })
             .collect();
         Ok(Schema {
-            constant_pool: u
-                .arbitrary()
+            constant_pool: ConstantPool::arbitrary_for_settings(&settings, u)
                 .map_err(|e| while_doing("generating constant pool".into(), e))?,
             ext_funcs: AvailableExtensionFunctions::create(&settings),
             settings,
@@ -1152,7 +1153,11 @@ impl Schema {
                         json_schema::EntityType {
                             // A 1/4 ratio to generate enumerated vs. standard entity types
                             kind: gen!(u,
-                             1 => EntityTypeKind::Enum { choices: u.arbitrary()? },
+                             1 => EntityTypeKind::Enum {
+                                choices: <NonEmpty<&str>>::arbitrary(u)?.map(|choice| {
+                                    Eid::new(restrict_str(choice, settings.smtlib_compatible_strings))
+                                }),
+                             },
                              4 => EntityTypeKind::Standard(StandardEntityType {
                                 member_of_types: vec![],
                                 shape: arbitrary_attrspec(&settings, &entity_type_names, u)?,
@@ -1201,9 +1206,11 @@ impl Schema {
 
         // same for actions
         let action_names = {
-            let action_names: IndexSet<SmolStr> = u
-                .arbitrary()
-                .map_err(|e| while_doing("generating action names".into(), e))?;
+            let action_names: IndexSet<SmolStr> = <IndexSet<&str>>::arbitrary(u)
+                .map_err(|e| while_doing("generating action names".into(), e))?
+                .into_iter()
+                .map(|name| restrict_str(name, settings.smtlib_compatible_strings))
+                .collect();
             let action_names: Vec<SmolStr> = action_names
                 .into_iter()
                 .filter(|n| {
@@ -1391,8 +1398,7 @@ impl Schema {
         Ok(Schema {
             schema: DebugSchemaAsCedar(nsdef),
             namespace,
-            constant_pool: u
-                .arbitrary()
+            constant_pool: ConstantPool::arbitrary_for_settings(&settings, u)
                 .map_err(|e| while_doing("generating constant pool".into(), e))?,
             ext_funcs: AvailableExtensionFunctions::create(&settings),
             settings,
@@ -1931,12 +1937,13 @@ impl TryFrom<Schema> for cedar_policy::Schema {
 mod tests {
     use super::Schema;
     use crate::schema_gen::SchemaGen;
-    use crate::settings::ABACSettings;
+    use crate::settings::{ABACSettings, SMT_LIB_MAX_CHAR};
     use arbitrary::Unstructured;
+    use cedar_policy_core::ast::{ExprKind, Literal, PatternElem, StaticPolicy};
     use cedar_policy_core::entities::Entities;
     use cedar_policy_core::extensions::Extensions;
     use cedar_policy_core::validator::{json_schema, CoreSchema, RawName, ValidatorSchema};
-    use rand::{rng, rngs::ThreadRng, Rng};
+    use rand::{rng, rngs::StdRng, rngs::ThreadRng, Rng, RngExt, SeedableRng};
 
     const RANDOM_BYTE_SIZE: u16 = 1024;
     const ITERATION: u8 = 100;
@@ -2449,6 +2456,79 @@ mod tests {
         }
         assert!(saw_present, "optional attribute never present");
         assert!(saw_absent, "optional attribute never absent");
+    }
+
+    /// Random bytes in which half of the chunks are UTF-8 encoded random
+    /// characters, so that generated strings often contain characters from
+    /// every Unicode plane (uniformly random bytes are rarely valid UTF-8)
+    fn random_bytes_with_chars(rng: &mut StdRng) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(RANDOM_BYTE_SIZE as usize);
+        while bytes.len() < RANDOM_BYTE_SIZE as usize {
+            if rng.random() {
+                bytes.push(rng.random());
+            } else if let Some(c) = char::from_u32(rng.random_range(0..=char::MAX as u32)) {
+                bytes.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes());
+            }
+        }
+        bytes
+    }
+
+    /// Every character of the string literals, patterns, and entity ids in
+    /// static policies generated with `settings` from seeded random bytes
+    fn chars_in_generated_policies(settings: &ABACSettings) -> Vec<char> {
+        let mut rng = StdRng::seed_from_u64(760);
+        let mut chars = Vec::new();
+        for _ in 0..ITERATION {
+            let bytes = random_bytes_with_chars(&mut rng);
+            let mut u = Unstructured::new(&bytes);
+            let Ok(schema) = Schema::arbitrary(settings.clone(), &mut u) else {
+                continue;
+            };
+            let Ok(hierarchy) = schema.arbitrary_hierarchy(&mut u) else {
+                continue;
+            };
+            let Ok(policy) = schema.arbitrary_static_policy(&hierarchy, &mut u) else {
+                continue;
+            };
+            let condition = StaticPolicy::from(policy.0).condition();
+            for e in condition.subexpressions() {
+                match e.expr_kind() {
+                    ExprKind::Lit(Literal::String(s)) => chars.extend(s.chars()),
+                    ExprKind::Lit(Literal::EntityUID(uid)) => {
+                        chars.extend(AsRef::<str>::as_ref(uid.eid()).chars())
+                    }
+                    ExprKind::Like { pattern, .. } => {
+                        chars.extend(pattern.iter().filter_map(|elem| match elem {
+                            PatternElem::Char(c) => Some(*c),
+                            PatternElem::Wildcard => None,
+                        }))
+                    }
+                    _ => {}
+                }
+            }
+        }
+        chars
+    }
+
+    #[test]
+    fn smtlib_compatible_strings() {
+        let settings = ABACSettings {
+            max_depth: 3,
+            max_width: 3,
+            ..ABACSettings::type_directed()
+        };
+        // Check that the generators produce characters SMT-LIB can't represent
+        // when unrestricted, so that the restricted check below isn't vacuous
+        assert!(chars_in_generated_policies(&settings)
+            .into_iter()
+            .any(|c| c > SMT_LIB_MAX_CHAR));
+        let settings = ABACSettings {
+            smtlib_compatible_strings: true,
+            ..settings
+        };
+        let chars = chars_in_generated_policies(&settings);
+        assert!(chars.iter().any(|c| !c.is_ascii()));
+        assert!(chars.into_iter().all(|c| c <= SMT_LIB_MAX_CHAR));
     }
 
     #[allow(deprecated)]
