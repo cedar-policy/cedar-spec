@@ -204,7 +204,8 @@ public def greedyMatch (T : Array Char) (P : Array PatElem) : Bool :=
 
 /--
 Greedy `like` matcher on strings. It agrees with `wildcardMatch` (see
-`wildcardMatchGreedy_eq_wildcardMatch`) but does not need a memo table.
+`wildcardMatchGreedy_eq_wildcardMatch`) but does not need a memo table, and
+runs in `O(text.length * pattern.length)` time (see `greedyMatch_steps`).
 -/
 public def wildcardMatchGreedy (text : String) (pattern : Pattern) : Bool :=
   greedyMatch text.toList.toArray pattern.toArray

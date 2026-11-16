@@ -520,4 +520,131 @@ public theorem wildcardMatchGreedy_eq_wildcardMatch (text : String) (pattern : P
     wildcardMatchGreedy text pattern = wildcardMatch text pattern := by
   rw [wildcardMatchGreedy_eq_spec, wildcardMatch_eq_spec]
 
+/-! ## Running time of the greedy matcher -/
+
+section Steps
+
+/-- The number of iterations of the greedy loop from `st`, including the one that returns. -/
+public def greedySteps (T : Array Char) (P : Array PatElem) (st : GreedyState) : Nat :=
+  match _h : greedyStep T P st with
+  | .done _   => 1
+  | .next st' => greedySteps T P st' + 1
+termination_by greedyMeasure T P st
+decreasing_by exact greedyStep_decreases _h
+
+/-- Bounds on the loop indices that hold throughout the greedy loop. -/
+def GBounds (T : Array Char) (P : Array PatElem) (st : GreedyState) : Prop :=
+  st.i ≤ T.size ∧ st.j ≤ P.size ∧
+  ∀ sj si, st.star = some (sj, si) → sj < st.j ∧ si ≤ st.i
+
+/-- The text index where the last `*` started matching, or `i` if there is no `*` yet. -/
+def lastStart (st : GreedyState) : Nat :=
+  match st.star with
+  | none         => st.i
+  | some (_, si) => si
+
+/--
+Every iteration either moves `lastStart` forward, or keeps it and moves `j`
+forward. This bounds the number of iterations by `(T.size + 1) * (P.size + 1)`.
+-/
+def greedyPotential (T : Array Char) (P : Array PatElem) (st : GreedyState) : Nat :=
+  (T.size - lastStart st) * (P.size + 1) + (P.size - st.j)
+
+theorem potential_lt {n m a a' j j' : Nat} (haa : a ≤ a') (ha' : a' ≤ n) (hj' : j' ≤ m)
+    (h : a < a' ∨ j < j') :
+    (n - a') * (m + 1) + (m - j') < (n - a) * (m + 1) + (m - j) := by
+  rcases h with h | h
+  · have : (n - a' + 1) * (m + 1) ≤ (n - a) * (m + 1) := Nat.mul_le_mul_right _ (by omega)
+    rw [Nat.succ_mul] at this
+    omega
+  · have : (n - a') * (m + 1) ≤ (n - a) * (m + 1) := Nat.mul_le_mul_right _ (by omega)
+    omega
+
+theorem greedyStep_potential {T : Array Char} {P : Array PatElem} {st st' : GreedyState}
+    (hb : GBounds T P st) (h : greedyStep T P st = .next st') :
+    GBounds T P st' ∧ greedyPotential T P st' < greedyPotential T P st := by
+  obtain ⟨i, j, star⟩ := st
+  obtain ⟨hi, hj, hs⟩ := hb
+  simp only at hi hj hs
+  unfold greedyStep at h
+  split at h
+  · rename_i hc
+    simp only [greedyLoopCond, Bool.and_eq_true, decide_eq_true_eq] at hc
+    have hin : i < T.size := hc.1
+    -- the backtracking branch, shared by a literal mismatch and the end of the pattern
+    have hback : greedyBacktrack ⟨i, j, star⟩ = .next st' →
+        GBounds T P st' ∧ greedyPotential T P st' < greedyPotential T P ⟨i, j, star⟩ := by
+      intro hb
+      rcases star with _ | ⟨sj, si⟩
+      · simp [greedyBacktrack] at hb
+      · simp only [greedyBacktrack, GreedyStep.next.injEq] at hb
+        subst hb
+        obtain ⟨h1, h2⟩ := hs sj si rfl
+        refine ⟨⟨by simp; omega, by simp; omega, ?_⟩, ?_⟩
+        · intro sj' si' he
+          simp only [Option.some.injEq, Prod.mk.injEq] at he
+          obtain ⟨rfl, rfl⟩ := he
+          simp
+        · simp only [greedyPotential, lastStart]
+          exact potential_lt (by omega) (by omega) (by omega) (.inl (by omega))
+    split at h
+    · rename_i hpj
+      have hjl : j < P.size := (Array.getElem?_eq_some_iff.mp hpj).1
+      simp only [GreedyStep.next.injEq] at h
+      subst h
+      refine ⟨⟨by simp; omega, by simp; omega, ?_⟩, ?_⟩
+      · intro sj' si' he
+        simp only [Option.some.injEq, Prod.mk.injEq] at he
+        obtain ⟨rfl, rfl⟩ := he
+        simp
+      · rcases star with _ | ⟨sj, si⟩
+        · exact potential_lt (by simp [lastStart]) (by simp [lastStart]; omega) (by simp; omega)
+            (.inr (by simp))
+        · exact potential_lt (by simp [lastStart]; exact (hs sj si rfl).2)
+            (by simp [lastStart]; omega) (by simp; omega) (.inr (by simp))
+    · rename_i c hpj
+      have hjl : j < P.size := (Array.getElem?_eq_some_iff.mp hpj).1
+      split at h
+      · simp only [GreedyStep.next.injEq] at h
+        subst h
+        refine ⟨⟨by simp; omega, by simp; omega, ?_⟩, ?_⟩
+        · intro sj' si' he
+          obtain ⟨h1, h2⟩ := hs sj' si' he
+          simp only; omega
+        · rcases star with _ | ⟨sj, si⟩
+          · exact potential_lt (by simp [lastStart]) (by simp [lastStart]; omega) (by simp; omega)
+              (.inl (by simp [lastStart]))
+          · have := (hs sj si rfl).2
+            exact potential_lt (by simp [lastStart]) (by simp [lastStart]; omega) (by simp; omega)
+              (.inr (by simp))
+      · exact hback h
+    · exact hback h
+  · cases h
+
+theorem greedySteps_le {T : Array Char} {P : Array PatElem} {st : GreedyState}
+    (hb : GBounds T P st) : greedySteps T P st ≤ greedyPotential T P st + 1 := by
+  rw [greedySteps]
+  split
+  · omega
+  · next st' h =>
+    obtain ⟨hb', hlt⟩ := greedyStep_potential hb h
+    have := greedySteps_le hb'
+    omega
+termination_by greedyMeasure T P st
+decreasing_by all_goals (apply greedyStep_decreases; assumption)
+
+end Steps
+
+/--
+The greedy loop runs at most `(T.size + 1) * (P.size + 1)` iterations. Each
+iteration does a constant amount of work, except the last one, which may also
+skip up to `P.size` trailing `*`s.
+-/
+public theorem greedyMatch_steps (T : Array Char) (P : Array PatElem) :
+    greedySteps T P ⟨0, 0, none⟩ ≤ (T.size + 1) * (P.size + 1) := by
+  have := greedySteps_le (T := T) (P := P) (st := ⟨0, 0, none⟩) ⟨by simp, by simp, by simp⟩
+  simp only [greedyPotential, lastStart, Nat.sub_zero] at this
+  rw [Nat.succ_mul]
+  omega
+
 end Cedar.Spec
