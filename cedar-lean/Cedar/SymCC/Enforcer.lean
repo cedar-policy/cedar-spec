@@ -115,9 +115,14 @@ def transitivity (t₁ t₂ : Term) (εs : SymEntities) : Term :=
     | .option (.entity ety₁), .option (.entity ety₂) =>
       match εs.ancestorsOfType ety₁ ety₂, εs.ancestors ety₂ with
       | .some f₁₂, .some anc₂ =>
-        let t₁' := option.get t₁
-        let t₂' := option.get t₂
-        implies (isAncestor t₂' t₁' f₁₂) (areAncestors t₂' anc₂ t₁' ety₁)
+        if anc₂.toList.isEmpty
+        then true
+        else
+          let t₁' := option.get t₁
+          let t₂' := option.get t₂
+          match isAncestor t₂' t₁' f₁₂ with
+          | .prim (.bool false) => true
+          | isAncestor          => implies isAncestor (areAncestors t₂' anc₂ t₁' ety₁)
       | _, _ => true
     | _, _ => true
 where
