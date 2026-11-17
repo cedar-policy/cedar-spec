@@ -69,8 +69,7 @@ private theorem Opt.compileApp₂.correctness (op : BinaryOp) (t₁ t₂ : Term)
     εs =
   (do
     let term ← SymCC.compileApp₂ op (Factory.option.get t₁) (Factory.option.get t₂) εs
-    let footprint := ft₁ ∪ ft₂ ∪ Opt.directFootprint (Factory.ifSome t₁ (Factory.ifSome t₂ term))
-    .ok { term, footprint }
+    .ok { term, footprint := if op = .mem then Opt.directFootprint t₁ ∪ (ft₁ ∪ ft₂) else ft₁ ∪ ft₂ }
   )
 := by
   cases op <;> simp only [Opt.compileApp₂, SymCC.compileApp₂]
@@ -96,7 +95,7 @@ does not. See detailed note in `Opt.compile`.
 -/
 private theorem Opt.compileGetAttr.correctness (t₁ : Term) (attr : Attr) (εs : SymEntities) (footprint : Data.Set Term) :
   Opt.compileGetAttr { term := t₁, footprint } attr εs =
-  (do let term ← SymCC.compileGetAttr (Factory.option.get t₁) attr εs ; .ok { term, footprint := Opt.directFootprint (Factory.ifSome t₁ term) ∪ footprint })
+  (do let term ← SymCC.compileGetAttr (Factory.option.get t₁) attr εs ; .ok { term, footprint })
 := by
   simp only [Opt.compileGetAttr, SymCC.compileGetAttr, Except.bind_ok, Except.bind_err, bind_assoc]
   simp_do_let compileAttrsOf (Factory.option.get t₁) εs
@@ -487,7 +486,7 @@ theorem Opt.compile.correctness.lit (p : Prim) (εnv : SymEnv) :
 := by
   apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
   simp [SymCC.compile]
-  cases p <;> simp [Opt.compilePrim, SymCC.compilePrim, footprint.ofEntity, SymCC.compile, EmptyCollection.emptyCollection, Factory.someOf, TermType.isOptionEntityType]
+  cases p <;> simp [Opt.compilePrim, SymCC.compilePrim, EmptyCollection.emptyCollection, Factory.someOf]
   case entityUID uid => split <;> simp
 
 /--
@@ -502,15 +501,8 @@ theorem Opt.compile.correctness.var (v : Var) (εnv : SymEnv) :
 := by
   apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
   simp [SymCC.compile]
-  cases v <;> simp [Opt.compileVar, SymCC.compileVar, footprint.ofEntity, SymCC.compile, EmptyCollection.emptyCollection, Factory.someOf, TermType.isOptionEntityType]
-  case principal | action | resource =>
-    split <;> rename_i h <;>
-      simp only [TermType.isEntityType] at h <;> split at h <;> simp_all
-  case context =>
-    split <;> rename_i h
-    · simp [TermType.isRecordType] at *
-      split at h <;> simp_all
-    · simp
+  cases v <;> simp [Opt.compileVar, SymCC.compileVar, EmptyCollection.emptyCollection, Factory.someOf] <;>
+    split <;> simp
 
 /--
 Correctness theorem for `Opt.compile` -- `ite` case
@@ -616,10 +608,8 @@ theorem Opt.compile.correctness.binaryApp (op : BinaryOp) (x₁ x₂ : Expr) (ε
       simp [Opt.CompileResult.mapTerm]
       cases h : SymCC.compileApp₂ op (Factory.option.get t₁) (Factory.option.get t₂) εnv.entities <;> simp
       case ok t =>
-        rw [Opt.directFootprint.correctness (t := Factory.ifSome t₁ (Factory.ifSome t₂ t)) (εnv := εnv) (x := .binaryApp op x₁ x₂)]
-        · conv => rhs ; rw [Data.Set.union_assoc, Data.Set.union_comm]
-        · -- here we have to show that the `t` and `x` arguments we chose for `Opt.directFootprint.correctness` in the `rw` above correspond to each other correctly
-          simp [SymCC.compile, h₁, h₂, h]
+        rw [Opt.directFootprint.correctness h₁]
+        split <;> simp [Data.Set.union_assoc, Data.Set.union_empty_left]
 termination_by 1 + 2 * sizeOf x₁ + 2 * sizeOf x₂
 decreasing_by all_goals {
   have : ∀ x : Expr, sizeOf x > 0 := by
@@ -646,11 +636,6 @@ theorem Opt.compile.correctness.getAttr (expr : Expr) (attr : Attr) (εnv : SymE
   case ok t =>
     rw [Opt.compileGetAttr.correctness]
     simp only [Opt.CompileResult.mapTerm, bind_assoc, Except.bind_ok]
-    simp_do_let compileGetAttr (Factory.option.get t) attr εnv.entities ; rename_i t' h₂
-    simp only [Except.ok.injEq, Opt.CompileResult.mk.injEq, true_and]
-    rw [Opt.directFootprint.correctness (t := Factory.ifSome t t') (x := .getAttr expr attr) (εnv := εnv)]
-    -- here we have to show that the `t` and `x` arguments we chose for `Opt.directFootprint.correctness` in the `rw` above correspond to each other correctly
-    simp [SymCC.compile, h₁, h₂]
 termination_by 1 + 2 * sizeOf expr
 
 /--

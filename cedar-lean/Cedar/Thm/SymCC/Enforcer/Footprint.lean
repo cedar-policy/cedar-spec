@@ -110,8 +110,7 @@ theorem mem_footprint_option_entity {x : Expr} {εnv : SymEnv} {t : Term} :
     simp only [hc, ↓reduceIte, Set.not_mem_empty] at hin
   all_goals simp only [footprint] at hin
   case case2 hc | case3 hc =>
-    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
-    exact mem_footprint_ofEntity_option_entity hin
+    simp only [hc, Bool.false_eq_true, ↓reduceIte, Set.not_mem_empty] at hin
   case case4 hc ih₁ ih₂ ih₃ =>
     simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     replace hin := mem_footprint_ofBranch_mem hin
@@ -130,16 +129,12 @@ theorem mem_footprint_option_entity {x : Expr} {εnv : SymEnv} {t : Term} :
     simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     simp only [Set.mem_union] at hin
     rcases hin with (hin | hin) | hin
-    · exact mem_footprint_ofEntity_option_entity hin
+    · split at hin
+      · exact mem_footprint_ofEntity_option_entity hin
+      · simp only [Set.not_mem_empty] at hin
     · exact ih₁ hin
     · exact ih₂ hin
-  case case8 hc ih =>
-    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
-    rw [Set.mem_union] at hin
-    rcases hin with hin | hin
-    · exact mem_footprint_ofEntity_option_entity hin
-    · exact ih hin
-  case case9 hc ih | case10 hc ih | case11 hc ih =>
+  case case8 hc ih | case9 hc ih | case10 hc ih | case11 hc ih =>
     simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     exact ih hin
   case case12 hc ih | case13 hc ih =>
@@ -178,8 +173,7 @@ private theorem mem_footprint_exists_wf_prop {p : Expr → Prop} {x : Expr} {t�
     simp only [hc, ↓reduceIte, Set.not_mem_empty] at hin
   all_goals simp only [footprint] at hin
   case case2 hc | case3 hc =>
-    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
-    exact mem_footprint_ofEntity_exists_wf hwε hp hin
+    simp only [hc, Bool.false_eq_true, ↓reduceIte, Set.not_mem_empty] at hin
   case case4 hc ih₁ ih₂ ih₃ =>
     simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     have ⟨hwε₁, hwε₂, hwε₃⟩ := wf_εnv_for_ite_implies hwε
@@ -208,15 +202,14 @@ private theorem mem_footprint_exists_wf_prop {p : Expr → Prop} {x : Expr} {t�
     have ⟨hwe₁, hwe₂⟩ := happ₂ hp
     simp only [Set.mem_union] at hin
     rcases hin with (hin | hin) | hin
-    · exact mem_footprint_ofEntity_exists_wf hwε hp hin
+    · split at hin
+      · exact mem_footprint_ofEntity_exists_wf hwε₁ hwe₁ hin
+      · simp only [Set.not_mem_empty] at hin
     · exact ih₁ hwε₁ hwe₁ hin
     · exact ih₂ hwε₂ hwe₂ hin
   case case8 hc ih =>
     simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
-    rw [Set.mem_union] at hin
-    rcases hin with hin | hin
-    · exact mem_footprint_ofEntity_exists_wf hwε hp hin
-    · exact ih (wf_εnv_for_getAttr_implies hwε) (hget hp) hin
+    exact ih (wf_εnv_for_getAttr_implies hwε) (hget hp) hin
   case case9 hc ih =>
     simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     exact ih (wf_εnv_for_hasAttr_implies hwε) (hhas hp) hin
