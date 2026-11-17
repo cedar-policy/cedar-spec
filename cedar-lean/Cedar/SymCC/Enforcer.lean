@@ -45,6 +45,15 @@ open Cedar.Spec
 open Factory
 
 /--
+Returns true if `x` compiles to `⊙true`, `⊙false`, or `.none`.
+-/
+def compilesToBoolOrNone (x : Expr) (εnv : SymEnv) : Bool :=
+  match compile x εnv with
+  | .ok (.some (.prim (.bool _))) => true
+  | .ok (.none _)                 => true
+  | _                             => false
+
+/--
 Returns the terms corresponding to subexpressions of `x` of the following form:
 
   * A variable term with an entity type
@@ -57,8 +66,13 @@ All other expressions that evaluate to an entity are build up from the above
 basic expresions.
 
 All returned terms are of type `TermType.option .entity`.
+
+If `x` compiles to a boolean literal or `.none`, its footprint is empty: the
+compiled term does not depend on the entity hierarchy, so no constraints are
+needed for it.
 -/
 def footprint (x : Expr) (εnv : SymEnv) : Set Term :=
+  if compilesToBoolOrNone x εnv then Set.empty else
   match x with
   | .lit _
   | .var _             => ofEntity

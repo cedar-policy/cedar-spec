@@ -449,6 +449,30 @@ private theorem both_lists_pairs_ok_then_elts_correspond {xs : List (Attr × Exp
     subst tstl
     simp [List.map_cons, ih']
 
+/--
+Reduces correctness of `Opt.compile` on `x` to correctness of the
+per-constructor result `r` (before `dropBoolOrNoneFootprint`) against the
+per-constructor footprint `F` (before the `compilesToBoolOrNone` check).
+-/
+private theorem Opt.compile.correctness_of_core {x : Expr} {εnv : SymEnv} {r : SymCC.Result Opt.CompileResult} {F : Data.Set Term}
+  (hopt : Opt.compile x εnv = r.map Opt.CompileResult.dropBoolOrNoneFootprint)
+  (hfp : footprint x εnv = if compilesToBoolOrNone x εnv then Data.Set.empty else F)
+  (h : r = (do
+    let term ← SymCC.compile x εnv
+    .ok { term, footprint := F })) :
+  Opt.compile x εnv = (do
+    let term ← SymCC.compile x εnv
+    let footprint := footprint x εnv
+    .ok { term, footprint }
+  )
+:= by
+  rw [hopt, hfp, h]
+  cases hc : SymCC.compile x εnv <;>
+    simp only [compilesToBoolOrNone, hc, Except.bind_ok, Except.bind_err, Except.map]
+  rename_i t
+  simp only [Opt.CompileResult.dropBoolOrNoneFootprint]
+  split <;> simp_all [EmptyCollection.emptyCollection]
+
 mutual
 
 /--
@@ -461,7 +485,8 @@ theorem Opt.compile.correctness.lit (p : Prim) (εnv : SymEnv) :
     .ok { term, footprint }
   )
 := by
-  simp [Opt.compile, SymCC.compile, footprint]
+  apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
+  simp [SymCC.compile]
   cases p <;> simp [Opt.compilePrim, SymCC.compilePrim, footprint.ofEntity, SymCC.compile, EmptyCollection.emptyCollection, Factory.someOf, TermType.isOptionEntityType]
   case entityUID uid => split <;> simp
 
@@ -475,7 +500,8 @@ theorem Opt.compile.correctness.var (v : Var) (εnv : SymEnv) :
     .ok { term, footprint }
   )
 := by
-  simp [Opt.compile, SymCC.compile, footprint]
+  apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
+  simp [SymCC.compile]
   cases v <;> simp [Opt.compileVar, SymCC.compileVar, footprint.ofEntity, SymCC.compile, EmptyCollection.emptyCollection, Factory.someOf, TermType.isOptionEntityType]
   case principal | action | resource =>
     split <;> rename_i h <;>
@@ -496,7 +522,8 @@ theorem Opt.compile.correctness.ite (x₁ x₂ x₃ : Expr) (εnv : SymEnv) :
     .ok { term, footprint }
   )
 := by
-  simp [Opt.compile, SymCC.compile, footprint]
+  apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
+  simp [SymCC.compile]
   rw [Opt.compile.correctness x₁ εnv, Opt.compile.correctness x₂ εnv, Opt.compile.correctness x₃ εnv]
   simp [Opt.compileIf, SymCC.compileIf, footprint.ofBranch]
   cases h₁ : SymCC.compile x₁ εnv <;> simp
@@ -534,7 +561,8 @@ theorem Opt.compile.correctness.andor (x₁ x₂ : Expr) (εnv : SymEnv) :
 := by
   constructor
   all_goals {
-    simp [Opt.compile, SymCC.compile, footprint]
+    apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
+    simp [SymCC.compile]
     rw [Opt.compile.correctness x₁ εnv, Opt.compile.correctness x₂ εnv]
     simp [Opt.compileAnd, SymCC.compileAnd, Opt.compileOr, SymCC.compileOr, footprint.ofBranch, EmptyCollection.emptyCollection]
     cases h₁ : SymCC.compile x₁ εnv <;> simp only [Except.bind_ok, Except.bind_err]
@@ -559,7 +587,8 @@ theorem Opt.compile.correctness.unaryApp (op : UnaryOp) (x : Expr) (εnv : SymEn
     .ok { term, footprint }
   )
 := by
-  simp [Opt.compile, SymCC.compile, footprint]
+  apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
+  simp [SymCC.compile]
   rw [Opt.compile.correctness x εnv]
   cases h₁ : SymCC.compile x εnv <;> simp
   rw [Opt.compileApp₁.correctness op]
@@ -576,7 +605,8 @@ theorem Opt.compile.correctness.binaryApp (op : BinaryOp) (x₁ x₂ : Expr) (ε
     .ok { term, footprint }
   )
 := by
-  simp [Opt.compile, SymCC.compile, footprint]
+  apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
+  simp [SymCC.compile]
   rw [Opt.compile.correctness x₁ εnv, Opt.compile.correctness x₂ εnv]
   cases h₁ : SymCC.compile x₁ εnv <;> simp
   case ok t₁ =>
@@ -609,7 +639,8 @@ theorem Opt.compile.correctness.getAttr (expr : Expr) (attr : Attr) (εnv : SymE
     .ok { term, footprint }
   )
 := by
-  simp [Opt.compile, SymCC.compile, footprint]
+  apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
+  simp [SymCC.compile]
   rw [Opt.compile.correctness expr εnv]
   cases h₁ : SymCC.compile expr εnv <;> simp
   case ok t =>
@@ -632,7 +663,8 @@ theorem Opt.compile.correctness.hasAttr (expr : Expr) (attr : Attr) (εnv : SymE
     .ok { term, footprint }
   )
 := by
-  simp [Opt.compile, SymCC.compile, footprint]
+  apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
+  simp [SymCC.compile]
   rw [Opt.compile.correctness expr εnv]
   cases h₁ : SymCC.compile expr εnv <;> simp
   case ok t =>
@@ -651,7 +683,8 @@ theorem Opt.compile.correctness.extHasAttr (expr : Expr) (attr : Attr) (attrs: L
     .ok { term, footprint }
   )
 := by
-  simp [Opt.compile, SymCC.compile, footprint]
+  apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
+  simp [SymCC.compile]
   rw [Opt.compile.correctness expr εnv]
   cases h₁ : SymCC.compile expr εnv <;> simp
 termination_by 1 + 2 * sizeOf expr
@@ -666,7 +699,8 @@ theorem Opt.compile.correctness.set (ls : List Expr) (εnv : SymEnv) :
     .ok { term, footprint }
   )
 := by
-  simp [Opt.compile, SymCC.compile, footprint]
+  apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
+  simp [SymCC.compile]
   rw [List.mapM₁_eq_mapM (Opt.compile · εnv), List.mapM₁_eq_mapM (SymCC.compile · εnv)]
   rw [List.mapUnion₁_eq_mapUnion (footprint · εnv)]
   simp_do_let ls.mapM (Opt.compile · εnv) as hmap₁
@@ -716,7 +750,8 @@ theorem Opt.compile.correctness.record (m : List (Attr × Expr)) (εnv : SymEnv)
     .ok { term, footprint }
   )
 := by
-  simp [Opt.compile, SymCC.compile, footprint]
+  apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
+  simp [SymCC.compile]
   simp only [List.mapM₂_eq_mapM (λ x => do Except.ok (x.fst, ← Opt.compile x.snd εnv)) m]
   simp only [List.mapM₂_eq_mapM (λ x => do Except.ok (x.fst, ← SymCC.compile x.snd εnv)) m]
   rw [List.mapUnion₂_eq_mapUnion (λ x => footprint x.snd εnv)]
@@ -770,7 +805,8 @@ theorem Opt.compile.correctness.call (xfn : ExtFun) (args : List Expr) (εnv : S
     .ok { term, footprint }
   )
 := by
-  simp [Opt.compile, SymCC.compile, footprint]
+  apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
+  simp [SymCC.compile]
   rw [List.mapM₁_eq_mapM (Opt.compile · εnv), List.mapM₁_eq_mapM (SymCC.compile · εnv)]
   rw [List.mapUnion₁_eq_mapUnion (footprint · εnv)]
   simp_do_let args.mapM (Opt.compile · εnv) as hmap₁
