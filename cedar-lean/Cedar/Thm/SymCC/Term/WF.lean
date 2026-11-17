@@ -24,7 +24,6 @@ import all Cedar.SymCC.Factory -- proving things about some SymCC.Factory functi
 public import Cedar.SymCC.Interpretation
 import all Cedar.SymCC.Interpretation -- proving things about internal functions in this file
 import all Cedar.SymCC.Tags -- proving things about internal functions in this file
-import all Init.Data.ByteArray.Lex -- the kernel needs `ByteArray.decidableLT` to check `String.reduceLT` proofs
 public import Cedar.SymCC.Term
 public import Cedar.Thm.SymCC.Data
 import Cedar.Thm.SymCC.Interpretation
@@ -2012,7 +2011,7 @@ public theorem wf_tagOf {εs : SymEntities} {t₁ t₂ : Term} {ety : EntityType
       assumption
     · simp only [Map.wf_iff_sorted, Map.toList_mk_id]
       apply List.SortedBy.cons_cons
-      simp only [String.reduceLT]
+      simp only [← String.toList_lt_toList_iff]; decide
       apply List.SortedBy.cons_nil
   · simp [typeOf_term_record_eq, hty₁, hty₂, Map.mapOnValues_doubleton]
 
