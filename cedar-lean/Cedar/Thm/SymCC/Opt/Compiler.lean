@@ -327,7 +327,7 @@ private theorem both_lists_error_then_errors_same {xs : List Expr} {εnv : SymEn
     simp [List.mapM_cons]
     intro h₁ h₂ ihhd ihtl
     rw [ihhd] at h₁
-    cases hhd : SymCC.compile hd εnv <;> simp [hhd] at h₁ h₂
+    cases hhd : SymCC.compile hd εnv <;> simp [hhd, -Except.map_eq_error] at h₁ h₂
     case error e' => simp [← h₁, ← h₂]
     case ok t =>
       simp only [Functor.map, Except.map] at h₁
@@ -360,7 +360,7 @@ private theorem both_lists_pairs_error_then_errors_same {xs : List (Attr × Expr
     simp [List.mapM_cons]
     intro h₁ h₂ ihhd ihtl
     rw [ihhd] at h₁
-    cases hhd : SymCC.compile hd.snd εnv <;> simp [hhd] at h₁ h₂
+    cases hhd : SymCC.compile hd.snd εnv <;> simp [hhd, -Except.map_eq_error] at h₁ h₂
     case error e' => simp [← h₁, ← h₂]
     case ok t =>
       simp only [Functor.map, Except.map] at h₁

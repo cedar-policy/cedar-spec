@@ -29,6 +29,7 @@ import all Cedar.Spec.Wildcard
 import all Cedar.SymCC.Op
 import all Cedar.SymCC.Term
 import all Cedar.SymCC.TermType
+import all Init.Data.ByteArray.Lex
 
 /-!
 # Strict ordering of Cedar terms
@@ -99,7 +100,7 @@ theorem ExtOp.lt_trans (a b c : ExtOp) :
 := by
   simp only [LT.lt, ExtOp.lt, decide_eq_true_eq]
   intro h₁ h₂
-  exact List.slt_trans h₁ h₂
+  exact String.strictLT.transitive _ _ _ h₁ h₂
 
 theorem ExtOp.lt_conn {a b : ExtOp} :
   a ≠ b → (a < b ∨ b < a)
@@ -122,7 +123,7 @@ theorem TermPrimType.lt_irrefl (ty : TermPrimType) :
   ¬ TermPrimType.lt ty ty
 := by
   cases ty <;>
-  simp only [TermPrimType.lt, TermPrimType.mkName, decide_eq_true_eq, String.lt_irrefl, Nat.lt_irrefl, decide_false, Bool.false_eq_true, not_false_eq_true]
+  simp only [TermPrimType.lt, TermPrimType.mkName, decide_eq_true_eq, Std.lt_irrefl, Nat.lt_irrefl, decide_false, Bool.false_eq_true, not_false_eq_true]
   case entity ety => exact StrictLT.irreflexive ety
   case ext xty => simp only [LT.lt, ExtType.lt, Bool.false_eq_true, not_false_eq_true]
 
@@ -359,7 +360,7 @@ theorem UUF.lt_trans (a b c : UUF) :
     case inl =>
       rcases h₁ with h₁ | ⟨h₁, h₃⟩ <;>
       rcases h₂ with h₂ | ⟨h₂, h₄⟩
-      · have h₃ := List.slt_trans h₁ h₂
+      · have h₃ := String.strictLT.transitive _ _ _ h₁ h₂
         simp only [LT.lt] at h₃
         simp only [h₃, true_or]
       · simp only [h₂] at *
@@ -465,7 +466,7 @@ theorem Op.lt_irrefl (a : Op) :
   split <;> simp only [decide_eq_false_iff_not]
   case h_1 f => exact UUF.lt_irrefl f
   case h_2 => simp only [Nat.lt_irrefl, not_false_eq_true]
-  case h_3 | h_4 | h_6 => apply List.slt_irrefl
+  case h_3 | h_4 | h_6 => apply StrictLT.irreflexive
   case h_5 xty => exact StrictLT.irreflexive xty
 
 local macro "simp_lt_trans" lt:ident mkName:ident c:ident trans:term : tactic => do
@@ -663,7 +664,7 @@ theorem TermVar.lt_irrefl (a : TermVar) :
   simp only [TermVar.lt, LT.lt, decide_true, Bool.true_and, Bool.or_eq_true, decide_eq_true_eq]
   intro h
   rcases h with h | h
-  . have _ := List.slt_irrefl a.id.data ; contradiction
+  . have _ := StrictLT.irreflexive a.id ; contradiction
   . have _ := TermType.lt_irrefl a.ty ; contradiction
 
 theorem TermVar.lt_trans (a b c : TermVar) :
@@ -672,7 +673,7 @@ theorem TermVar.lt_trans (a b c : TermVar) :
   simp only [LT.lt, TermVar.lt, Bool.or_eq_true, decide_eq_true_eq, Bool.and_eq_true]
   intro h₁ h₂
   rcases h₁ with h₁ | h₁ <;> rcases h₂ with h₂ | h₂
-  · exact Or.inl (List.slt_trans h₁ h₂)
+  · exact Or.inl (String.strictLT.transitive _ _ _ h₁ h₂)
   · simp only [h₂.left] at h₁
     exact Or.inl h₁
   · simp only [← h₁.left] at h₂

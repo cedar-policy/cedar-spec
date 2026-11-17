@@ -139,7 +139,7 @@ theorem type_of_and_is_sound {x₁ x₂ : Expr} {c₁ c₂ : Capabilities} {env 
         rw [hty₂] at ih₂₃
         have h₈ := instance_of_ff_is_false ih₂₃
         subst h₈
-        simp only [Except.map_ok, reduceCtorEq, or_true]
+        simp only [reduceCtorEq, or_true]
     case isFalse hbty₂ =>
       cases b₁
       case false =>

@@ -247,10 +247,6 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
     cases tl₁
     case nil =>
       simp [List.mapM, List.mapM.loop] at h₁
-      cases h₂ : justType (typeOf hd₁ c env) <;>
-      simp only [h₂,
-        Except.map_error, reduceCtorEq,
-        Except.map_ok, Except.ok.injEq, List.cons.injEq, List.ne_cons_self, and_false] at h₁
     case cons hd₂ tl₂ =>
       cases tl₂
       case nil =>
@@ -273,8 +269,6 @@ theorem typeOf_of_binary_call_inversion {xs : List Expr} {c : Capabilities} {env
         split at h₁ <;> simp at h₁
         rw [justType, Except.map.eq_def] at h₁
         split at h₁ <;> simp at h₁
-        rename_i res₁ _ _ res₂ _ _ res₃ _
-        cases h₂ : List.mapM (fun x => justType (typeOf x c env)) tl₃ <;> simp [h₂] at h₁
 
 def IsDecimalComparator : ExtFun → Prop
   | .lessThan
@@ -544,8 +538,6 @@ theorem typeOf_of_unary_call_inversion {xs : List Expr} {c : Capabilities} {env 
       split at h₁ <;> simp at h₁
       rw [justType, Except.map.eq_def] at h₁
       split at h₁ <;> simp at h₁
-      rename_i res₁ _ _ res₂ _
-      cases h₂ : List.mapM (fun x => justType (typeOf x c env)) tl₂ <;> simp [h₂] at h₁
 
 theorem type_of_call_toTime_inversion {xs : List Expr} {c c' : Capabilities} {env : TypeEnv} {ty : TypedExpr}
   (h₁ : typeOf (Expr.call .toTime xs) c env = Except.ok (ty, c')) :

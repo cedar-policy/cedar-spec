@@ -24,6 +24,7 @@ import all Cedar.SymCC.Factory -- proving things about some SymCC.Factory functi
 public import Cedar.SymCC.Interpretation
 import all Cedar.SymCC.Interpretation -- proving things about internal functions in this file
 import all Cedar.SymCC.Tags -- proving things about internal functions in this file
+import all Init.Data.ByteArray.Lex -- the kernel needs `ByteArray.decidableLT` to check `String.reduceLT` proofs
 public import Cedar.SymCC.Term
 public import Cedar.Thm.SymCC.Data
 import Cedar.Thm.SymCC.Interpretation

@@ -57,7 +57,6 @@ theorem type_of_set_tail
         bind_assoc, pure_bind] at h₁
       cases h₄ : justType (typeOf xhd c env) <;> simp [h₄] at h₁
       cases h₅ : justType (typeOf xhd' c env) <;> simp [h₅] at h₁
-      cases h₆ : List.mapM (fun x => justType (typeOf x c env)) xtl' <;> simp [h₆] at h₁
     case cons hd' tl' =>
       simp only [List.mapM₁_eq_mapM λ x => justType (typeOf x c env)] at h₁
       have h₁ := List.mapM_head_tail h₁

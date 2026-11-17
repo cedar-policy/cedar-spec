@@ -21,6 +21,7 @@ import all Cedar.Data.List -- inside this module, we're allowed to unfold defs i
 import Cedar.Thm.Data.Control
 public import Cedar.Thm.Data.List.Basic
 public import Batteries.Data.List.Basic
+import Batteries.Data.Except
 
 /-!
 
