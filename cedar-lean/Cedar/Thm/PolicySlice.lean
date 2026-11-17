@@ -13,11 +13,16 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -/
+
 module
 
-import Cedar.Slice.PolicySlice
-import Cedar.Thm.Authorization.Authorizer
-import Cedar.Thm.Authorization.PolicySlice
+public import Cedar.Slice.PolicySlice
+public import Cedar.Thm.Authorization.Authorizer
+public import Cedar.Thm.Authorization.PolicySlice
+import all Cedar.Spec.Authorizer
+import all Cedar.Spec.Policy
+
+public section
 
 /-!
 This file defines what it means for a policy slice to be sound.
