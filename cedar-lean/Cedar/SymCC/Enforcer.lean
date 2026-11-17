@@ -61,10 +61,32 @@ def footprint.ofEntity (x : Expr) (εnv : SymEnv) : Set Term :=
   | .ok t => if t.typeOf.isOptionEntityType then Set.singleton t else Set.empty
   | _     => Set.empty
 
+def footprint.ofBranch (εnv : SymEnv) (x₁ : Expr) (ft₁ ft₂ ft₃ : Set Term) : Set Term :=
+  match compile x₁ εnv with
+  | .ok (.some (.bool true))  => ft₂
+  | .ok (.some (.bool false)) => ft₃
+  | .ok _                     => ft₁ ∪ ft₂ ∪ ft₃
+  | .error _                  => Set.empty
+
+/--
+Returns the terms that the compiled term of `x` may evaluate to when it
+evaluates to an entity.
+
+All returned terms are of type `TermType.option .entity`.
+-/
+def valueFootprint (x : Expr) (εnv : SymEnv) : Set Term :=
+  if compilesToBoolOrNone x εnv then Set.empty else
+  match x with
+  | .ite x₁ x₂ x₃      => footprint.ofBranch εnv x₁ Set.empty (valueFootprint x₂ εnv) (valueFootprint x₃ εnv)
+  | .lit _
+  | .var _
+  | .getAttr _ _
+  | .binaryApp _ _ _   => footprint.ofEntity x εnv
+  | _                  => Set.empty
+
 /--
 Returns the terms whose ancestors the compiled term of `x` may read. Only `in`
-reads ancestors, and only those of its first operand, so these are the compiled
-first operands `x₁` of subexpressions `x₁ in x₂` of `x`.
+reads ancestors, and only from its first operand.
 
 All returned terms are of type `TermType.option .entity`.
 
@@ -77,10 +99,10 @@ def footprint (x : Expr) (εnv : SymEnv) : Set Term :=
   match x with
   | .lit _
   | .var _             => Set.empty
-  | .ite x₁ x₂ x₃      => ofBranch x₁ (footprint x₁ εnv) (footprint x₂ εnv) (footprint x₃ εnv)
-  | .and x₁ x₂         => ofBranch x₁ (footprint x₁ εnv) (footprint x₂ εnv) Set.empty
-  | .or x₁ x₂          => ofBranch x₁ (footprint x₁ εnv) Set.empty (footprint x₂ εnv)
-  | .binaryApp op x₁ x₂ => (if op = .mem then footprint.ofEntity x₁ εnv else Set.empty) ∪ footprint x₁ εnv ∪ footprint x₂ εnv
+  | .ite x₁ x₂ x₃      => footprint.ofBranch εnv x₁ (footprint x₁ εnv) (footprint x₂ εnv) (footprint x₃ εnv)
+  | .and x₁ x₂         => footprint.ofBranch εnv x₁ (footprint x₁ εnv) (footprint x₂ εnv) Set.empty
+  | .or x₁ x₂          => footprint.ofBranch εnv x₁ (footprint x₁ εnv) Set.empty (footprint x₂ εnv)
+  | .binaryApp op x₁ x₂ => (if op = .mem then valueFootprint x₁ εnv else Set.empty) ∪ footprint x₁ εnv ∪ footprint x₂ εnv
   | .getAttr x₁ _      => footprint x₁ εnv
   | .hasAttr x₁ _
   | .extHasAttr x₁ _ _
@@ -88,13 +110,6 @@ def footprint (x : Expr) (εnv : SymEnv) : Set Term :=
   | .call _ xs
   | .set xs            => xs.mapUnion₁ (λ ⟨xᵢ, _⟩ => footprint xᵢ εnv)
   | .record axs        => axs.mapUnion₂ (λ ⟨(_, xᵢ), _⟩ => footprint xᵢ εnv)
-where
-  ofBranch (x₁ : Expr) (ft₁ ft₂ ft₃ : Set Term) : Set Term :=
-    match compile x₁ εnv with
-    | .ok (.some (.bool true))  => ft₂
-    | .ok (.some (.bool false)) => ft₃
-    | .ok _                     => ft₁ ∪ ft₂ ∪ ft₃
-    | .error _                  => Set.empty
 
 /--
 Returns the set of Terms corresponding to the footprints of xs.

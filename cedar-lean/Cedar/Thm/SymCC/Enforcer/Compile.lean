@@ -27,6 +27,10 @@ import Cedar.Thm.SymCC.Compiler
 This file proves that a term produced by compiling an expression `x`
 has the same value under interpretations `I₁` and `I₂` that agree
 on the footprint of `x`.  See `compile_interpret_on_footprint`.
+
+For `x₁ in x₂`, this relies on the theorem `compile_interpret_in_valueFootprint`,
+which says that if `x₁` evaluates to an entity, then some term in the value
+footprint of `x₁` evaluates to that entity.
 --/
 
 
@@ -51,6 +55,295 @@ private theorem compilesToBoolOrNone_interpret_eq_or {x : Expr} {εnv : SymEnv} 
     subst h
     simp only [interpret_term_none, true_or]
   · simp only [Bool.false_eq_true, not_false_eq_true, or_true]
+
+private theorem not_compilesToBoolOrNone_of_interpret_entity {x : Expr} {εnv : SymEnv} {I : Interpretation} {t : Term} {uid : EntityUID}
+  (hok : compile x εnv = .ok t)
+  (ht  : t.interpret I = .some (.entity uid)) :
+  ¬ compilesToBoolOrNone x εnv = true
+:= by
+  simp only [compilesToBoolOrNone, hok]
+  split
+  · rename_i h
+    simp only [Except.ok.injEq] at h
+    subst h
+    simp only [interpret_term_some, interpret_term_prim, Term.some.injEq, Term.prim.injEq, reduceCtorEq] at ht
+  · rename_i h
+    simp only [Except.ok.injEq] at h
+    subst h
+    simp only [interpret_term_none, reduceCtorEq] at ht
+  · simp only [Bool.false_eq_true, not_false_eq_true]
+
+private theorem compile_isOptionEntityType {x : Expr} {εnv : SymEnv} {I : Interpretation} {t : Term} {uid : EntityUID}
+  (hwε : εnv.WellFormedFor x)
+  (hI  : I.WellFormed εnv.entities)
+  (hok : compile x εnv = .ok t)
+  (ht  : t.interpret I = .some (.entity uid)) :
+  t.typeOf.isOptionEntityType
+:= by
+  have hwt := (compile_wf hwε hok).left
+  have hty := (interpret_term_wf hI hwt).right
+  rw [ht] at hty
+  rw [← hty]
+  simp only [TermType.isOptionEntityType, Term.typeOf, typeOf_term_prim_entity]
+
+private theorem typeOf_ifSome_ite_option_bool {t₁ t₂ t₃ : Term} {εs : SymEntities} :
+  t₁.WellFormed εs → t₂.WellFormed εs → t₃.WellFormed εs →
+  t₁.typeOf = .option .bool → t₂.typeOf = .option .bool → t₃.typeOf = .option .bool →
+  (ifSome t₁ (Factory.ite (option.get t₁) t₂ t₃)).typeOf = .option .bool
+:= by
+  intro hwt₁ hwt₂ hwt₃ hty₁ hty₂ hty₃
+  have hwo₁ := wf_option_get hwt₁ hty₁
+  have hwi := wf_ite hwo₁.left hwt₂ hwt₃ hwo₁.right (by simp only [hty₂, hty₃])
+  rw [hty₂] at hwi
+  simp only [wf_ifSome_option hwt₁ hwi.left hwi.right]
+
+private theorem typeOf_compile_and_option_bool {x₁ x₂ : Expr} {t : Term} {εnv : SymEnv}
+  (hwε : εnv.WellFormedFor (.and x₁ x₂))
+  (hok : compile (.and x₁ x₂) εnv = .ok t) :
+  t.typeOf = .option .bool
+:= by
+  replace ⟨t₁, hok₁, hok⟩ := compile_and_ok_implies hok
+  split at hok
+  · subst hok
+    simp only [typeOf_term_some, typeOf_bool]
+  · replace ⟨hty₁, t₂, hok₂, hty₂, hok⟩ := hok
+    subst hok
+    try have hwε := wf_εnv_for_and_implies hwε
+    try have hwε := wf_εnv_for_or_implies hwε
+    have hwt₁ := (compile_wf hwε.left hok₁).left
+    have hwt₂ := (compile_wf hwε.right hok₂).left
+    exact typeOf_ifSome_ite_option_bool hwt₁ hwt₂ (Term.WellFormed.some_wf wf_bool) hty₁ hty₂ (by simp only [typeOf_term_some, typeOf_bool])
+
+private theorem typeOf_compile_or_option_bool {x₁ x₂ : Expr} {t : Term} {εnv : SymEnv}
+  (hwε : εnv.WellFormedFor (.or x₁ x₂))
+  (hok : compile (.or x₁ x₂) εnv = .ok t) :
+  t.typeOf = .option .bool
+:= by
+  replace ⟨t₁, hok₁, hok⟩ := compile_or_ok_implies hok
+  split at hok
+  · subst hok
+    simp only [typeOf_term_some, typeOf_bool]
+  · replace ⟨hty₁, t₂, hok₂, hty₂, hok⟩ := hok
+    subst hok
+    try have hwε := wf_εnv_for_and_implies hwε
+    try have hwε := wf_εnv_for_or_implies hwε
+    have hwt₁ := (compile_wf hwε.left hok₁).left
+    have hwt₂ := (compile_wf hwε.right hok₂).left
+    exact typeOf_ifSome_ite_option_bool hwt₁ (Term.WellFormed.some_wf wf_bool) hwt₂ hty₁ (by simp only [typeOf_term_some, typeOf_bool]) hty₂
+
+private theorem typeOf_compile_unaryApp_option_types {op₁ : UnaryOp} {x₁ : Expr} {t : Term} {εnv : SymEnv}
+  (hwε : εnv.WellFormedFor (.unaryApp op₁ x₁))
+  (hok : compile (.unaryApp op₁ x₁) εnv = .ok t) :
+  t.typeOf = .option .bool ∨ t.typeOf = .option (.bitvec 64)
+:= by
+  replace ⟨t₁, t₂, hok₁, hok, heq⟩ := compile_unaryApp_ok_implies hok
+  subst heq
+  have ⟨ty₁, ⟨hwt₁, _⟩, hwo₁⟩ := compile_option_get_wf (wf_εnv_for_unaryApp_implies hwε) hok₁
+  have ⟨hwt₂, hty₂⟩ := compileApp₁_wf_types hwo₁.left hok
+  split at hty₂ <;>
+  simp only [wf_ifSome_option hwt₁ hwt₂ hty₂, TermType.option.injEq, TermType.prim.injEq, or_true, or_false, reduceCtorEq]
+
+private theorem typeOf_compile_hasAttr_option_bool {x : Expr} {a : Attr} {t : Term} {εnv : SymEnv}
+  (hwε : εnv.WellFormedFor (.hasAttr x a))
+  (hok : compile (.hasAttr x a) εnv = .ok t) :
+  t.typeOf = .option .bool
+:= by
+  replace ⟨_, _, hok₁, hok, heq⟩ := compile_hasAttr_ok_implies hok
+  subst heq
+  have ⟨_, ⟨hwt₁, _⟩, hwo₁⟩ := compile_option_get_wf (wf_εnv_for_hasAttr_implies hwε) hok₁
+  have ⟨hwt₂, hty₂⟩ := compileHasAttr_wf hwε.left.right hwo₁.left hok
+  simp only [wf_ifSome_option hwt₁ hwt₂ hty₂]
+
+private theorem typeOf_compile_extHasAttr_option_bool {x : Expr} {a : Attr} {attrs : List Attr} {t : Term} {εnv : SymEnv}
+  (hwε : εnv.WellFormedFor (.extHasAttr x a attrs))
+  (hok : compile (.extHasAttr x a attrs) εnv = .ok t) :
+  t.typeOf = .option .bool
+:= compile_extHasAttr_typeOf hwε hok
+
+private theorem typeOf_compile_set_option_set {xs : List Expr} {t : Term} {εnv : SymEnv}
+  (hok : compile (.set xs) εnv = .ok t) :
+  ∃ ty, t.typeOf = .option (.set ty)
+:= by
+  replace ⟨ts, _, hok⟩ := compile_set_ok_implies hok
+  replace ⟨ty, _, _, _, _, hok⟩ := compileSet_ok_implies hok
+  subst hok
+  exists ty
+  apply typeOf_ifAllSome_option_type
+  simp only [setOf, Term.typeOf]
+
+private theorem typeOf_compile_record_option_record {axs : List (Attr × Expr)} {t : Term} {εnv : SymEnv}
+  (hok : compile (.record axs) εnv = .ok t) :
+  ∃ rty, t.typeOf = .option (.record rty)
+:= by
+  replace ⟨ts, _, hok⟩ := compile_record_ok_implies hok
+  subst hok
+  simp only [compileRecord, someOf, recordOf]
+  have ⟨rty, hty⟩ := @typeOf_term_record_is_record_type (Map.make (List.map (Prod.map id option.get) ts))
+  exists rty
+  apply typeOf_ifAllSome_option_type
+  simp only [typeOf_term_some, hty]
+
+private theorem typeOf_compile_call_option_types {xfn : ExtFun} {xs : List Expr} {t : Term} {εnv : SymEnv}
+  (hwε : εnv.WellFormedFor (.call xfn xs))
+  (hok : compile (.call xfn xs) εnv = .ok t) :
+  t.typeOf = .option .bool ∨ (∃ xty, t.typeOf = .option (.ext xty)) ∨ t.typeOf = .option (.bitvec 64)
+:= by
+  replace ⟨ts, ha, hok⟩ := compile_call_ok_implies hok
+  replace ha := List.forall₂_implies_all_right ha
+  replace hwε := wf_εnv_for_call_implies hwε
+  have hwf : ∀ t ∈ ts, t.WellFormed εnv.entities := by
+    intro t ht
+    replace ⟨x, ha, hr⟩ := ha t ht
+    simp only [compile_wf (hwε x ha) hr]
+  have ⟨_, hty⟩ := compileCall_wf_types hwf hok
+  split at hty <;>
+  simp only [hty, TermType.option.injEq, TermType.prim.injEq,
+    TermPrimType.ext.injEq, exists_eq', or_true, exists_const, or_false, reduceCtorEq]
+
+private theorem compile_interpret_lit_in_valueFootprint {p : Prim} {εnv : SymEnv} {I : Interpretation} {t : Term} {uid : EntityUID}
+  (hwε : εnv.WellFormedFor (Expr.lit p))
+  (hI  : I.WellFormed εnv.entities)
+  (hok : compile (Expr.lit p) εnv = .ok t)
+  (ht  : t.interpret I = .some (.entity uid)) :
+  ∃ tₑ ∈ valueFootprint (Expr.lit p) εnv, tₑ.interpret I = .some (.entity uid)
+:= by
+  have hc := not_compilesToBoolOrNone_of_interpret_entity hok ht
+  have hok' := hok
+  have hty := compile_isOptionEntityType hwε hI hok ht
+  simp only [compile, compilePrim] at hok
+  cases p <;> simp only [someOf, Except.ok.injEq] at hok
+  case bool | int | string =>
+    subst hok
+    simp only [TermType.isOptionEntityType, Term.typeOf, typeOf_bool, typeOf_bv, typeOf_term_prim_string, Bool.false_eq_true] at hty
+  case entityUID uid' =>
+    split at hok <;> simp only [Except.ok.injEq, reduceCtorEq] at hok
+    subst hok
+    simp only [interpret_term_some, interpret_term_prim, Term.some.injEq, Term.prim.injEq,
+      TermPrim.entity.injEq] at ht
+    subst ht
+    exists (Term.some (Term.entity uid'))
+    simp only [valueFootprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok', TermType.isOptionEntityType, Term.typeOf,
+      typeOf_term_prim_entity, ↓reduceIte, Set.mem_singleton, interpret_term_some,
+      interpret_term_prim, and_self]
+
+private theorem compile_interpret_var_in_valueFootprint {v : Var} {εnv : SymEnv} {I : Interpretation} {t : Term} {uid : EntityUID}
+  (hwε : εnv.WellFormedFor (Expr.var v))
+  (hI  : I.WellFormed εnv.entities)
+  (hok : compile (Expr.var v) εnv = .ok t)
+  (ht  : t.interpret I = .some (.entity uid)) :
+  ∃ tₑ ∈ valueFootprint (Expr.var v) εnv, tₑ.interpret I = .some (.entity uid)
+:= by
+  have hc := not_compilesToBoolOrNone_of_interpret_entity hok ht
+  have hok' := hok
+  have hty := compile_isOptionEntityType hwε hI hok ht
+  simp only [compile, compileVar] at hok
+  cases v <;>
+  simp only [someOf] at hok <;>
+  split at hok <;>
+  simp only [Except.ok.injEq, reduceCtorEq] at hok <;>
+  subst hok
+  case principal | action | resource =>
+    simp only [interpret_term_some, Term.some.injEq] at ht
+    simp only [valueFootprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok', hty, ↓reduceIte, Set.mem_singleton,
+      exists_eq_left, interpret_term_some, ht]
+  case context hty' =>
+    cases h : εnv.request.context.typeOf <;>
+    simp only [TermType.isRecordType, h, Bool.false_eq_true] at hty'
+    simp only [TermType.isOptionEntityType, typeOf_term_some, h, Bool.false_eq_true] at hty
+
+private theorem interpret_ifSome_ite_eq_implies {t₁ t₂ t₃ t₄ : Term} {ty : TermType} {I : Interpretation} {εs : SymEntities} :
+  I.WellFormed εs → t₁.WellFormed εs → t₂.WellFormed εs → t₃.WellFormed εs →
+  t₁.typeOf = .option .bool → t₂.typeOf = .option ty → t₂.typeOf = t₃.typeOf →
+  (ifSome t₁ (Factory.ite (option.get t₁) t₂ t₃)).interpret I = t₄.some →
+  t₂.interpret I = t₄.some ∨ t₃.interpret I = t₄.some
+:= by
+  intro hI hwt₁ hwt₂ hwt₃ hty₁ hty₂ hty heq
+  have hwo₁ := wf_option_get hwt₁ hty₁
+  have hwi := wf_ite hwo₁.left hwt₂ hwt₃ hwo₁.right hty
+  rw [hty₂] at hwi
+  have hlit := interpret_term_wfl hI hwt₁
+  rw [hty₁] at hlit
+  simp only [interpret_ifSome hI hwt₁ hwi.left] at heq
+  have hwi' := interpret_term_wf hI hwi.left
+  rw [hwi.right] at hwi'
+  have hopt := wfl_of_type_option_is_option hlit.left hlit.right
+  rcases hopt with hopt | ⟨t', hopt, _⟩ <;>
+  simp only [hopt, pe_ifSome_none hwi'.right, pe_ifSome_some hwi'.right, reduceCtorEq] at heq
+  rename_i hty'
+  simp only [interpret_ite hI hwo₁.left hwt₂ hwt₃ hwo₁.right hty,
+    interpret_option_get I hwt₁ hty₁, hopt, pe_option_get'_some] at heq
+  replace hlit := interpret_term_wfl hI hwt₁
+  simp only [hopt] at hlit
+  have hwt' := wf_term_some_implies hlit.left.left
+  replace hlit := isLiteral_some.mp hlit.left.right
+  have hb := wfl_of_type_bool_is_true_or_false (And.intro hwt' hlit) hty'
+  rcases hb with hb | hb <;>
+  subst hb <;>
+  simp only [pe_ite_false, pe_ite_true] at heq <;>
+  simp only [heq, true_or, or_true]
+
+theorem compile_interpret_in_valueFootprint {x : Expr} {εnv : SymEnv} {I : Interpretation} {t : Term} {uid : EntityUID}
+  (hwε : εnv.WellFormedFor x)
+  (hI  : I.WellFormed εnv.entities)
+  (hok : compile x εnv = .ok t)
+  (ht  : t.interpret I = .some (.entity uid)) :
+  ∃ tₑ ∈ valueFootprint x εnv, tₑ.interpret I = .some (.entity uid)
+:= by
+  induction x using compile.induct generalizing t
+  all_goals have hc := not_compilesToBoolOrNone_of_interpret_entity hok ht
+  case case1 =>
+    exact compile_interpret_lit_in_valueFootprint hwε hI hok ht
+  case case2 =>
+    exact compile_interpret_var_in_valueFootprint hwε hI hok ht
+  case case3 x₁ x₂ x₃ _ ih₂ ih₃ =>
+    replace hwε := wf_εnv_for_ite_implies hwε
+    replace ⟨t₁, hok₁, hok⟩ := compile_ite_ok_implies hok
+    simp only [valueFootprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofBranch, hok₁]
+    split at hok <;> simp only
+    · rw [eq_comm] at hok
+      exact ih₂ hwε.right.left hok ht
+    · rw [eq_comm] at hok
+      exact ih₃ hwε.right.right hok ht
+    · replace ⟨hty₁, t₂, t₃, hok₂, hok₃, hty, hok⟩ := hok
+      subst hok
+      simp only [Set.mem_union]
+      have hwt₁ := (compile_wf hwε.left hok₁).left
+      have ⟨hwt₂, _, hty₂⟩ := compile_wf hwε.right.left hok₂
+      have hwt₃ := (compile_wf hwε.right.right hok₃).left
+      have heq := interpret_ifSome_ite_eq_implies hI hwt₁ hwt₂ hwt₃ hty₁ hty₂ hty ht
+      rcases heq with heq | heq
+      · have ⟨tₑ, ih₂⟩ := ih₂ hwε.right.left hok₂ heq
+        exists tₑ
+        simp only [ih₂, or_true, true_or, and_self]
+      · have ⟨tₑ, ih₃⟩ := ih₃ hwε.right.right hok₃ heq
+        exists tₑ
+        simp only [ih₃, or_true, and_self]
+  case' case4 =>
+    have hty := typeOf_compile_and_option_bool hwε hok
+  case' case5 =>
+    have hty := typeOf_compile_or_option_bool hwε hok
+  case' case6 =>
+    have hty := typeOf_compile_unaryApp_option_types hwε hok
+    rcases hty with hty | hty
+  case case7 | case10 =>
+    exists t
+    simp [valueFootprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok, compile_isOptionEntityType hwε hI hok ht,
+      ↓reduceIte, Set.mem_singleton, ht]
+  case' case8 =>
+    have hty := typeOf_compile_hasAttr_option_bool hwε hok
+  case' case9 =>
+    have hty := typeOf_compile_extHasAttr_option_bool hwε hok
+  case' case11 =>
+    have ⟨_, hty⟩ := typeOf_compile_set_option_set hok
+  case' case12 =>
+    have ⟨_, hty⟩ := typeOf_compile_record_option_record hok
+  case' case13 =>
+    have hty := typeOf_compile_call_option_types hwε hok
+    rcases hty with hty | ⟨_, hty⟩ | hty
+  all_goals {
+    have hty' := compile_isOptionEntityType hwε hI hok ht
+    simp only [TermType.isOptionEntityType, hty, Bool.false_eq_true] at hty'
+  }
 
 -------------------
 
@@ -256,7 +549,7 @@ private theorem same_footprint_ancestors {x : Expr} {ft : Set Term} {εnv : SymE
   (hwε  : εnv.WellFormedFor x)
   (hI₁  : I₁.WellFormed εnv.entities)
   (hsm  : εnv.SameOn ft I₁ I₂)
-  (hft  : footprint.ofEntity x εnv ⊆ ft)
+  (hft  : valueFootprint x εnv ⊆ ft)
   (hok  : compile x εnv = Except.ok t)
   (heq₁ : Term.interpret I₁ t = Term.interpret I₂ t)
   (heq₂ : Term.interpret I₂ t = t'.some)
@@ -284,13 +577,9 @@ private theorem same_footprint_ancestors {x : Expr} {ft : Set Term} {εnv : SymE
       Option.bind_eq_some_iff, Option.some.injEq] at hancs
   replace ⟨_, ⟨δ, hδ, hancs⟩, hf⟩ := hancs
   subst hancs
-  have hin : t ∈ ft := by
-    apply Set.mem_subset_mem _ hft
-    have hty : t.typeOf = .option (.entity uid₁.ty) := by
-      rw [← (interpret_term_wf hI₁ (compile_wf hwε hok).left).right, heq₁]
-      simp only [typeOf_term_some, typeOf_term_prim_entity]
-    simp only [footprint.ofEntity, hok, hty, TermType.isOptionEntityType, ↓reduceIte, Set.mem_singleton]
-  exact (hsm.right uid₁.ty δ hδ).right.left ety₂ f hf t hin uid₁ heq₁ rfl
+  have ⟨tₑ, hin, heq₃⟩ := compile_interpret_in_valueFootprint hwε hI₁ hok heq₁
+  replace hin := Set.mem_subset_mem hin hft
+  exact (hsm.right uid₁.ty δ hδ).right.left ety₂ f hf tₑ hin uid₁ heq₃ rfl
 
 private theorem compile_interpret_unaryApp_on_footprint {op₁ : UnaryOp} {x₁ : Expr} {ft : Set Term} {εnv : SymEnv} {I₁ I₂ : Interpretation} {t : Term}
   (hwε : εnv.WellFormedFor (.unaryApp op₁ x₁))
