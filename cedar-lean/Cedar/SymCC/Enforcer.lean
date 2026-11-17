@@ -52,6 +52,14 @@ def compilesToBoolOrNone (x : Expr) (εnv : SymEnv) : Bool :=
   | .ok (.some (.prim (.bool _))) => true
   | .ok (.none _)                 => true
   | _                             => false
+<<<<<<< HEAD
+||||||| parent of 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
+Returns the terms corresponding to subexpressions of `x` of the following form:
+=======
+
+/--
+Returns the terms corresponding to subexpressions of `x` of the following form:
+>>>>>>> 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
 
 /--
 Returns the compiled term of `x` if it has option-entity type.
@@ -73,6 +81,10 @@ Returns the terms that the compiled term of `x` may evaluate to when it
 evaluates to an entity.
 
 All returned terms are of type `TermType.option .entity`.
+
+If `x` compiles to a boolean literal or `.none`, its footprint is empty: the
+compiled term does not depend on the entity hierarchy, so no constraints are
+needed for it.
 -/
 def valueFootprint (x : Expr) (εnv : SymEnv) : Set Term :=
   if compilesToBoolOrNone x εnv then Set.empty else

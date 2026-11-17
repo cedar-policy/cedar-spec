@@ -132,7 +132,17 @@ theorem mem_footprint_option_entity {x : Expr} {εnv : SymEnv} {t : Term} :
     simp only [hc, ↓reduceIte, Set.not_mem_empty] at hin
   all_goals simp only [footprint] at hin
   case case2 hc | case3 hc =>
+<<<<<<< HEAD
     simp only [hc, Bool.false_eq_true, ↓reduceIte, Set.not_mem_empty] at hin
+||||||| parent of 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
+  induction x using footprint.induct <;> simp only [footprint] at hin
+  case case1 | case2 =>
+    exact mem_footprint_ofEntity_option_entity hin
+  case case3 ih₁ ih₂ ih₃ =>
+=======
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
+    exact mem_footprint_ofEntity_option_entity hin
+>>>>>>> 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
   case case4 hc ih₁ ih₂ ih₃ =>
     simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     replace hin := mem_footprint_ofBranch_mem hin
@@ -157,7 +167,24 @@ theorem mem_footprint_option_entity {x : Expr} {εnv : SymEnv} {t : Term} :
       · simp only [Set.not_mem_empty] at hin
     · exact ih₁ hin
     · exact ih₂ hin
+<<<<<<< HEAD
   case case8 hc ih | case9 hc ih | case10 hc ih | case11 hc ih =>
+||||||| parent of 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
+  case case7 ih =>
+    rw [Set.mem_union] at hin
+    rcases hin with hin | hin
+    · exact mem_footprint_ofEntity_option_entity hin
+    · exact ih hin
+  case case8 ih | case9 ih | case10 ih =>
+=======
+  case case8 hc ih =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
+    rw [Set.mem_union] at hin
+    rcases hin with hin | hin
+    · exact mem_footprint_ofEntity_option_entity hin
+    · exact ih hin
+  case case9 hc ih | case10 hc ih | case11 hc ih =>
+>>>>>>> 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
     simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     exact ih hin
   case case12 hc ih | case13 hc ih =>
@@ -196,7 +223,17 @@ private theorem mem_footprint_exists_wf_prop {p : Expr → Prop} {x : Expr} {t�
     simp only [hc, ↓reduceIte, Set.not_mem_empty] at hin
   all_goals simp only [footprint] at hin
   case case2 hc | case3 hc =>
+<<<<<<< HEAD
     simp only [hc, Bool.false_eq_true, ↓reduceIte, Set.not_mem_empty] at hin
+||||||| parent of 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
+  induction x using footprint.induct <;> simp only [footprint] at hin
+  case case1 | case2 =>
+    exact mem_footprint_ofEntity_exists_wf hwε hp hin
+  case case3 ih₁ ih₂ ih₃ =>
+=======
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
+    exact mem_footprint_ofEntity_exists_wf hwε hp hin
+>>>>>>> 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
   case case4 hc ih₁ ih₂ ih₃ =>
     simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     have ⟨hwε₁, hwε₂, hwε₃⟩ := wf_εnv_for_ite_implies hwε
@@ -235,7 +272,21 @@ private theorem mem_footprint_exists_wf_prop {p : Expr → Prop} {x : Expr} {t�
     · exact ih₂ hwε₂ hwe₂ hin
   case case8 hc ih =>
     simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
+<<<<<<< HEAD
     exact ih (wf_εnv_for_getAttr_implies hwε) (hget hp) hin
+||||||| parent of 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
+  case case7 ih =>
+    rw [Set.mem_union] at hin
+    rcases hin with hin | hin
+    · exact mem_footprint_ofEntity_exists_wf hwε hp hin
+    · exact ih (wf_εnv_for_getAttr_implies hwε) (hget hp) hin
+  case case8 ih =>
+=======
+    rw [Set.mem_union] at hin
+    rcases hin with hin | hin
+    · exact mem_footprint_ofEntity_exists_wf hwε hp hin
+    · exact ih (wf_εnv_for_getAttr_implies hwε) (hget hp) hin
+>>>>>>> 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
   case case9 hc ih =>
     simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     exact ih (wf_εnv_for_hasAttr_implies hwε) (hhas hp) hin

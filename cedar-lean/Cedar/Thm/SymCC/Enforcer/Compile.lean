@@ -222,7 +222,13 @@ private theorem compile_interpret_lit_in_valueFootprint {p : Prim} {εnv : SymEn
       TermPrim.entity.injEq] at ht
     subst ht
     exists (Term.some (Term.entity uid'))
+<<<<<<< HEAD
     simp only [valueFootprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok', TermType.isOptionEntityType, Term.typeOf,
+||||||| parent of 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
+    simp only [footprint, footprint.ofEntity, hok', TermType.isOptionEntityType, Term.typeOf,
+=======
+    simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok', TermType.isOptionEntityType, Term.typeOf,
+>>>>>>> 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
       typeOf_term_prim_entity, ↓reduceIte, Set.mem_singleton, interpret_term_some,
       interpret_term_prim, and_self]
 
@@ -244,7 +250,13 @@ private theorem compile_interpret_var_in_valueFootprint {v : Var} {εnv : SymEnv
   subst hok
   case principal | action | resource =>
     simp only [interpret_term_some, Term.some.injEq] at ht
+<<<<<<< HEAD
     simp only [valueFootprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok', hty, ↓reduceIte, Set.mem_singleton,
+||||||| parent of 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
+    simp only [footprint, footprint.ofEntity, hok', hty, ↓reduceIte, Set.mem_singleton,
+=======
+    simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok', hty, ↓reduceIte, Set.mem_singleton,
+>>>>>>> 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
       exists_eq_left, interpret_term_some, ht]
   case context hty' =>
     cases h : εnv.request.context.typeOf <;>
@@ -298,7 +310,13 @@ theorem compile_interpret_in_valueFootprint {x : Expr} {εnv : SymEnv} {I : Inte
   case case3 x₁ x₂ x₃ _ ih₂ ih₃ =>
     replace hwε := wf_εnv_for_ite_implies hwε
     replace ⟨t₁, hok₁, hok⟩ := compile_ite_ok_implies hok
+<<<<<<< HEAD
     simp only [valueFootprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofBranch, hok₁]
+||||||| parent of 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
+    simp only [footprint, footprint.ofBranch, hok₁]
+=======
+    simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofBranch, hok₁]
+>>>>>>> 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
     split at hok <;> simp only
     · rw [eq_comm] at hok
       exact ih₂ hwε.right.left hok ht
@@ -318,6 +336,16 @@ theorem compile_interpret_in_valueFootprint {x : Expr} {εnv : SymEnv} {I : Inte
       · have ⟨tₑ, ih₃⟩ := ih₃ hwε.right.right hok₃ heq
         exists tₑ
         simp only [ih₃, or_true, and_self]
+<<<<<<< HEAD
+||||||| parent of 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
+  case case10 =>
+    simp only [footprint, footprint.ofEntity, hok, compile_isOptionEntityType hwε hI hok ht,
+      ↓reduceIte, Set.mem_union, Set.mem_singleton, exists_eq_or_imp, ht, true_or]
+=======
+  case case10 =>
+    simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok, compile_isOptionEntityType hwε hI hok ht,
+      ↓reduceIte, Set.mem_union, Set.mem_singleton, exists_eq_or_imp, ht, true_or]
+>>>>>>> 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
   case' case4 =>
     have hty := typeOf_compile_and_option_bool hwε hok
   case' case5 =>
@@ -327,8 +355,16 @@ theorem compile_interpret_in_valueFootprint {x : Expr} {εnv : SymEnv} {I : Inte
     rcases hty with hty | hty
   case case7 | case10 =>
     exists t
+<<<<<<< HEAD
     simp [valueFootprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok, compile_isOptionEntityType hwε hI hok ht,
       ↓reduceIte, Set.mem_singleton, ht]
+||||||| parent of 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
+    simp [footprint, footprint.ofEntity, hok, compile_isOptionEntityType hwε hI hok ht,
+      ↓reduceIte, Set.mem_union, Set.mem_singleton, ht]
+=======
+    simp [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok, compile_isOptionEntityType hwε hI hok ht,
+      ↓reduceIte, Set.mem_union, Set.mem_singleton, ht]
+>>>>>>> 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
   case' case8 =>
     have hty := typeOf_compile_hasAttr_option_bool hwε hok
   case' case9 =>
@@ -981,7 +1017,13 @@ private theorem compile_interpret_getAttr_on_footprint {x₁ : Expr}  {a₁ : At
 := by
   rcases compilesToBoolOrNone_interpret_eq_or (I₁ := I₁) (I₂ := I₂) hok with heq | hc
   · exact heq
+<<<<<<< HEAD
   simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte] at hft
+||||||| parent of 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
+  simp only [footprint, footprint.ofEntity, hok, Set.union_subset] at hft
+=======
+  simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok, Set.union_subset] at hft
+>>>>>>> 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
   replace hwε := wf_εnv_for_getAttr_implies hwε
   replace ⟨t₁, t₂, hok₁, hok, heq⟩ := compile_getAttr_ok_implies hok
   subst heq
