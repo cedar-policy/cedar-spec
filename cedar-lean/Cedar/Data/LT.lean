@@ -230,14 +230,14 @@ public instance Char.strictLT : StrictLT Char where
 
 public instance String.strictLT : StrictLT String where
   asymmetric a b   := by
-    simp [String.lt_iff]
+    simp only [← String.toList_lt_toList_iff]
     have h : StrictLT (List Char) := by apply List.strictLT
     apply h.asymmetric
   transitive a b c := by
-    simp [String.lt_iff]
+    simp only [← String.toList_lt_toList_iff]
     have h : StrictLT (List Char) := by apply List.strictLT
     apply h.transitive
   connected  a b   := by
-    simp [String.lt_iff, String.ext_iff]
+    simp only [← String.toList_lt_toList_iff, ne_eq, String.ext_iff]
     have h : StrictLT (List Char) := by apply List.strictLT
     apply h.connected

@@ -53,7 +53,6 @@ theorem type_of_record_inversion_forall {axs : List (Attr × Expr)} {c : Capabil
     case nil =>
       simp [←List.mapM'_eq_mapM] at h₁
       cases h₂ : Except.map (fun x => (hd.fst, x.fst)) (typeOf hd.snd c env) <;> simp [h₂] at h₁
-      cases h₃ : List.mapM' (fun x => Except.map (fun x_1 => (x.fst, x_1.fst)) (typeOf x.snd c env)) tl <;> simp [h₃] at h₁
     case cons hd' tl' =>
       apply List.Forall₂.cons
       {

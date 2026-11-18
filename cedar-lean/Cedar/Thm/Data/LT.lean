@@ -392,7 +392,7 @@ theorem ValueAttrs.lt_irrefl (vs : List (Attr × Value)) :
   case nil => simp only [ValueAttrs.lt, Bool.false_eq_true, not_false_eq_true]
   case cons hd tl =>
     replace (a, v) := hd
-    simp only [ValueAttrs.lt, String.lt_irrefl, decide_false, decide_true, Bool.true_and,
+    simp only [ValueAttrs.lt, Std.lt_irrefl, decide_false, decide_true, Bool.true_and,
       Bool.false_or, Bool.and_self, Bool.or_eq_true, not_or, Bool.not_eq_true]
     simp only [Value.lt_irrefl v, ValueAttrs.lt_irrefl tl, and_self]
 termination_by sizeOf vs
@@ -459,16 +459,15 @@ theorem ValueAttrs.lt_asym {vs₁ vs₂: List (Attr × Value)} :
       have h₂ := String.strictLT.asymmetric a₁ a₂ h₁
       have h₃ := StrictLT.not_eq a₁ a₂ h₁
       rw [eq_comm] at h₃
-      simp only [h₃, false_implies, and_true, ge_iff_le]
-      simp_all only [String.not_lt]
+      simp only [h₃, false_implies, and_true]
+      simp_all only [Std.not_lt]
     case inr =>
       have ⟨hl₁, h₂⟩ := h₁
       subst hl₁
       simp only
       have h₃ := Value.lt_asymm h₂
       simp only [LT.lt, Bool.not_eq_true] at h₃
-      simp only [String.le_refl, h₃, imp_self, and_self, forall_const,
-        true_and]
+      simp only [Std.lt_irrefl, h₃, imp_self, forall_const]
       have h₅ := Value.lt_not_eq h₂
       rw [eq_comm] at h₅
       simp [h₅]
@@ -479,7 +478,7 @@ theorem ValueAttrs.lt_asym {vs₁ vs₂: List (Attr × Value)} :
     simp only
     have h₃ := ValueAttrs.lt_asym h₃
     have h₅ := Value.lt_irrefl v₁
-    simp only [String.le_refl, h₅, imp_self, and_self, h₃]
+    simp only [Std.lt_irrefl, h₅, imp_self, h₃, not_false_eq_true, and_self]
 end
 
 mutual

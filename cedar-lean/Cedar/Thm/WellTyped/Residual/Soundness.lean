@@ -112,7 +112,7 @@ InstanceOfType env v (Residual.and x₁ x₂ (CedarType.bool BoolType.anyBool)).
     replace ⟨b, hᵢ₁⟩ := instance_of_anyBool_is_bool hᵢ₁
     simp only [hᵢ₁] at hᵢ₁'
     simp only [Result.as, hᵢ₁', Coe.coe, Value.asBool, Except.bind_ok] at h₃
-    cases b <;> simp at h₃
+    cases b <;> simp [-Except.map_eq_ok] at h₃
     case false =>
       rw [←h₃]
       simp only [bool_is_instance_of_anyBool]
@@ -155,7 +155,7 @@ InstanceOfType env v (Residual.or x₁ x₂ (CedarType.bool BoolType.anyBool)).t
     replace ⟨b, hᵢ₁⟩ := instance_of_anyBool_is_bool hᵢ₁
     simp only [hᵢ₁] at hᵢ₁'
     simp only [Result.as, hᵢ₁', Coe.coe, Value.asBool, Except.bind_ok] at h₃
-    cases b <;> simp at h₃
+    cases b <;> simp [-Except.map_eq_ok] at h₃
     case false =>
       generalize hᵢ₂' : x₂.evaluate request entities = res₂
       cases res₂

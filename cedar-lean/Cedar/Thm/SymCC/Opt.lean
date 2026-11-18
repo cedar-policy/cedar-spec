@@ -195,7 +195,7 @@ theorem cp_satAssertsOpt?_eqv_satAsserts?_ok {ps wps : Policies} {cps : List Com
   case cons cp cps =>
   cases ps <;> simp at *
   case cons p ps =>
-  simp [do_eq_ok] at hwps hcps
+  simp [do_eq_ok, -Except.map_eq_ok] at hwps hcps
   replace ⟨wp, hwp, hwps⟩ := hwps
   simp [Functor.map, Except.map] at hwps
   split at hwps <;> simp at hwps
@@ -269,7 +269,7 @@ theorem cpset_satAssertsOpt?_eqv_satAsserts?_ok {pss wpss : List Policies} {cpse
   case cons cpset cpsets =>
   cases pss <;> simp at *
   case cons ps pss =>
-  simp [do_eq_ok] at hwpss hcpsets
+  simp [do_eq_ok, -Except.map_eq_ok] at hwpss hcpsets
   replace ⟨wps, hwps, hwpss⟩ := hwpss
   simp [Functor.map, Except.map] at hwpss
   split at hwpss <;> simp at hwpss

@@ -2011,7 +2011,7 @@ public theorem wf_tagOf {εs : SymEntities} {t₁ t₂ : Term} {ety : EntityType
       assumption
     · simp only [Map.wf_iff_sorted, Map.toList_mk_id]
       apply List.SortedBy.cons_cons
-      simp only [String.reduceLT]
+      simp only [← String.toList_lt_toList_iff]; decide
       apply List.SortedBy.cons_nil
   · simp [typeOf_term_record_eq, hty₁, hty₂, Map.mapOnValues_doubleton]
 
