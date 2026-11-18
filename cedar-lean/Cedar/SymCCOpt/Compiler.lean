@@ -71,10 +71,10 @@ Empty the `footprint` if the `term` is `⊙true`, `⊙false`, or `.none`. This
 corresponds to the `compilesToBoolOrNone` check in the `footprint` function in
 SymCC/Enforcer.lean.
 -/
-def CompileResult.dropBoolOrNoneFootprint : CompileResult → CompileResult
-  | { term := .some (.prim (.bool b)), .. } => { term := .some (.prim (.bool b)), footprint := ∅ }
-  | { term := .none ty, .. }                => { term := .none ty, footprint := ∅ }
-  | res => res
+def CompileResult.dropBoolOrNoneFootprint (res : CompileResult) : CompileResult :=
+  match res.term with
+  | .some (.prim (.bool _)) | .none _ => { res with footprint := ∅ }
+  | _ => res
 
 /-- Map on the `Term`, leaving the `footprint` unchanged -/
 def CompileResult.mapTerm (f : Term → Term) : CompileResult → CompileResult
