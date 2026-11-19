@@ -40,6 +40,39 @@ open Data Spec SymCC Factory
 
 -------------------
 
+private theorem compilesToBoolOrNone_interpret_eq_or {x : Expr} {εnv : SymEnv} {I₁ I₂ : Interpretation} {t : Term}
+  (hok : compile x εnv = .ok t) :
+  t.interpret I₁ = t.interpret I₂ ∨ ¬ compilesToBoolOrNone x εnv = true
+:= by
+  simp only [compilesToBoolOrNone, hok]
+  split
+  · rename_i h
+    simp only [Except.ok.injEq] at h
+    subst h
+    simp only [interpret_term_some, interpret_term_prim, true_or]
+  · rename_i h
+    simp only [Except.ok.injEq] at h
+    subst h
+    simp only [interpret_term_none, true_or]
+  · simp only [Bool.false_eq_true, not_false_eq_true, or_true]
+
+private theorem not_compilesToBoolOrNone_of_interpret_entity {x : Expr} {εnv : SymEnv} {I : Interpretation} {t : Term} {uid : EntityUID}
+  (hok : compile x εnv = .ok t)
+  (ht  : t.interpret I = .some (.entity uid)) :
+  ¬ compilesToBoolOrNone x εnv = true
+:= by
+  simp only [compilesToBoolOrNone, hok]
+  split
+  · rename_i h
+    simp only [Except.ok.injEq] at h
+    subst h
+    simp only [interpret_term_some, interpret_term_prim, Term.some.injEq, Term.prim.injEq, reduceCtorEq] at ht
+  · rename_i h
+    simp only [Except.ok.injEq] at h
+    subst h
+    simp only [interpret_term_none, reduceCtorEq] at ht
+  · simp only [Bool.false_eq_true, not_false_eq_true]
+
 private theorem compile_isOptionEntityType {x : Expr} {εnv : SymEnv} {I : Interpretation} {t : Term} {uid : EntityUID}
   (hwε : εnv.WellFormedFor x)
   (hI  : I.WellFormed εnv.entities)
@@ -174,6 +207,7 @@ private theorem compile_interpret_lit_in_footprint {p : Prim} {εnv : SymEnv} {I
   (ht  : t.interpret I = .some (.entity uid)) :
   ∃ tₑ ∈ footprint (Expr.lit p) εnv, tₑ.interpret I = .some (.entity uid)
 := by
+  have hc := not_compilesToBoolOrNone_of_interpret_entity hok ht
   have hok' := hok
   have hty := compile_isOptionEntityType hwε hI hok ht
   simp only [compile, compilePrim] at hok
@@ -188,7 +222,7 @@ private theorem compile_interpret_lit_in_footprint {p : Prim} {εnv : SymEnv} {I
       TermPrim.entity.injEq] at ht
     subst ht
     exists (Term.some (Term.entity uid'))
-    simp only [footprint, footprint.ofEntity, hok', TermType.isOptionEntityType, Term.typeOf,
+    simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok', TermType.isOptionEntityType, Term.typeOf,
       typeOf_term_prim_entity, ↓reduceIte, Set.mem_singleton, interpret_term_some,
       interpret_term_prim, and_self]
 
@@ -199,6 +233,7 @@ private theorem compile_interpret_var_in_footprint {v : Var} {εnv : SymEnv} {I 
   (ht  : t.interpret I = .some (.entity uid)) :
   ∃ tₑ ∈ footprint (Expr.var v) εnv, tₑ.interpret I = .some (.entity uid)
 := by
+  have hc := not_compilesToBoolOrNone_of_interpret_entity hok ht
   have hok' := hok
   have hty := compile_isOptionEntityType hwε hI hok ht
   simp only [compile, compileVar] at hok
@@ -209,7 +244,7 @@ private theorem compile_interpret_var_in_footprint {v : Var} {εnv : SymEnv} {I 
   subst hok
   case principal | action | resource =>
     simp only [interpret_term_some, Term.some.injEq] at ht
-    simp only [footprint, footprint.ofEntity, hok', hty, ↓reduceIte, Set.mem_singleton,
+    simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok', hty, ↓reduceIte, Set.mem_singleton,
       exists_eq_left, interpret_term_some, ht]
   case context hty' =>
     cases h : εnv.request.context.typeOf <;>
@@ -255,6 +290,7 @@ theorem compile_interpret_in_footprint {x : Expr} {εnv : SymEnv} {I : Interpret
   ∃ tₑ ∈ footprint x εnv, tₑ.interpret I = .some (.entity uid)
 := by
   induction x using compile.induct generalizing t
+  all_goals have hc := not_compilesToBoolOrNone_of_interpret_entity hok ht
   case case1 =>
     exact compile_interpret_lit_in_footprint hwε hI hok ht
   case case2 =>
@@ -262,7 +298,7 @@ theorem compile_interpret_in_footprint {x : Expr} {εnv : SymEnv} {I : Interpret
   case case3 x₁ x₂ x₃ _ ih₂ ih₃ =>
     replace hwε := wf_εnv_for_ite_implies hwε
     replace ⟨t₁, hok₁, hok⟩ := compile_ite_ok_implies hok
-    simp only [footprint, footprint.ofBranch, hok₁]
+    simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofBranch, hok₁]
     split at hok <;> simp only
     · rw [eq_comm] at hok
       exact ih₂ hwε.right.left hok ht
@@ -283,7 +319,7 @@ theorem compile_interpret_in_footprint {x : Expr} {εnv : SymEnv} {I : Interpret
         exists tₑ
         simp only [ih₃, or_true, and_self]
   case case10 =>
-    simp only [footprint, footprint.ofEntity, hok, compile_isOptionEntityType hwε hI hok ht,
+    simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok, compile_isOptionEntityType hwε hI hok ht,
       ↓reduceIte, Set.mem_union, Set.mem_singleton, exists_eq_or_imp, ht, true_or]
   case' case4 =>
     have hty := typeOf_compile_and_option_bool hwε hok
@@ -294,7 +330,7 @@ theorem compile_interpret_in_footprint {x : Expr} {εnv : SymEnv} {I : Interpret
     rcases hty with hty | hty
   case case7 =>
     exists t
-    simp [footprint, footprint.ofEntity, hok, compile_isOptionEntityType hwε hI hok ht,
+    simp [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok, compile_isOptionEntityType hwε hI hok ht,
       ↓reduceIte, Set.mem_union, Set.mem_singleton, ht]
   case' case8 =>
     have hty := typeOf_compile_hasAttr_option_bool hwε hok
@@ -415,10 +451,12 @@ private theorem compile_interpret_ite_on_footprint {x₁ x₂ x₃ : Expr} {ft :
   (ih₃ : CompileInterpretOnFootprint x₃ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
+  rcases compilesToBoolOrNone_interpret_eq_or (I₁ := I₁) (I₂ := I₂) hok with heq | hc
+  · exact heq
   replace hwε := wf_εnv_for_ite_implies hwε
   replace ⟨t₁, hok₁, hok⟩ := compile_ite_ok_implies hok
   split at hok <;>
-  simp only [footprint, footprint.ofBranch, hok₁] at hft
+  simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofBranch, hok₁] at hft
   · rw [eq_comm] at hok
     exact ih₂ hwε.right.left hI₁ hI₂ hsm hft hok
   · rw [eq_comm] at hok
@@ -447,6 +485,8 @@ private theorem compile_interpret_and_on_footprint {x₁ x₂ : Expr} {ft : Set 
   (ih₂ : CompileInterpretOnFootprint x₂ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
+  rcases compilesToBoolOrNone_interpret_eq_or (I₁ := I₁) (I₂ := I₂) hok with heq | hc
+  · exact heq
   replace ⟨t₁, hok₁, hok⟩ := compile_and_ok_implies hok
   split at hok
   · subst hok
@@ -457,7 +497,7 @@ private theorem compile_interpret_and_on_footprint {x₁ x₂ : Expr} {ft : Set 
     replace hwε := wf_εnv_for_and_implies hwε
     cases ht : decide (t₁ = .some (.bool true)) <;>
     simp only [decide_eq_true_eq, decide_eq_false_iff_not] at ht <;>
-    simp only [footprint, footprint.ofBranch, hok₁] at hft
+    simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofBranch, hok₁] at hft
     · simp only [Set.union_subset] at hft
       specialize @ih₁ t₁ hwε.left hI₁ hI₂ hsm hft.left.left hok₁
       specialize @ih₂ t₂ hwε.right hI₁ hI₂ hsm hft.left.right hok₂
@@ -482,6 +522,8 @@ private theorem compile_interpret_or_on_footprint {x₁ x₂ : Expr} {ft : Set T
   (ih₂ : CompileInterpretOnFootprint x₂ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
+  rcases compilesToBoolOrNone_interpret_eq_or (I₁ := I₁) (I₂ := I₂) hok with heq | hc
+  · exact heq
   replace ⟨t₁, hok₁, hok⟩ := compile_or_ok_implies hok
   split at hok
   · subst hok
@@ -492,7 +534,7 @@ private theorem compile_interpret_or_on_footprint {x₁ x₂ : Expr} {ft : Set T
     replace hwε := wf_εnv_for_or_implies hwε
     cases ht : decide (t₁ = .some (.bool false)) <;>
     simp only [decide_eq_true_eq, decide_eq_false_iff_not] at ht <;>
-    simp only [footprint, footprint.ofBranch, hok₁] at hft
+    simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofBranch, hok₁] at hft
     · simp only [Set.union_subset] at hft
       specialize @ih₁ t₁ hwε.left hI₁ hI₂ hsm hft.left.left hok₁
       specialize @ih₂ t₂ hwε.right hI₁ hI₂ hsm hft.right hok₂
@@ -552,7 +594,9 @@ private theorem compile_interpret_unaryApp_on_footprint {op₁ : UnaryOp} {x₁ 
   (ih₁ : CompileInterpretOnFootprint x₁ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
-  simp only [footprint] at hft
+  rcases compilesToBoolOrNone_interpret_eq_or (I₁ := I₁) (I₂ := I₂) hok with heq | hc
+  · exact heq
+  simp only [footprint, hc] at hft
   replace hwε := wf_εnv_for_unaryApp_implies hwε
   replace ⟨t₁, t₂, hok₁, hok, heq⟩ := compile_unaryApp_ok_implies hok
   subst heq
@@ -581,10 +625,12 @@ private theorem compile_interpret_binaryApp_on_footprint {op₂ : BinaryOp} {x�
   (ih₂ : CompileInterpretOnFootprint x₂ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
+  rcases compilesToBoolOrNone_interpret_eq_or (I₁ := I₁) (I₂ := I₂) hok with heq | hc
+  · exact heq
   replace ⟨t₁, t₂, t₃, hok₁, hok₂, hok, ht⟩ := compile_binaryApp_ok_implies hok
   subst ht
   replace ⟨hwε, hwt₂⟩ := wf_εnv_for_binaryApp_implies hwε
-  simp only [footprint, Set.union_subset] at hft
+  simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, Set.union_subset] at hft
   specialize @ih₁ t₁ hwε hI₁ hI₂ hsm hft.left.right hok₁
   specialize @ih₂ t₂ hwt₂ hI₁ hI₂ hsm hft.right hok₂
   replace ⟨ty₁, hwt₁, hwo₁⟩ := compile_option_get_wf hwε hok₁
@@ -749,10 +795,12 @@ private theorem compile_interpret_hasAttr_on_footprint {x₁ : Expr}  {a₁ : At
   (ih₁ : CompileInterpretOnFootprint x₁ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
+  rcases compilesToBoolOrNone_interpret_eq_or (I₁ := I₁) (I₂ := I₂) hok with heq | hc
+  · exact heq
   replace hwε := wf_εnv_for_hasAttr_implies hwε
   replace ⟨t₁, t₂, hok₁, hok, heq⟩ := compile_hasAttr_ok_implies hok
   subst heq
-  simp only [footprint] at hft
+  simp only [footprint, hc] at hft
   specialize ih₁ hwε hI₁ hI₂ hsm hft hok₁
   have ⟨ty₁, ⟨hwt₁, hty₁⟩, hwo₁⟩ := compile_option_get_wf hwε hok₁
   replace ⟨t₃, rty, hok, hr⟩ := compileHasAttr_ok_implies hok
@@ -911,7 +959,9 @@ private theorem compile_interpret_extHasAttr_on_footprint {x₁ : Expr} {a₁ : 
   (ih₁ : CompileInterpretOnFootprint x₁ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
-  simp only [footprint] at hft
+  rcases compilesToBoolOrNone_interpret_eq_or (I₁ := I₁) (I₂ := I₂) hok with heq | hc
+  · exact heq
+  simp only [footprint, hc] at hft
   replace hwε' := wf_εnv_for_extHasAttr_implies hwε
   rw [compile.eq_def] at hok
   simp only at hok
@@ -932,7 +982,9 @@ private theorem compile_interpret_getAttr_on_footprint {x₁ : Expr}  {a₁ : At
   (ih₁ : CompileInterpretOnFootprint x₁ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
-  simp only [footprint, footprint.ofEntity, hok, Set.union_subset] at hft
+  rcases compilesToBoolOrNone_interpret_eq_or (I₁ := I₁) (I₂ := I₂) hok with heq | hc
+  · exact heq
+  simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, footprint.ofEntity, hok, Set.union_subset] at hft
   replace hwε := wf_εnv_for_getAttr_implies hwε
   replace ⟨t₁, t₂, hok₁, hok, heq⟩ := compile_getAttr_ok_implies hok
   subst heq
@@ -997,8 +1049,10 @@ private theorem compile_interpret_set_on_footprint {xs : List Expr} {ft : Set Te
   (ih  : ∀ x ∈ xs, CompileInterpretOnFootprint x ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
+  rcases compilesToBoolOrNone_interpret_eq_or (I₁ := I₁) (I₂ := I₂) hok with heq | hc
+  · exact heq
   replace hwε := wf_εnv_for_set_implies hwε
-  simp only [footprint, List.mapUnion₁_eq_mapUnion (footprint · εnv)] at hft
+  simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, List.mapUnion₁_eq_mapUnion (footprint · εnv)] at hft
   replace ⟨ts, ha, hok⟩ := compile_set_ok_implies hok
   replace ⟨ty, hd, tl, heq, hty, hok⟩ := compileSet_ok_implies hok
   subst hok
@@ -1053,7 +1107,9 @@ private theorem compile_interpret_record_on_footprint {axs : List (Attr × Expr)
     CompileInterpretOnFootprint x₁ ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
-  simp only [footprint, List.mapUnion₂_eq_mapUnion (λ x : Attr × Expr => footprint x.snd εnv)] at hft
+  rcases compilesToBoolOrNone_interpret_eq_or (I₁ := I₁) (I₂ := I₂) hok with heq | hc
+  · exact heq
+  simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, List.mapUnion₂_eq_mapUnion (λ x : Attr × Expr => footprint x.snd εnv)] at hft
   replace hft : ∀ ax ∈ axs, footprint ax.snd εnv ⊆ ft := by
     intro x hx
     have h := List.mem_implies_subset_mapUnion (fun x : Attr × Expr => footprint x.snd εnv) hx
@@ -1093,7 +1149,9 @@ private theorem compile_interpret_call_on_footprint {xfn : ExtFun} {xs : List Ex
   (ih  : ∀ x ∈ xs, CompileInterpretOnFootprint x ft εnv I₁ I₂) :
   t.interpret I₁ = t.interpret I₂
 := by
-  simp only [footprint, List.mapUnion₁_eq_mapUnion (footprint · εnv)] at hft
+  rcases compilesToBoolOrNone_interpret_eq_or (I₁ := I₁) (I₂ := I₂) hok with heq | hc
+  · exact heq
+  simp only [footprint, hc, Bool.false_eq_true, ↓reduceIte, List.mapUnion₁_eq_mapUnion (footprint · εnv)] at hft
   replace hwε := wf_εnv_for_call_implies hwε
   replace ⟨ts, ha, hok⟩ := compile_call_ok_implies hok
   have hwts := compile_wfs hwε ha

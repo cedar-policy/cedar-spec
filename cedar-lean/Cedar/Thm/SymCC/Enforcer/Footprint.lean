@@ -104,39 +104,51 @@ theorem mem_footprint_option_entity {x : Expr} {εnv : SymEnv} {t : Term} :
   t ∈ footprint x εnv → ∃ ety, t.typeOf = .option (.entity ety)
 := by
   intro hin
-  induction x using footprint.induct <;> simp only [footprint] at hin
-  case case1 | case2 =>
+  induction x using footprint.induct (εnv := εnv)
+  case case1 hc =>
+    unfold footprint at hin
+    simp only [hc, ↓reduceIte, Set.not_mem_empty] at hin
+  all_goals simp only [footprint] at hin
+  case case2 hc | case3 hc =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     exact mem_footprint_ofEntity_option_entity hin
-  case case3 ih₁ ih₂ ih₃ =>
+  case case4 hc ih₁ ih₂ ih₃ =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     replace hin := mem_footprint_ofBranch_mem hin
     rcases hin with hin | hin | hin
     · exact ih₁ hin
     · exact ih₂ hin
     · exact ih₃ hin
-  case case4 ih₁ ih₂ | case5 ih₁ ih₂ =>
+  case case5 hc ih₁ ih₂ | case6 hc ih₁ ih₂ =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     replace hin := mem_footprint_ofBranch_mem hin
     simp only [Set.not_mem_empty, or_false, false_or] at hin
     rcases hin with hin | hin
     · exact ih₁ hin
     · exact ih₂ hin
-  case case6 ih₁ ih₂ =>
+  case case7 hc ih₁ ih₂ =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     simp only [Set.mem_union] at hin
     rcases hin with (hin | hin) | hin
     · exact mem_footprint_ofEntity_option_entity hin
     · exact ih₁ hin
     · exact ih₂ hin
-  case case7 ih =>
+  case case8 hc ih =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     rw [Set.mem_union] at hin
     rcases hin with hin | hin
     · exact mem_footprint_ofEntity_option_entity hin
     · exact ih hin
-  case case8 ih | case9 ih | case10 ih =>
+  case case9 hc ih | case10 hc ih | case11 hc ih =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     exact ih hin
-  case case11 _ _ ih | case12 _ ih =>
+  case case12 hc ih | case13 hc ih =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     simp only [List.mapUnion₁_eq_mapUnion (footprint · εnv), List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨xᵢ, hinᵢ, hin⟩ := hin
     exact ih xᵢ hinᵢ hin
-  case case13 _ ih =>
+  case case14 hc ih =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     simp only [List.mapUnion₂_eq_mapUnion λ y : Attr × Expr => footprint y.snd εnv,
       List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨(aᵢ, xᵢ), hinᵢ, hin⟩ := hin
@@ -160,10 +172,16 @@ private theorem mem_footprint_exists_wf_prop {p : Expr → Prop} {x : Expr} {t�
   (hcall : ∀ {f xs}, p (Expr.call f xs) → ∀ x ∈ xs, p x) :
   ∃ xₑ, εnv.WellFormedFor xₑ ∧ p xₑ ∧ compile xₑ εnv = .ok tₑ
 := by
-  induction x using footprint.induct <;> simp only [footprint] at hin
-  case case1 | case2 =>
+  induction x using footprint.induct (εnv := εnv)
+  case case1 hc =>
+    unfold footprint at hin
+    simp only [hc, ↓reduceIte, Set.not_mem_empty] at hin
+  all_goals simp only [footprint] at hin
+  case case2 hc | case3 hc =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     exact mem_footprint_ofEntity_exists_wf hwε hp hin
-  case case3 ih₁ ih₂ ih₃ =>
+  case case4 hc ih₁ ih₂ ih₃ =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     have ⟨hwε₁, hwε₂, hwε₃⟩ := wf_εnv_for_ite_implies hwε
     have ⟨hwe₁, hwe₂, hwe₃⟩ := hite hp
     replace hin := mem_footprint_ofBranch_mem hin
@@ -171,19 +189,21 @@ private theorem mem_footprint_exists_wf_prop {p : Expr → Prop} {x : Expr} {t�
     · exact ih₁ hwε₁ hwe₁ hin
     · exact ih₂ hwε₂ hwe₂ hin
     · exact ih₃ hwε₃ hwe₃ hin
-  case' case4 =>
+  case' case5 =>
     have ⟨hwε₁, hwε₂⟩ := wf_εnv_for_and_implies hwε
     have ⟨hwe₁, hwe₂⟩ := hand hp
-  case' case5 =>
+  case' case6 =>
     have ⟨hwε₁, hwε₂⟩ := wf_εnv_for_or_implies hwε
     have ⟨hwe₁, hwe₂⟩ := hor hp
-  case case4 ih₁ ih₂ | case5 ih₁ ih₂ =>
+  case case5 hc ih₁ ih₂ | case6 hc ih₁ ih₂ =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     replace hin := mem_footprint_ofBranch_mem hin
     simp only [Set.not_mem_empty, or_false, false_or] at hin
     rcases hin with hin | hin
     · exact ih₁ hwε₁ hwe₁ hin
     · exact ih₂ hwε₂ hwe₂ hin
-  case case6 ih₁ ih₂ =>
+  case case7 hc ih₁ ih₂ =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     have ⟨hwε₁, hwε₂⟩ := wf_εnv_for_binaryApp_implies hwε
     have ⟨hwe₁, hwe₂⟩ := happ₂ hp
     simp only [Set.mem_union] at hin
@@ -191,29 +211,35 @@ private theorem mem_footprint_exists_wf_prop {p : Expr → Prop} {x : Expr} {t�
     · exact mem_footprint_ofEntity_exists_wf hwε hp hin
     · exact ih₁ hwε₁ hwe₁ hin
     · exact ih₂ hwε₂ hwe₂ hin
-  case case7 ih =>
+  case case8 hc ih =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     rw [Set.mem_union] at hin
     rcases hin with hin | hin
     · exact mem_footprint_ofEntity_exists_wf hwε hp hin
     · exact ih (wf_εnv_for_getAttr_implies hwε) (hget hp) hin
-  case case8 ih =>
+  case case9 hc ih =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     exact ih (wf_εnv_for_hasAttr_implies hwε) (hhas hp) hin
-  case case9 ih =>
+  case case10 hc ih =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     exact ih (wf_εnv_for_extHasAttr_implies hwε) (hexthas hp) hin
-  case case10 ih =>
+  case case11 hc ih =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     exact ih (wf_εnv_for_unaryApp_implies hwε) (happ₁ hp) hin
-  case' case11 =>
+  case' case12 =>
     replace hwε := wf_εnv_for_call_implies hwε
     replace hwe := hcall hp
-  case' case12 =>
+  case' case13 =>
     replace hwε := wf_εnv_for_set_implies hwε
     replace hwe := hset hp
-  case case11 _ _ ih | case12 _ ih =>
+  case case12 hc ih | case13 hc ih =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     simp only [List.mapUnion₁_eq_mapUnion (footprint · εnv),
       List.mem_mapUnion_iff_mem_exists] at hin
     replace ⟨xᵢ, hinᵢ, hin⟩ := hin
     exact ih xᵢ hinᵢ (hwε xᵢ hinᵢ) (hwe xᵢ hinᵢ) hin
-  case case13 _ ih =>
+  case case14 hc ih =>
+    simp only [hc, Bool.false_eq_true, ↓reduceIte] at hin
     replace hwε := wf_εnv_for_record_implies hwε
     replace hwe := hrec hp
     simp only [List.mapUnion₂_eq_mapUnion λ y : Attr × Expr => footprint y.snd εnv,
