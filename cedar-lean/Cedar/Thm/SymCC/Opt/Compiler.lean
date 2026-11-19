@@ -457,7 +457,6 @@ Reduces correctness of `Opt.compile` on `x` to correctness of the
 per-constructor result `r` (before `dropBoolOrNoneFootprint`) against the
 per-constructor footprint `F` (before the `compilesToBoolOrNone` check).
 -/
-<<<<<<< HEAD
 private theorem Opt.compile.correctness_of_core {x : Expr} {εnv : SymEnv} {r : SymCC.Result Opt.CompileResult} {F L : Data.Set Term}
   (hopt : Opt.compile x εnv = r.map Opt.CompileResult.dropBoolOrNoneFootprint)
   (hfp : footprint x εnv = if compilesToBoolOrNone x εnv then Data.Set.empty else F)
@@ -473,22 +472,6 @@ private theorem Opt.compile.correctness_of_core {x : Expr} {εnv : SymEnv} {r : 
   )
 := by
   rw [hopt, hfp, hlfp, h]
-||||||| parent of 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
-=======
-private theorem Opt.compile.correctness_of_core {x : Expr} {εnv : SymEnv} {r : SymCC.Result Opt.CompileResult} {F : Data.Set Term}
-  (hopt : Opt.compile x εnv = r.map Opt.CompileResult.dropBoolOrNoneFootprint)
-  (hfp : footprint x εnv = if compilesToBoolOrNone x εnv then Data.Set.empty else F)
-  (h : r = (do
-    let term ← SymCC.compile x εnv
-    .ok { term, footprint := F })) :
-  Opt.compile x εnv = (do
-    let term ← SymCC.compile x εnv
-    let footprint := footprint x εnv
-    .ok { term, footprint }
-  )
-:= by
-  rw [hopt, hfp, h]
->>>>>>> 7b7583168 (Drop the footprint of subexpressions that compile to a constant)
   cases hc : SymCC.compile x εnv <;>
     simp only [compilesToBoolOrNone, hc, Except.bind_ok, Except.bind_err, Except.map]
   rename_i t
