@@ -54,16 +54,43 @@ def compilesToBoolOrNone (x : Expr) (εnv : SymEnv) : Bool :=
   | _                             => false
 
 /--
-Returns the terms corresponding to subexpressions of `x` of the following form:
+Returns the compiled term of `x` if it has option-entity type.
+-/
+def footprint.ofEntity (x : Expr) (εnv : SymEnv) : Set Term :=
+  match compile x εnv with
+  | .ok t => if t.typeOf.isOptionEntityType then Set.singleton t else Set.empty
+  | _     => Set.empty
 
-  * A variable term with an entity type
-  * An entity reference literal
-  * An attribute access expression with an entity type
-  * A binary (`getTag`) expression with an entity type
+def footprint.ofBranch (εnv : SymEnv) (x₁ : Expr) (ft₁ ft₂ ft₃ : Set Term) : Set Term :=
+  match compile x₁ εnv with
+  | .ok (.some (.bool true))  => ft₂
+  | .ok (.some (.bool false)) => ft₃
+  | .ok _                     => ft₁ ∪ ft₂ ∪ ft₃
+  | .error _                  => Set.empty
 
-These are the only basic expressions in Cedar that may evaluate to an entity.
-All other expressions that evaluate to an entity are build up from the above
-basic expresions.
+/--
+Returns the terms that the compiled term of `x` may evaluate to when it
+evaluates to an entity.
+
+All returned terms are of type `TermType.option .entity`.
+
+If `x` compiles to a boolean literal or `.none`, its footprint is empty: the
+compiled term does not depend on the entity hierarchy, so no constraints are
+needed for it.
+-/
+def valueFootprint (x : Expr) (εnv : SymEnv) : Set Term :=
+  if compilesToBoolOrNone x εnv then Set.empty else
+  match x with
+  | .ite x₁ x₂ x₃      => footprint.ofBranch εnv x₁ Set.empty (valueFootprint x₂ εnv) (valueFootprint x₃ εnv)
+  | .lit _
+  | .var _
+  | .getAttr _ _
+  | .binaryApp _ _ _   => footprint.ofEntity x εnv
+  | _                  => Set.empty
+
+/--
+Returns the terms whose ancestors the compiled term of `x` may read. Only `in`
+reads ancestors, and only from its first operand.
 
 All returned terms are of type `TermType.option .entity`.
 
@@ -75,29 +102,18 @@ def footprint (x : Expr) (εnv : SymEnv) : Set Term :=
   if compilesToBoolOrNone x εnv then Set.empty else
   match x with
   | .lit _
-  | .var _             => ofEntity
-  | .ite x₁ x₂ x₃      => ofBranch x₁ (footprint x₁ εnv) (footprint x₂ εnv) (footprint x₃ εnv)
-  | .and x₁ x₂         => ofBranch x₁ (footprint x₁ εnv) (footprint x₂ εnv) Set.empty
-  | .or x₁ x₂          => ofBranch x₁ (footprint x₁ εnv) Set.empty (footprint x₂ εnv)
-  | .binaryApp _ x₁ x₂ => ofEntity ∪ footprint x₁ εnv ∪ footprint x₂ εnv
-  | .getAttr x₁ _      => ofEntity ∪ footprint x₁ εnv
+  | .var _             => Set.empty
+  | .ite x₁ x₂ x₃      => footprint.ofBranch εnv x₁ (footprint x₁ εnv) (footprint x₂ εnv) (footprint x₃ εnv)
+  | .and x₁ x₂         => footprint.ofBranch εnv x₁ (footprint x₁ εnv) (footprint x₂ εnv) Set.empty
+  | .or x₁ x₂          => footprint.ofBranch εnv x₁ (footprint x₁ εnv) Set.empty (footprint x₂ εnv)
+  | .binaryApp op x₁ x₂ => (if op = .mem then valueFootprint x₁ εnv else Set.empty) ∪ footprint x₁ εnv ∪ footprint x₂ εnv
+  | .getAttr x₁ _      => footprint x₁ εnv
   | .hasAttr x₁ _
   | .extHasAttr x₁ _ _
   | .unaryApp _ x₁     => footprint x₁ εnv
   | .call _ xs
   | .set xs            => xs.mapUnion₁ (λ ⟨xᵢ, _⟩ => footprint xᵢ εnv)
   | .record axs        => axs.mapUnion₂ (λ ⟨(_, xᵢ), _⟩ => footprint xᵢ εnv)
-where
-  ofEntity : Set Term :=
-    match compile x εnv with
-    | .ok t => if t.typeOf.isOptionEntityType then Set.singleton t else Set.empty
-    | _     => Set.empty
-  ofBranch (x₁ : Expr) (ft₁ ft₂ ft₃ : Set Term) : Set Term :=
-    match compile x₁ εnv with
-    | .ok (.some (.bool true))  => ft₂
-    | .ok (.some (.bool false)) => ft₃
-    | .ok _                     => ft₁ ∪ ft₂ ∪ ft₃
-    | .error _                  => Set.empty
 
 /--
 Returns the set of Terms corresponding to the footprints of xs.

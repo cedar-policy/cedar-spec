@@ -68,7 +68,7 @@ def CompiledPolicy.compile (p : Policy) (s : CompiledSchema) (reqty : Validation
   let Γ := s.typeEnv reqty
   let policy ← wellTypedPolicy p Γ |>.mapError .validationError
   let εnv := s.symEnv reqty
-  let { term, footprint } ← Opt.compile policy.toExpr εnv |>.mapError .symCCError
+  let { term, footprint, .. } ← Opt.compile policy.toExpr εnv |>.mapError .symCCError
   let acyclicity := footprint.map (SymCC.acyclicity · εnv.entities)
   .ok { term, εnv, policy, footprint, acyclicity }
 
@@ -100,7 +100,7 @@ def CompiledPolicySet.compile (ps : Policies) (s : CompiledSchema) (reqty : Vali
   let Γ := s.typeEnv reqty
   let policies ← wellTypedPolicies ps Γ |>.mapError .validationError
   let εnv := s.symEnv reqty
-  let { term, footprint } ← Opt.isAuthorized policies εnv |>.mapError .symCCError
+  let { term, footprint, .. } ← Opt.isAuthorized policies εnv |>.mapError .symCCError
   let acyclicity := footprint.map (SymCC.acyclicity · εnv.entities)
   .ok { term, εnv, policies, footprint, acyclicity }
 

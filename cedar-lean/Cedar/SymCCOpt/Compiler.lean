@@ -48,44 +48,38 @@ structure CompileResult where
   /-- Well-formed term of the appropriate type, representing the compiled expression -/
   term : Term
   /--
-  The "footprint" of the compiled expression.
-
-  This is the terms corresponding to subexpressions of the compiled expression
-  of the following form:
-
-  * A variable term with an entity type
-  * An entity reference literal
-  * An attribute access expression with an entity type
-  * A binary (`getTag`) expression with an entity type
-
-  These are the only basic expressions in Cedar that may evaluate to an entity.
-  All other expressions that evaluate to an entity are built up from the above
-  basic expresions.
+  The "footprint" of the compiled expression: the terms whose ancestors the
+  compiled expression may read. This corresponds to `SymCC.footprint`.
 
   All terms in the `footprint` are of type `TermType.option .entity`.
   -/
   footprint : Set Term
+  /--
+  The terms that the compiled expression may evaluate to when it evaluates to
+  an entity. This corresponds to `SymCC.valueFootprint`, and is used to
+  compute the `footprint` of `in`.
+  -/
+  valueFootprint : Set Term := Set.empty
 
 /--
-Empty the `footprint` if the `term` is `⊙true`, `⊙false`, or `.none`. This
+Empty the `footprint` and `valueFootprint` if the `term` is `⊙true`, `⊙false`, or `.none`. This
 corresponds to the `compilesToBoolOrNone` check in the `footprint` function in
 SymCC/Enforcer.lean.
 -/
 def CompileResult.dropBoolOrNoneFootprint (res : CompileResult) : CompileResult :=
   match res.term with
-  | .some (.prim (.bool _)) | .none _ => { res with footprint := ∅ }
+  | .some (.prim (.bool _)) | .none _ => { res with footprint := ∅, valueFootprint := ∅ }
   | _ => res
 
-/-- Map on the `Term`, leaving the `footprint` unchanged -/
-def CompileResult.mapTerm (f : Term → Term) : CompileResult → CompileResult
-  | { term, footprint } => { term := f term, footprint }
+/-- Map on the `Term`, leaving the `footprint` unchanged and clearing the `valueFootprint` -/
+def CompileResult.mapTerm (f : Term → Term) (res : CompileResult) : CompileResult :=
+  { res with term := f res.term, valueFootprint := ∅ }
 
 /--
 Return the footprint of this compiled term _itself_ (not counting its subexpressions).
 Only terms of option-entity type have any direct footprint.
 
-This corresponds to `ofEntity` in the `footprint` function in
-SymCC/Enforcer.lean, except that we only call it when compiling to `Term` was
+This corresponds to `footprint.ofEntity` in SymCC/Enforcer.lean, except that we only call it when compiling to `Term` was
 successful, so it takes a `Term` argument rather than `Result Term`.
 -/
 def directFootprint (t : Term) : Set Term :=
@@ -98,10 +92,7 @@ def compilePrim (p : Prim) (εs : SymEntities) : Result CompileResult :=
   | .string s      => .ok { term := ⊙s, footprint := ∅ }
   | .entityUID uid =>
       if εs.isValidEntityUID uid then
-        -- essentially inlining our `directFootprint` function, no need to
-        -- compute `.typeOf`, we know the term is option-entity type
-        let term := ⊙uid
-        .ok { term, footprint := Set.singleton term }
+        .ok { term := ⊙uid, footprint := ∅, valueFootprint := Set.singleton (⊙uid) }
       else
         .error .typeError
 
@@ -109,32 +100,21 @@ def compileVar (v : Var) (req : SymRequest) : Result CompileResult :=
   match v with
   | .principal =>
       if req.principal.typeOf.isEntityType then
-        -- essentially inlining our `directFootprint` function, no need to
-        -- compute `.typeOf`, we know the term is option-entity type
-        let term := ⊙req.principal
-        .ok { term, footprint := Set.singleton term }
+        .ok { term := ⊙req.principal, footprint := ∅, valueFootprint := Set.singleton (⊙req.principal) }
       else
         .error .typeError
   | .action    =>
       if req.action.typeOf.isEntityType then
-        -- essentially inlining our `directFootprint` function, no need to
-        -- compute `.typeOf`, we know the term is option-entity type
-        let term := ⊙req.action
-        .ok { term, footprint := Set.singleton term }
+        .ok { term := ⊙req.action, footprint := ∅, valueFootprint := Set.singleton (⊙req.action) }
       else
         .error .typeError
   | .resource  =>
       if req.resource.typeOf.isEntityType then
-        -- essentially inlining our `directFootprint` function, no need to
-        -- compute `.typeOf`, we know the term is option-entity type
-        let term := ⊙req.resource
-        .ok { term, footprint := Set.singleton term }
+        .ok { term := ⊙req.resource, footprint := ∅, valueFootprint := Set.singleton (⊙req.resource) }
       else
         .error .typeError
   | .context   =>
       if req.context.typeOf.isRecordType then
-        -- essentially inlining our `directFootprint` function, no need to
-        -- compute `.typeOf`, we know the term is _not_ option-entity type
         .ok { term := ⊙req.context, footprint := ∅ }
       else
         .error .typeError
@@ -149,64 +129,55 @@ def compileApp₁ (op₁ : UnaryOp) (arg : CompileResult) : Result CompileResult
   | _, _                   => .error .typeError
 
 def compileApp₂ (op₂ : BinaryOp) (arg₁ arg₂ : CompileResult) (εs : SymEntities) : Result CompileResult := do
-  -- compute the footprint of the arguments, not counting the contribution of the `directFootprint` of
-  -- the binaryOp term (if any) (particularly relevant for `getTag`)
-  let argsFootprint := arg₁.footprint ∪ arg₂.footprint
-  -- mimicking the behavior of the unoptimized compiler in how the direct
-  -- footprint for the binaryOp term itself is computed.
-  -- Assuming everything is well-typed, this will be ∅ in all cases except `getTag` (because none of
-  -- the other binary operators can have entity type), but we still add this in every case because:
-  -- (1) we want the two compilers to agree even on non-well-typed inputs, for ease of proofs; and
-  -- (2) the unoptimized compiler adds this
-  let binaryOpFootprint := λ term => directFootprint (ifSome arg₁.term (ifSome arg₂.term term))
+  let footprint := arg₁.footprint ∪ arg₂.footprint
   -- for the rest of this function, we consider only the `option.get`-ed args.
   -- see detailed note in the toplevel optimized `compile` function below.
   let t₁ := option.get arg₁.term
   let t₂ := option.get arg₂.term
   match op₂, t₁.typeOf, t₂.typeOf with
   | .eq, ty₁, ty₂                           => let term := if (← reducibleEq ty₁ ty₂) then ⊙eq t₁ t₂ else ⊙false
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                               .ok { term, footprint }
   | .less, .bitvec 64, .bitvec 64           => let term := ⊙bvslt t₁ t₂
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                               .ok { term, footprint }
   | .less, .ext .datetime, .ext .datetime   => let term := ⊙bvslt (ext.datetime.val t₁) (ext.datetime.val t₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                               .ok { term, footprint }
   | .less, .ext .duration, .ext .duration   => let term := ⊙bvslt (ext.duration.val t₁) (ext.duration.val t₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                               .ok { term, footprint }
   | .lessEq, .bitvec 64, .bitvec 64         => let term := ⊙bvsle t₁ t₂
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                               .ok { term, footprint }
   | .lessEq, .ext .datetime, .ext .datetime => let term := ⊙bvsle (ext.datetime.val t₁) (ext.datetime.val t₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                               .ok { term, footprint }
   | .lessEq, .ext .duration, .ext .duration => let term := ⊙bvsle (ext.duration.val t₁) (ext.duration.val t₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                               .ok { term, footprint }
   | .add, .bitvec 64, .bitvec 64            => let term := ifFalse (bvsaddo t₁ t₂) (bvadd t₁ t₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                               .ok { term, footprint }
   | .sub, .bitvec 64, .bitvec 64            => let term := ifFalse (bvssubo t₁ t₂) (bvsub t₁ t₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                               .ok { term, footprint }
   | .mul, .bitvec 64, .bitvec 64            => let term := ifFalse (bvsmulo t₁ t₂) (bvmul t₁ t₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                               .ok { term, footprint }
   | .contains, .set ty₁, ty₂                => if ty₁ = ty₂
                                                 then
                                                   let term := ⊙set.member t₂ t₁
-                                                  .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                                  .ok { term, footprint }
                                                 else .error .typeError
   | .containsAll, .set ty₁, .set ty₂        => if ty₁ = ty₂
                                                 then
                                                   let term := ⊙set.subset t₂ t₁
-                                                  .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                                  .ok { term, footprint }
                                                 else .error .typeError
   | .containsAny, .set ty₁, .set ty₂        => if ty₁ = ty₂
                                                 then
                                                   let term := ⊙set.intersects t₁ t₂
-                                                  .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                                  .ok { term, footprint }
                                                 else .error .typeError
   | .mem, .entity ety₁, .entity ety₂        => let term := ⊙compileInₑ t₁ t₂ (εs.ancestorsOfType ety₁ ety₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                               .ok { term, footprint := arg₁.valueFootprint ∪ footprint }
   | .mem, .entity ety₁, .set (.entity ety₂) => let term := ⊙compileInₛ t₁ t₂ (εs.ancestorsOfType ety₁ ety₂)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                               .ok { term, footprint := arg₁.valueFootprint ∪ footprint }
   | .hasTag, .entity ety, .string           => let term ← compileHasTag t₁ t₂ (εs.tags ety)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                               .ok { term, footprint }
   | .getTag, .entity ety, .string           => let term ← compileGetTag t₁ t₂ (εs.tags ety)
-                                               .ok { term, footprint := argsFootprint ∪ binaryOpFootprint term }
+                                               .ok { term, footprint }
   | _, _, _                                 => .error .typeError
 
 def compileHasAttr (arg : CompileResult) (a : Attr) (εs : SymEntities) : Result CompileResult := do
@@ -220,9 +191,6 @@ def compileHasAttr (arg : CompileResult) (a : Attr) (εs : SymEntities) : Result
   | _ => .error .typeError
 
 def compileGetAttr (arg : CompileResult) (a : Attr) (εs : SymEntities) : Result CompileResult := do
-  -- mimicking the behavior of the unoptimized compiler in how the direct
-  -- footprint for the getAttr term itself is computed
-  let getAttrFootprint := λ term => directFootprint (ifSome arg.term term)
   -- for the rest of this function, we consider only the `option.get`-ed args.
   -- see detailed note in the toplevel optimized `compile` function below.
   let term := option.get arg.term
@@ -233,7 +201,7 @@ def compileGetAttr (arg : CompileResult) (a : Attr) (εs : SymEntities) : Result
     | .some (.option _) => record.get attrs a
     | .some _           => ⊙(record.get attrs a)
     | .none             => .error .noSuchAttribute
-    .ok { term, footprint := getAttrFootprint term ∪ arg.footprint }
+    .ok { term, footprint := arg.footprint }
   | _ => .error .typeError
 
 def compileIf (arg₁ : CompileResult) (arg₂ arg₃ : Result CompileResult) : Result CompileResult := do
@@ -247,6 +215,7 @@ def compileIf (arg₁ : CompileResult) (arg₂ arg₃ : Result CompileResult) : 
     then .ok {
       term := ifSome arg₁.term (ite (option.get arg₁.term) arg₂.term arg₃.term)
       footprint := arg₁.footprint ∪ arg₂.footprint ∪ arg₃.footprint
+      valueFootprint := arg₂.valueFootprint ∪ arg₃.valueFootprint
     }
     else .error .typeError
   | _, _ => .error .typeError
@@ -308,7 +277,7 @@ def compileRecord (ats : List (Attr × CompileResult)) : CompileResult :=
   }
 
 def compileCall₀ {α} [Coe α Ext] (mk : String → Option α) : CompileResult → Result CompileResult
-  | { term := .some (.prim (.string s)), footprint } =>
+  | { term := .some (.prim (.string s)), footprint, .. } =>
     match (mk s) with
     | .some v => .ok { term := ⊙ .prim (.ext v), footprint }
     | .none   => .error .typeError
@@ -410,7 +379,8 @@ def compile (x : Expr) (εnv : SymEnv) : Result CompileResult := (do
     -- In order to give our optimized `compileApp₂` easy access to both the original and
     -- `option.get` terms, we pass the original ones here.
     let res ← compileApp₂ op₂ res₁ res₂ εnv.entities
-    res.mapTerm λ term => (ifSome res₁.term (ifSome res₂.term term))
+    let res := res.mapTerm λ term => (ifSome res₁.term (ifSome res₂.term term))
+    .ok { res with valueFootprint := directFootprint res.term }
   | .hasAttr x a =>
     let res₁ ← compile x εnv
     let res ← compileHasAttr (res₁.mapTerm option.get) a εnv.entities
@@ -424,7 +394,8 @@ def compile (x : Expr) (εnv : SymEnv) : Result CompileResult := (do
     -- similar to the comment above in the `binaryApp` case
     let res₁ ← compile x εnv
     let res ← compileGetAttr res₁ a εnv.entities
-    res.mapTerm (ifSome res₁.term ·)
+    let res := res.mapTerm (ifSome res₁.term ·)
+    .ok { res with valueFootprint := directFootprint res.term }
   | .set xs =>
     let ress ← xs.mapM₁ (λ ⟨x₁, _⟩ => compile x₁ εnv)
     compileSet ress
