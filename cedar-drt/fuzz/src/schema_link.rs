@@ -110,6 +110,10 @@ fn partition(
 
     for (ns, nsdef) in full.0.iter() {
         for (name, entity_type) in &nsdef.entity_types {
+            // Both halves must keep a full definition for an enum to merge.
+            if matches!(entity_type.kind, EntityTypeKind::Enum { .. }) {
+                continue;
+            }
             let partial = if u.arbitrary()? {
                 &mut second
             } else {
@@ -120,17 +124,11 @@ fn partition(
                 .get_mut(ns)
                 .expect("both halves were cloned from the same fragment")
                 .entity_types;
-            if matches!(entity_type.kind, EntityTypeKind::Enum { .. }) {
-                // External declarations cannot resolve to enums, so define the
-                // enum in one half and omit it from the other.
-                entity_types.remove(name);
-            } else {
-                declare_entity_type_external(
-                    entity_types
-                        .get_mut(name)
-                        .expect("both halves contain the entity type"),
-                );
-            }
+            declare_entity_type_external(
+                entity_types
+                    .get_mut(name)
+                    .expect("both halves contain the entity type"),
+            );
         }
         for id in nsdef.actions.keys() {
             let declarer = if u.arbitrary()? {
@@ -204,5 +202,52 @@ pub fn check_expected_link(ffi: &CedarLeanFfi, input: &SchemaLinkInput) {
             input,
             Some(&response),
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn complementary_partitions_keep_enum_definitions() {
+        let complete = Schema::from_cedarschema_str(r#"entity E enum ["y", "x"];"#)
+            .expect("valid enum schema")
+            .0;
+        let (first, second) = partition(&complete, &mut Unstructured::new(&[]))
+            .expect("enum definitions need no partition choices")
+            .expect("both fragments build");
+        let input = SchemaLinkInput {
+            first,
+            second,
+            expected: Some(complete),
+        };
+        let ffi = CedarLeanFfi::new();
+        check_expected_link(&ffi, &input);
+        check_agreement(&ffi, &input);
+    }
+
+    #[test]
+    fn shared_enum_ancestor_links_in_both_groupings() {
+        let parse = |src| Schema::from_cedarschema_str(src).expect("valid schema").0;
+        let p = parse(r#"entity E enum ["x"]; external entity X; entity Y in [X, E];"#);
+        let c = parse("external entity X; external entity Y in X;");
+        let d = parse(r#"entity E enum ["x"]; entity X in E;"#);
+        let expected = parse(r#"entity E enum ["x"]; entity X in E; entity Y in [X, E];"#);
+        let ffi = CedarLeanFfi::new();
+        let link = |first: Schema, second: Schema, expected: Option<Schema>| {
+            let input = SchemaLinkInput {
+                first,
+                second,
+                expected,
+            };
+            check_expected_link(&ffi, &input);
+            check_agreement(&ffi, &input);
+            Schema::schema_link([input.first, input.second]).expect("schemas link")
+        };
+        let pc = link(p.clone(), c.clone(), None);
+        link(pc, d.clone(), Some(expected.clone()));
+        let cd = link(c, d, None);
+        link(p, cd, Some(expected));
     }
 }

@@ -520,6 +520,10 @@ def successfulLinkTests : TestSuite IO :=
       example6P example6C example6Expected,
     testSuccessfulLink "example 7: an entity definition may contain more closed ancestors"
       example7P example7C example7Expected,
+    testSuccessfulLink "equal enum definitions may be linked"
+      ⟨Map.make [(E, .defined (.enum (Set.make ["x", "y"])))], Map.empty⟩
+      ⟨Map.make [(E, .defined (.enum (Set.make ["y", "x"])))], Map.empty⟩
+      ⟨Map.make [(E, .defined (.enum (Set.make ["x", "y"])))], Map.empty⟩,
     testSuccessfulLink "example 9: a transitive ancestor satisfies an external declaration"
       example9P example9C example9Expected,
     testSuccessfulLink "example 15: an external entity's closed ancestors may grow"
@@ -527,7 +531,10 @@ def successfulLinkTests : TestSuite IO :=
     testSuccessfulLink "matching external action ancestors link to a definition"
       example10P matchingActionDefinition matchingActionDefinition,
     testSuccessfulLink "matching repeated external action declarations are preserved"
-      example10P example10P example10P
+      example10P example10P example10P,
+    testSuccessfulLink "example 16: closing can give an external entity an enum ancestor"
+      example16P example16C
+      ⟨Map.make ((F, .external (Set.make [X, E])) :: example16C.ets.toList), Map.empty⟩
   ]
 
 def rejectedLinkTests : TestSuite IO :=
@@ -544,7 +551,11 @@ def rejectedLinkTests : TestSuite IO :=
         (actionW, .external Set.empty)
       ]⟩
       (.externalActionParentsMismatch actionW),
-    testFailedLink "example 11: an external entity cannot resolve to an enum"
+    testFailedLink "different enum definitions are rejected"
+      ⟨Map.make [(E, .defined (.enum (Set.singleton "x")))], Map.empty⟩
+      ⟨Map.make [(E, .defined (.enum (Set.singleton "y")))], Map.empty⟩
+      (.enumValuesMismatch E),
+    testFailedLink "an external entity cannot resolve to an enum"
       example11P example11C (.externalIsEnum E),
     testFailedLink "example 12: duplicate entity definitions are rejected"
       example12P example12C (.duplicateEntityType A),
@@ -560,8 +571,6 @@ def rejectedLinkTests : TestSuite IO :=
       example13P example13C (.externalAncestorsNotInDefinition E),
     testFailedLink "example 14: linking cannot enlarge a defined entity's ancestors"
       example14P example14C (.definedEntityAncestorsChanged E),
-    testFailedLink "example 16: closing cannot give an external entity an enum ancestor"
-      example16P example16C (.externalAncestorIsEnum F),
     testFailedLink "linking cannot make a new ancestor valid for a defined entity"
       ⟨Map.make [
         (B, .external Set.empty),
