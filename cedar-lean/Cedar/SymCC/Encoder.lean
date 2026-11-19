@@ -225,8 +225,10 @@ def defineSet (tyEnc : String) (tEncs : List String) : EncoderM String := do
   if tEncs.isEmpty then
     defineTerm tyEnc s!"(as set.empty {tyEnc})"
   else
-    let tEncs := String.intercalate " " tEncs
-    defineTerm tyEnc s!"(set.insert {tEncs} (as set.empty {tyEnc}))"
+    let singletons := tEncs.map (λ tEnc => s!"(set.singleton {tEnc})")
+    let union := singletons.dropLast.foldr
+      (λ s acc => s!"(set.union {s} {acc})") (singletons.getLast!)
+    defineTerm tyEnc union
 
 def defineRecord (tyEnc : String) (tEncs : List String) : EncoderM String := do
   defineTerm tyEnc (if tEncs.isEmpty then tyEnc else s!"({tyEnc} {String.intercalate " " tEncs})")
