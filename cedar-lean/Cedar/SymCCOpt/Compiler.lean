@@ -62,13 +62,13 @@ structure CompileResult where
   valueFootprint : Set Term := Set.empty
 
 /--
-Empty the `footprint` if the `term` is `⊙true`, `⊙false`, or `.none`. This
+Empty the `footprint` and `valueFootprint` if the `term` is `⊙true`, `⊙false`, or `.none`. This
 corresponds to the `compilesToBoolOrNone` check in the `footprint` function in
 SymCC/Enforcer.lean.
 -/
 def CompileResult.dropBoolOrNoneFootprint (res : CompileResult) : CompileResult :=
   match res.term with
-  | .some (.prim (.bool _)) | .none _ => { res with footprint := ∅ }
+  | .some (.prim (.bool _)) | .none _ => { res with footprint := ∅, valueFootprint := ∅ }
   | _ => res
 
 /-- Map on the `Term`, leaving the `footprint` unchanged and clearing the `valueFootprint` -/
