@@ -66,6 +66,16 @@ structure CompileResult where
   -/
   footprint : Set Term
 
+/--
+Empty the `footprint` if the `term` is `⊙true`, `⊙false`, or `.none`. This
+corresponds to the `compilesToBoolOrNone` check in the `footprint` function in
+SymCC/Enforcer.lean.
+-/
+def CompileResult.dropBoolOrNoneFootprint (res : CompileResult) : CompileResult :=
+  match res.term with
+  | .some (.prim (.bool _)) | .none _ => { res with footprint := ∅ }
+  | _ => res
+
 /-- Map on the `Term`, leaving the `footprint` unchanged -/
 def CompileResult.mapTerm (f : Term → Term) : CompileResult → CompileResult
   | { term, footprint } => { term := f term, footprint }
@@ -375,7 +385,7 @@ Given an expression `x` that has type `τ` with respect to a type environment
 `Γ`, and given a well-formed symbolic environment `εnv` that conforms to `Γ`,
 `compile x εnv` succeeds and produces a well-formed term of type `.option τ.toTermType`.
 -/
-def compile (x : Expr) (εnv : SymEnv) : Result CompileResult := do
+def compile (x : Expr) (εnv : SymEnv) : Result CompileResult := (do
   match x with
   | .lit l => compilePrim l εnv.entities
   | .var v => compileVar v εnv.request
@@ -423,6 +433,7 @@ def compile (x : Expr) (εnv : SymEnv) : Result CompileResult := do
     compileRecord ats
   | .call xfn xs =>
     let ress ← xs.mapM₁ (λ ⟨x₁, _⟩ => compile x₁ εnv)
-    compileCall xfn ress
+    compileCall xfn ress)
+  |>.map CompileResult.dropBoolOrNoneFootprint
 
 namespace Cedar.SymCC
