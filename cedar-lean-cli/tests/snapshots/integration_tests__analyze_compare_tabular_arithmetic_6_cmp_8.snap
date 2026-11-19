@@ -19,14 +19,14 @@ expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/ana
 |               |            |              | ]                                                                                                        |
 |               |            |              |                                                                                                          |
 |               |            |              | Example where pset1 is less permissive: principal: User::"", action: Action::"view", resource: Thing::"" |
-|               |            |              | context: { n: <integer> }                                                                       |
+|               |            |              | context: { n: <integer> }                                                                      |
 |               |            |              | entities: [                                                                                              |
 |               |            |              |   Action::"view",                                                                                        |
 |               |            |              |   Thing::"" {                                                                                            |
 |               |            |              |     n: <integer>,                                                                              |
 |               |            |              |   },                                                                                                     |
 |               |            |              |   User::"" {                                                                                             |
-|               |            |              |     n: <integer>,                                                                               |
+|               |            |              |     n: <integer>,                                                                              |
 |               |            |              |   },                                                                                                     |
 |               |            |              | ]                                                                                                        |
 +---------------+------------+--------------+----------------------------------------------------------------------------------------------------------+

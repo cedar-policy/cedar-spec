@@ -11,11 +11,11 @@ expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/ana
 |               |            |              |   n1: <integer>,                                                               |
 |               |            |              |   n2: <integer>,                                                               |
 |               |            |              |   ns: [],                                                                 |
-|               |            |              |   thing1: Thing::"",                                                      |
-|               |            |              |   thing2: Thing::"A",                                                     |
-|               |            |              |   thing3: Thing::"B",                                                     |
-|               |            |              |   things: [Thing::"A"],                                                   |
-|               |            |              |   things1: [Thing::""],                                                   |
+|               |            |              |   thing1: Thing::"B",                                                     |
+|               |            |              |   thing2: Thing::"",                                                      |
+|               |            |              |   thing3: Thing::"A",                                                     |
+|               |            |              |   things: [Thing::""],                                                    |
+|               |            |              |   things1: [Thing::"B"],                                                  |
 |               |            |              |   things2: [Thing::"C"],                                                  |
 |               |            |              |   user1: User::"",                                                        |
 |               |            |              |   user2: User::"A",                                                       |
