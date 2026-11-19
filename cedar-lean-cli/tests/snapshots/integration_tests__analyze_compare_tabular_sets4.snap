@@ -11,9 +11,9 @@ expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/ana
 |               |            |              |   n1: <integer>,                                                               |
 |               |            |              |   n2: <integer>,                                                               |
 |               |            |              |   ns: [],                                                                 |
-|               |            |              |   thing1: Thing::"",                                                      |
-|               |            |              |   thing2: Thing::"A",                                                     |
-|               |            |              |   thing3: Thing::"",                                                      |
+|               |            |              |   thing1: Thing::"A",                                                     |
+|               |            |              |   thing2: Thing::"",                                                      |
+|               |            |              |   thing3: Thing::"A",                                                     |
 |               |            |              |   things: [Thing::""],                                                    |
 |               |            |              |   things1: [Thing::"A"],                                                  |
 |               |            |              |   things2: [Thing::"", Thing::"A"],                                       |
