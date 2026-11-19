@@ -2105,6 +2105,102 @@ mod test {
         assert_eq!(res, ValidationResponse::Ok(()));
     }
 
+    /// `T0 = {a: Long}` and `Ti = {a: T(i-1), b: T(i-1)}`.
+    fn shared_schema(n: usize) -> Schema {
+        let mut src = "type T0 = { a: Long };\n".to_string();
+        for i in 1..=n {
+            src += &format!("type T{i} = {{ a: T{p}, b: T{p} }};\n", p = i - 1);
+        }
+        src += &format!(
+            "entity E {{ x: T{n} }};\n\
+             action act appliesTo {{ principal: E, resource: E, context: {{ c: T{n} }} }};\n"
+        );
+        Schema::from_cedarschema_str(&src)
+            .expect("failed to parse schema")
+            .0
+    }
+
+    /// A value of type `Ti` with `leaf` at every `T0.a`.
+    fn shared_value(i: usize, leaf: &serde_json::Value) -> serde_json::Value {
+        if i == 0 {
+            serde_json::json!({ "a": leaf })
+        } else {
+            let v = shared_value(i - 1, leaf);
+            serde_json::json!({ "a": v, "b": v })
+        }
+    }
+
+    #[test]
+    fn test_encoding_of_shared_schema() {
+        let schema = shared_schema(8);
+        let encoded = cedar_policy::proto::models::Schema::from(schema.as_ref());
+        assert_eq!(encoded.type_defs.len(), 9);
+    }
+
+    #[test]
+    fn test_validate_shared_schema() {
+        let schema = shared_schema(8);
+        let ffi = CedarLeanFfi::new();
+        let mode = ValidationMode::Strict;
+
+        // `principal.x.b.a` and `context.c.a.b` are both `T6`.
+        let ok = PolicySet::from_str(
+            "permit(principal, action, resource) when { principal.x.b.a == context.c.a.b };",
+        )
+        .expect("failed to parse policy");
+        assert_eq!(
+            ffi.validate(&ok, &schema, &mode)
+                .expect("Lean call unexpectedly failed for validate"),
+            ValidationResponse::Ok(())
+        );
+
+        // `T7` and `T6` have no least upper bound in strict mode.
+        let bad = PolicySet::from_str(
+            "permit(principal, action, resource) when { principal.x.b == context.c.a.b };",
+        )
+        .expect("failed to parse policy");
+        assert_matches!(
+            ffi.validate(&bad, &schema, &mode)
+                .expect("Lean call unexpectedly failed for validate"),
+            ValidationResponse::Error(_)
+        );
+        assert!(
+            !cedar_policy::Validator::new(schema.clone())
+                .validate(&bad, mode)
+                .validation_passed()
+        );
+    }
+
+    #[test]
+    fn test_validate_entities_shared_schema() {
+        let schema = shared_schema(3);
+        let ffi = CedarLeanFfi::new();
+        let entities = |leaf: serde_json::Value| {
+            serde_json::json!([
+                { "uid": { "type": "E", "id": "e" }, "attrs": { "x": shared_value(3, &leaf) }, "parents": [] },
+                { "uid": { "type": "Action", "id": "act" }, "attrs": {}, "parents": [] }
+            ])
+        };
+
+        let good = entities(serde_json::json!(1));
+        assert!(Entities::from_json_value(good.clone(), Some(&schema)).is_ok());
+        let good = Entities::from_json_value(good, None).expect("failed to parse entities");
+        assert_eq!(
+            ffi.validate_entities(&schema, &good)
+                .expect("Lean call unexpectedly failed for validate_entities"),
+            ValidationResponse::Ok(())
+        );
+
+        let bad = entities(serde_json::json!("one"));
+        assert!(Entities::from_json_value(bad.clone(), Some(&schema)).is_err());
+        let bad = Entities::from_json_value(bad, None).expect("failed to parse entities");
+        assert_matches!(
+            ffi.validate_entities(&schema, &bad)
+                .expect("Lean call unexpectedly failed for validate_entities"),
+            ValidationResponse::Error(_)
+        );
+    }
+
     #[test]
     fn test_validate_entities() {
         let schema = example_schema();
