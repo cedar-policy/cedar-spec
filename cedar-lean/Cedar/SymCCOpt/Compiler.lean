@@ -72,8 +72,8 @@ def CompileResult.dropBoolOrNoneFootprint (res : CompileResult) : CompileResult 
   | _ => res
 
 /-- Map on the `Term`, leaving the `footprint` unchanged and clearing the `valueFootprint` -/
-def CompileResult.mapTerm (f : Term → Term) : CompileResult → CompileResult
-  | { term, footprint, .. } => { term := f term, footprint }
+def CompileResult.mapTerm (f : Term → Term) (res : CompileResult) : CompileResult :=
+  { res with term := f res.term, valueFootprint := ∅ }
 
 /--
 Return the footprint of this compiled term _itself_ (not counting its subexpressions).

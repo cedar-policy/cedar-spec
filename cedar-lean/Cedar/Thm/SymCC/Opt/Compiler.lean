@@ -52,7 +52,7 @@ private theorem Opt.compileApp₁.correctness (op : UnaryOp) (term : Term) (foot
   (do let term ← SymCC.compileApp₁ op term ; .ok { term, footprint })
 := by
   cases op <;> simp only [Opt.compileApp₁, SymCC.compileApp₁]
-  all_goals split <;> simp_all [Opt.CompileResult.mapTerm]
+  all_goals split <;> simp_all [Opt.CompileResult.mapTerm, EmptyCollection.emptyCollection]
 
 /--
 Correctness lemma for `Opt.compileApp₂`, at least as to the `term`:
@@ -618,7 +618,7 @@ theorem Opt.compile.correctness.unaryApp (op : UnaryOp) (x : Expr) (εnv : SymEn
   apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
   simp [SymCC.compile]
   rw [Opt.compile.correctness x εnv]
-  cases h₁ : SymCC.compile x εnv <;> simp [Opt.CompileResult.mapTerm]
+  cases h₁ : SymCC.compile x εnv <;> simp [Opt.CompileResult.mapTerm, EmptyCollection.emptyCollection]
   rw [Opt.compileApp₁.correctness op]
   simp
 termination_by 1 + 2 * sizeOf x
@@ -697,7 +697,7 @@ theorem Opt.compile.correctness.hasAttr (expr : Expr) (attr : Attr) (εnv : SymE
   apply Opt.compile.correctness_of_core (by simp only [Opt.compile]; rfl) (by simp only [footprint]; rfl)
   simp [SymCC.compile]
   rw [Opt.compile.correctness expr εnv]
-  cases h₁ : SymCC.compile expr εnv <;> simp [Opt.CompileResult.mapTerm]
+  cases h₁ : SymCC.compile expr εnv <;> simp [Opt.CompileResult.mapTerm, EmptyCollection.emptyCollection]
   case ok t =>
     rw [Opt.compileHasAttr.correctness]
     simp only [bind_assoc, Except.bind_ok]
