@@ -14,16 +14,22 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.WellTyped.Residual.Definition
-import Cedar.TPE.Residual
-import Cedar.Thm.WellTyped.Expr.Typechecking
-import Cedar.Data.Map
-import Cedar.Thm.Validation.Typechecker.Record
-import Cedar.Thm.Data.List.Lemmas
+module
+
+public import Cedar.Thm.WellTyped.Residual.Definition
+public import Cedar.TPE.Residual
+public import Cedar.Thm.WellTyped.Expr.Typechecking
+public import Cedar.Data.Map
+public import Cedar.Thm.Validation.Typechecker.Record
+public import Cedar.Thm.Data.List.Lemmas
+import Batteries.Data.Except
+import all Cedar.TPE.Residual -- unfolds `Residual.evaluate`, `Residual.typeOf`
 
 /-!
 This file contains residual-specific lemmas of the theorem `residual_well_typed_is_sound`
 -/
+
+public section
 
 namespace Cedar.Thm
 
@@ -76,11 +82,7 @@ InstanceOfType env v (Residual.var var ty).typeOf
     rcases h₁ with ⟨hwf, ⟨_, h₁, _, _⟩, _⟩
     rw [h₁]
     have : InstanceOfEntityType env.reqty.action env.reqty.action.ty env := by
-      have ⟨_, _, ⟨_, hwf_act, _⟩⟩ := hwf
-      simp [
-        InstanceOfEntityType, EntityUID.WellFormed,
-        ActionSchema.contains, hwf_act,
-      ]
+      simp [InstanceOfEntityType, wf_env_implies_action_wf hwf]
     exact InstanceOfType.instance_of_entity env.reqty.action env.reqty.action.ty this
   case context =>
     rcases h₁ with ⟨_, ⟨_, _, _, h₁⟩, _⟩
@@ -312,7 +314,7 @@ InstanceOfType env v (Residual.binaryApp op₂ x₁ x₂ ty).typeOf
     rcases h₃ with ⟨_, _, h₃⟩
     simp only [← h₃, bool_is_instance_of_anyBool]
   · rename_i uid₁ tag _ _ h₄ _ _
-    simp only [Cedar.Spec.getTag, Data.Map.findOrErr] at h₃
+    simp only [Cedar.Spec.getTag, Data.Map.findOrErr_eq_match] at h₃
     generalize hᵢ : entities.tags uid₁ = res₁
     cases res₁ <;> rw [hᵢ] at h₃
     case error => simp only [Except.bind_err, reduceCtorEq] at h₃
@@ -331,7 +333,7 @@ InstanceOfType env v (Residual.binaryApp op₂ x₁ x₂ ty).typeOf
         simp only [InstanceOfWellFormedEnvironment] at h₁
         rcases h₁ with ⟨_, _, h₁⟩
         simp only [InstanceOfSchema] at h₁
-        simp only [Entities.tags, do_ok_eq_ok, Data.Map.findOrErr] at hᵢ
+        simp only [Entities.tags, do_ok_eq_ok, Data.Map.findOrErr_eq_match] at hᵢ
         split at hᵢ
         · simp only [Except.ok.injEq, exists_eq_left'] at hᵢ
           rename_i entry heq₁
@@ -339,7 +341,7 @@ InstanceOfType env v (Residual.binaryApp op₂ x₁ x₂ ty).typeOf
           | inl h₁ =>
             replace ⟨entry₁, ⟨h₅, _, _, _, h₆⟩⟩ := h₁
             simp [InstanceOfEntityTags] at h₆
-            simp [EntitySchema.tags?] at h₄
+            simp [EntitySchema.tags?_eq_map_find?] at h₄
             rcases h₄ with ⟨_, h₃₁, h₃₂⟩
             simp only [h₅, Option.some.injEq] at h₃₁
             simp only [← h₃₁] at h₃₂
@@ -349,8 +351,7 @@ InstanceOfType env v (Residual.binaryApp op₂ x₁ x₂ ty).typeOf
             exact type_lifting_preserves_instance_of_type h₆
           | inr h₁ =>
             replace ⟨_, h₆, entry₁, _⟩ := h₁
-            simp only [← hᵢ, h₆] at heq
-            contradiction
+            simp only [← hᵢ, h₆, Data.Map.find?_empty, reduceCtorEq] at heq
         · simp only [reduceCtorEq, false_and, exists_const] at hᵢ
       · cases h₃
 
@@ -485,7 +486,7 @@ InstanceOfType env v (Residual.getAttr x₁ attr ty).typeOf
   simp only [InstanceOfEntityType] at het
   simp only [InstanceOfWellFormedEnvironment, InstanceOfSchema] at h₁
   obtain ⟨_, _, h₁⟩ := h₁
-  simp only [Cedar.Spec.getAttr, Cedar.Spec.attrsOf, Entities.attrs, Data.Map.findOrErr, bind_assoc, Except.bind_ok] at h₇
+  simp only [Cedar.Spec.getAttr, Cedar.Spec.attrsOf, Entities.attrs, Data.Map.findOrErr_eq_match, bind_assoc, Except.bind_ok] at h₇
   split at h₇
   · simp only [Except.bind_ok] at h₇
     rename_i data heq
@@ -497,7 +498,7 @@ InstanceOfType env v (Residual.getAttr x₁ attr ty).typeOf
         simp only [Except.ok.injEq] at h₇
         cases h₁₂
         rename_i h₈ _
-        simp only [EntitySchema.attrs?, Option.map_eq_some_iff] at h₅
+        simp only [EntitySchema.attrs?_eq_map_find?, Option.map_eq_some_iff] at h₅
         rcases h₅ with ⟨a, ⟨a₁, h₅₁, h₅₃⟩, h₅₂⟩
         simp [←het.1] at h₁₁
         simp only [h₁₁, Option.some.injEq] at h₅₁
@@ -513,7 +514,8 @@ InstanceOfType env v (Residual.getAttr x₁ attr ty).typeOf
         subst h₆₃
         cases qty'
         all_goals {
-          simp [QualifiedType.liftBoolTypes, Qualified.getType]
+          rw [qualifiedType_liftBoolTypes_getType]
+          simp [Qualified.getType]
           simp [Qualified.getType] at h₈
           subst h₇
           exact type_lifting_preserves_instance_of_type h₈
@@ -521,8 +523,7 @@ InstanceOfType env v (Residual.getAttr x₁ attr ty).typeOf
       · cases h₇
     | inr h₁ =>
       have ⟨h₁, _, ⟨entry, _⟩⟩ := h₁
-      simp only [h₁, Data.Map.find?] at h₇
-      contradiction
+      simp only [h₁, Data.Map.find?_empty, reduceCtorEq] at h₇
   · simp only [Except.bind_err, reduceCtorEq] at h₇
 
 theorem residual_well_typed_is_sound_get_attr_record
@@ -549,7 +550,7 @@ InstanceOfType env v (Residual.getAttr x₁ attr ty).typeOf
   simp only [h₄] at h₂
   cases h₂
   rename_i h₇ _
-  simp only [Cedar.Spec.getAttr, Cedar.Spec.attrsOf, Data.Map.findOrErr, Except.bind_ok] at h₆
+  simp only [Cedar.Spec.getAttr, Cedar.Spec.attrsOf, Data.Map.findOrErr_eq_match, Except.bind_ok] at h₆
   split at h₆
   · rename_i v₁ heq
     have h₇ := λ qty => h₇ attr v₁ qty heq
@@ -672,7 +673,8 @@ theorem residual_well_typed_is_sound_record
   apply mk_vals_instance_of_mk_types
   let p := fun (v : Value) (qty : QualifiedType) => InstanceOfType env v qty.getType
   have h₆ := List.canonicalize_preserves_forallᵥ p r rty'
-  simp only [List.Forallᵥ] at h₆
+  simp only [List.forallᵥ_def] at h₆
+  simp only [Data.Map.make_eq_mk_canonicalize]
   exact h₆ h₅
 
 theorem residual_well_typed_is_sound_call

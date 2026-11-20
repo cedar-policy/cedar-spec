@@ -14,6 +14,8 @@
  limitations under the License.
 -/
 
+module
+
 -- These files contains well-typedness theorems of `TypedExpr` and `Residual` respectively
-import Cedar.Thm.WellTyped.Expr
-import Cedar.Thm.WellTyped.Residual
+public import Cedar.Thm.WellTyped.Expr
+public import Cedar.Thm.WellTyped.Residual
