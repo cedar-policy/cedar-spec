@@ -35,7 +35,7 @@ expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/ana
 |               |                |              |     jobLevel: <integer>,                                                             |
 |               |                |              |     jobTitle: "A",                                                                             |
 |               |                |              |   },                                                                                           |
-|               |                |              |   App::User::"A" in [App::Group::"admin"] {                                                    |
+|               |                |              |   App::User::"A" {                                                                             |
 |               |                |              |     blocked: [],                                                                               |
 |               |                |              |     jobLevel: <integer>,                                                                            |
 |               |                |              |     jobTitle: "VP",                                                                            |

@@ -23,7 +23,7 @@ expression: "cmd_output(&mut\ncargo::cargo_bin_cmd!().current_dir(\"examples/ana
 |               |            |              | }                                                                         |
 |               |            |              | entities: [                                                               |
 |               |            |              |   Action::"view",                                                         |
-|               |            |              |   Thing::"" in [Thing::"D"],                                              |
+|               |            |              |   Thing::"",                                                              |
 |               |            |              |   Thing::"A",                                                             |
 |               |            |              |   Thing::"B",                                                             |
 |               |            |              |   Thing::"C",                                                             |

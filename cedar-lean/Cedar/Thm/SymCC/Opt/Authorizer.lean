@@ -36,7 +36,8 @@ theorem Opt.compileWithEffect.correctness (effect : Effect) (p : Policy) (εnv :
   Opt.compileWithEffect effect p εnv = (do
     let term ← SymCC.compileWithEffect effect p εnv
     let footprint := footprint p.toExpr εnv
-    .ok $ term.map λ term => { term, footprint }
+    let valueFootprint := valueFootprint p.toExpr εnv
+    .ok $ term.map λ term => { term, footprint, valueFootprint }
   )
 := by
   simp [Opt.compileWithEffect, SymCC.compileWithEffect]
@@ -156,7 +157,7 @@ theorem Opt.isAuthorized.correctness (ps : Policies) (εnv : SymEnv) :
   simp_do_let SymCC.satisfiedPolicies .forbid ps εnv as hforbid
   simp_do_let SymCC.satisfiedPolicies .permit ps εnv as hpermit
   rename_i ft pt
-  simp only [Except.ok.injEq, Opt.CompileResult.mk.injEq, true_and]
+  simp only [Except.ok.injEq, Opt.CompileResult.mk.injEq, true_and, and_true]
   simp only [footprints, List.mapUnion_filterMap, List.mapUnion_map]
   rw [List.mapUnion_union_mapUnion']
   apply List.mapUnion_congr
