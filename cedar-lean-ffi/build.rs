@@ -54,9 +54,15 @@ fn main() {
     println!(
         "cargo:rustc-link-search=native={CEDAR_LEAN_DIR}/.lake/packages/batteries/.lake/build/lib"
     );
+    println!(
+        "cargo:rustc-link-search=native={CEDAR_LEAN_DIR}/.lake/packages/LeanParserGenerator/.lake/build/lib"
+    );
     println!("cargo:rerun-if-changed={LEAN_BUILD_DIR}");
     println!("cargo:rerun-if-changed={lean_dir}");
     println!("cargo:rerun-if-changed={CEDAR_LEAN_DIR}/.lake/packages/batteries/.lake/build/lib");
+    println!(
+        "cargo:rerun-if-changed={CEDAR_LEAN_DIR}/.lake/packages/LeanParserGenerator/.lake/build/lib"
+    );
 
     println!("cargo:rerun-if-changed=./protobuf_schema");
     let mut config = prost_build::Config::new();
