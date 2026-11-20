@@ -24,7 +24,8 @@ namespace UnitTest.Wildcard
 open Cedar.Spec
 
 private def testWildcardMatch (str : String) (pat : Pattern) (expected : Bool) : TestCase IO :=
-  test s!"{expected}: {str} like {reprStr pat}" ⟨λ _ => checkEq (wildcardMatch str pat) expected⟩
+  test s!"{expected}: {str} like {reprStr pat}" ⟨λ _ =>
+    checkEq (wildcardMatch str pat, wildcardMatchGreedy str pat) (expected, expected)⟩
 
 private def justChars (str : String) : Pattern :=
   str.toList.map .justChar
