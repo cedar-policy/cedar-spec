@@ -124,6 +124,49 @@ def testsForCRLF :=
     testGetModelWithCRLF
   ]
 
+/--
+Runs `x` against a solver whose output stream contains exactly `output`, and
+checks that `x` fails with an end-of-file error.
+-/
+def checkEOFError (x : SolverM α) (output : String) : IO TestResult := do
+  let (hIn, pathIn) ← IO.FS.createTempFile
+  let (hOut, pathOut) ← IO.FS.createTempFile
+  hOut.putStr output
+  hOut.rewind
+  let testSolver : Solver := {
+    smtLibInput  := IO.FS.Stream.ofHandle hIn,
+    smtLibOutput := some (IO.FS.Stream.ofHandle hOut)
+  }
+  let result ← (x |>.run testSolver).toBaseIO
+  IO.FS.removeFile pathIn
+  IO.FS.removeFile pathOut
+  match result with
+  | .error (.userError msg) => checkEq msg "Encountered EOF while reading from solver output"
+  | .error err              => checkEq "IO.userError" err.toString
+  | .ok _                   => return .error "expected an EOF error, but the solver call succeeded"
+
+def testCheckSatAtEOF : TestCase IO :=
+  test "Check Solver.checkSat errors when the solver output is closed" ⟨λ _ =>
+    checkEOFError Solver.checkSat ""
+  ⟩
+
+def testGetModelAtEOF : TestCase IO :=
+  test "Check Solver.getModel errors when the solver output is closed" ⟨λ _ =>
+    checkEOFError Solver.getModel ""
+  ⟩
+
+def testGetTruncatedModel : TestCase IO :=
+  test "Check Solver.getModel errors when the solver output is closed mid-model" ⟨λ _ =>
+    checkEOFError Solver.getModel "(\n  (define-fun x () Int 1)\n"
+  ⟩
+
+def testsForEOF :=
+  suite "Solver.EOF" [
+    testCheckSatAtEOF,
+    testGetModelAtEOF,
+    testGetTruncatedModel
+  ]
+
 def testsForBuffers :=
   suite "Solver.buffers" [
     testAssertBoolToBuffer true,
@@ -147,7 +190,8 @@ def tests := [
   testsForBuffers,
   testsForFiles,
   testsForCVC5,
-  testsForCRLF
+  testsForCRLF,
+  testsForEOF
 ]
 
 -- Uncomment for interactive debugging

@@ -204,9 +204,21 @@ public def declareDatatype (id : String) (params : List String) (constructors : 
   then emitln s!"(declare-datatype {id} ({cInline}))"
   else emitln s!"(declare-datatype {id} (par ({pInline}) ({cInline})))"
 
+/--
+Reads a line from the solver's output stream `stdout`. `IO.FS.Stream.getLine`
+returns the empty string only at end-of-file, which means that the solver closed
+its output (e.g., because the solver process exited or crashed), so we report
+that as an error instead of returning a line that callers may wait on forever.
+-/
+private def readln (stdout : IO.FS.Stream) : IO String := do
+  let line ← stdout.getLine
+  if line.isEmpty then
+    throw (IO.userError "Encountered EOF while reading from solver output")
+  return line
+
 private def readlnD (dflt : String) : SolverM String := do
   match (← read).smtLibOutput with
-  | .some stdout => stdout.getLine
+  | .some stdout => readln stdout
   | .none        => pure dflt
 
 public def checkSat : SolverM Decision := do
@@ -229,18 +241,19 @@ Returns the model from the SMT solver, assuming that `checkSat` produced
 a `.sat` decision.  Note that this model extraction procedure assumes that
 the model strings follow the CVC5 format, where the model is enclosed in
 parentheses that are on a single line by themselves, i.e., opens with the line
-`(\n` and closes with the line `)\n`.
+`(\n` and closes with the line `)\n`. Throws an error if the solver closes its
+output before the closing line is read.
 -/
 public def getModel : SolverM String := do
   emitln "(get-model)"
   match (← read).smtLibOutput with
   | some out =>
-    let firstLine := ← out.getLine
+    let firstLine := ← readln out
     match firstLine.trimAsciiEnd.toString with
     | "(" =>
       let mut s := firstLine -- s may start with '(\n' or '(\n\r'
       repeat
-        let line := ← out.getLine
+        let line := ← readln out
         s := s ++ line
         if line.trimAsciiEnd.toString == ")" then
           break
