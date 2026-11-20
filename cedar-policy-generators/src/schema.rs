@@ -29,8 +29,7 @@ use cedar_policy_core::validator::json_schema::{
     CommonType, CommonTypeId, EntityTypeKind, StandardEntityType,
 };
 use cedar_policy_core::validator::{
-    json_schema, AllDefs, ConditionalName, RawName, SchemaError, ValidatorNamespaceDef,
-    ValidatorSchema, ValidatorSchemaFragment,
+    json_schema, ConditionalName, RawName, SchemaError, ValidatorSchema, ValidatorSchemaFragment,
 };
 use indexmap::{IndexMap, IndexSet};
 use nonempty::NonEmpty;
@@ -328,23 +327,28 @@ pub fn schematype_to_type(
             if let Some(ty) = lookup_common_type(schema, type_name) {
                 return schematype_to_type(schema, ty, namespace);
             }
-            // Extension types appear as CommonTypeRef after JSON schema deserialization
+            // Primitive and extension types referred to by name (e.g., `String` or
+            // `__cedar::ipaddr`) appear as CommonTypeRef after resolving the type
+            // references of a parsed schema, because Cedar registers them as common types.
             // This is not a path typically triggered by the DRT which generates the
-            // TypeVariant::Extension, but used by generators built from parsed schemas.
-            // In Cedar, the translation registers the extension types as common types, this
-            // effectively does the same.
-            schematype_to_type(
-                schema,
-                &json_schema::Type::Type {
-                    ty: json_schema::TypeVariant::Extension {
-                        name: type_name.basename().clone().try_into().unwrap_or_else(|_| {
-                            panic!("reference to undefined common type: {type_name}")
-                        }),
+            // corresponding TypeVariant, but used by generators built from parsed schemas.
+            match type_name.basename().as_ref() {
+                "Bool" => Type::bool(),
+                "Long" => Type::long(),
+                "String" => Type::string(),
+                _ => schematype_to_type(
+                    schema,
+                    &json_schema::Type::Type {
+                        ty: json_schema::TypeVariant::Extension {
+                            name: type_name.basename().clone().try_into().unwrap_or_else(|_| {
+                                panic!("reference to undefined common type: {type_name}")
+                            }),
+                        },
+                        loc: None,
                     },
-                    loc: None,
-                },
-                namespace,
-            )
+                    namespace,
+                ),
+            }
         }
         json_schema::Type::Type { ty, .. } => match ty {
             json_schema::TypeVariant::Boolean => Type::bool(),
@@ -937,32 +941,17 @@ impl Schema {
         settings: ABACSettings,
         u: &mut Unstructured<'_>,
     ) -> Result<Schema> {
-        let namespace_internal: Option<&ast::InternalName> = namespace.as_ref().map(AsRef::as_ref);
-        let mut all_defs = AllDefs::single_fragment(&ValidatorSchemaFragment::from_namespaces([
-            ValidatorNamespaceDef::from_namespace_definition(
-                namespace.clone().map(Into::into),
-                nsdef.clone(),
-            )
-            .map_err(|e| Error::SchemaError(Box::new(e)))?,
-        ]));
-        // Just like in Cedar mark extension types as common types if they don't shadow a
-        // user defined one.
-        for ext_type in Extensions::all_available().ext_types() {
-            if !all_defs.is_defined_as_common(ext_type.as_ref())
-                && !all_defs.is_defined_as_entity(ext_type.as_ref())
-            {
-                all_defs.mark_as_defined_as_common_type(ext_type.as_ref().qualify_with(None));
-            }
-        }
-        Self::from_nsdef(
-            nsdef
-                .conditionally_qualify_type_references(namespace_internal)
-                .fully_qualify_type_references(&all_defs)
-                .unwrap(),
-            namespace,
-            settings,
-            u,
-        )
+        // Resolve type references the same way Cedar does. This includes
+        // references to the built-in primitive and extension types (e.g.,
+        // `String` or `__cedar::ipaddr`), which resolve to common types.
+        let mut fragment = json_schema::Fragment(BTreeMap::from([(namespace.clone(), nsdef)]))
+            .to_internal_name_fragment_with_resolved_types()
+            .map_err(|e| Error::SchemaError(Box::new(e)))?;
+        let nsdef = fragment
+            .0
+            .remove(&namespace)
+            .expect("resolving type references should preserve the namespace");
+        Self::from_nsdef(nsdef, namespace, settings, u)
     }
 
     /// Create an arbitrary [`Schema`] based on (compatible with) the given
@@ -1023,7 +1012,7 @@ impl Schema {
                 .entity_types
                 .keys()
                 .cloned()
-                .map(|k| ast::EntityType::from(ast::Name::from(k)))
+                .map(|k| ast::EntityType::from(ast::Name::from(k)).qualify_with(namespace.as_ref()))
                 .collect(),
             principal_types: principal_types
                 .into_iter()
@@ -1058,7 +1047,6 @@ impl Schema {
     ///
     /// The input is [`json_schema::Fragment<RawName>`], meaning that entity and common
     /// type names may not yet be fully qualified.
-    #[deprecated = "this function may not work after cedar-policy/cedar#1060; refer to cedar-policy/cedar-spec#496"]
     pub fn from_raw_schemafrag(
         schemafrag: json_schema::Fragment<RawName>,
         settings: ABACSettings,
@@ -1930,9 +1918,11 @@ impl TryFrom<Schema> for cedar_policy::Schema {
 #[cfg(test)]
 mod tests {
     use super::Schema;
+    use crate::abac::{QualifiedType, Type};
     use crate::schema_gen::SchemaGen;
     use crate::settings::ABACSettings;
     use arbitrary::Unstructured;
+    use cedar_policy_core::ast;
     use cedar_policy_core::entities::Entities;
     use cedar_policy_core::extensions::Extensions;
     use cedar_policy_core::validator::{json_schema, CoreSchema, RawName, ValidatorSchema};
@@ -2419,7 +2409,6 @@ mod tests {
     }"#;
 
     #[test]
-    #[allow(deprecated)]
     fn request_generation_optional_context_attrs() {
         let fragment =
             json_schema::Fragment::from_json_file(OPTIONAL_CONTEXT_SCHEMA_STR.as_bytes())
@@ -2451,7 +2440,149 @@ mod tests {
         assert!(saw_absent, "optional attribute never absent");
     }
 
-    #[allow(deprecated)]
+    /// Refers to the built-in primitive and extension types by name, both
+    /// unqualified and through the `__cedar` namespace. The Cedar schema
+    /// syntax parses these as references to be resolved later, unlike the
+    /// JSON schema `"type": "String"` form.
+    const BUILTIN_TYPE_NAMES_SCHEMA_STR: &str = r#"
+    namespace App {
+        type Address = { street: String, zip: __cedar::Long };
+        entity Group;
+        entity User in [Group] {
+            name: String,
+            age: Long,
+            active: __cedar::Bool,
+            address: Address,
+            ip: ipaddr,
+            balance: __cedar::decimal,
+            groups: Set<Group>,
+        } tags __cedar::String;
+    }
+    "#;
+
+    #[test]
+    fn builtin_type_names_resolve_to_builtin_types() {
+        let (fragment, _) = json_schema::Fragment::from_cedarschema_str(
+            BUILTIN_TYPE_NAMES_SCHEMA_STR,
+            Extensions::all_available(),
+        )
+        .expect("schema str should be valid!");
+        let schema =
+            Schema::from_raw_schemafrag(fragment, TEST_SETTINGS, &mut Unstructured::new(&[]))
+                .expect("failed to generate schema!");
+        let user = ast::EntityType::from_normalized_str("App::User").unwrap();
+        let group = ast::EntityType::from_normalized_str("App::Group").unwrap();
+        let (attrs, _) = schema
+            .attribute_by_entity_type(&user)
+            .expect("`App::User` should be in the schema");
+        let attr_type = |attr: &str| attrs[attr].ty.clone();
+        assert_eq!(attr_type("name"), Type::string());
+        assert_eq!(attr_type("age"), Type::long());
+        assert_eq!(attr_type("active"), Type::bool());
+        assert_eq!(
+            attr_type("address"),
+            Type::record([
+                (
+                    "street".into(),
+                    QualifiedType {
+                        ty: Type::string(),
+                        required: true,
+                    },
+                ),
+                (
+                    "zip".into(),
+                    QualifiedType {
+                        ty: Type::long(),
+                        required: true,
+                    },
+                ),
+            ])
+        );
+        assert_eq!(attr_type("ip"), Type::ipaddr());
+        assert_eq!(attr_type("balance"), Type::decimal());
+        assert_eq!(attr_type("groups"), Type::set_of(Type::entity(group)));
+        assert_eq!(
+            schema.tag_type_by_entity_type(&user),
+            Some(Some(Type::string()))
+        );
+    }
+
+    /// Like [`BUILTIN_TYPE_NAMES_SCHEMA_STR`], but without extension types:
+    /// some generated extension values are intentionally invalid, so entities
+    /// with extension-typed attributes may fail validation.
+    const BUILTIN_PRIMITIVE_NAMES_SCHEMA_STR: &str = r#"
+    namespace App {
+        type Profile = { name: String, age: __cedar::Long };
+        entity Group;
+        entity User in [Group] {
+            profile: Profile,
+            active: Bool,
+            nicknames: Set<__cedar::String>,
+        } tags String;
+        action view appliesTo {
+            principal: [User],
+            resource: [Group],
+            context: { authenticated: __cedar::Bool, label: String },
+        };
+    }
+    "#;
+
+    #[test]
+    fn entities_and_request_generation_builtin_type_names() {
+        let (fragment, _) = json_schema::Fragment::from_cedarschema_str(
+            BUILTIN_PRIMITIVE_NAMES_SCHEMA_STR,
+            Extensions::all_available(),
+        )
+        .expect("schema str should be valid!");
+        let mut rng = rng();
+        for _ in 0..ITERATION {
+            let mut bytes = [0; RANDOM_BYTE_SIZE as usize];
+            rng.fill_bytes(&mut bytes);
+            let mut u = Unstructured::new(&bytes);
+            let schema = Schema::from_raw_schemafrag(fragment.clone(), TEST_SETTINGS, &mut u)
+                .expect("failed to generate schema!");
+            let h = schema
+                .arbitrary_hierarchy(&mut u)
+                .expect("failed to generate hierarchy!");
+            let request = schema
+                .arbitrary_request(&h, &mut u)
+                .expect("failed to generate request!");
+            let vschema =
+                ValidatorSchema::try_from(schema).expect("failed to convert to ValidatorSchema");
+            Entities::from_entities(
+                h.entities().cloned(),
+                Some(&CoreSchema::new(&vschema)),
+                cedar_policy_core::entities::TCComputation::ComputeNow,
+                Extensions::all_available(),
+            )
+            .expect("generated entities should conform to the schema");
+            ast::Request::new(
+                (request.0.principal, None),
+                (request.0.action, None),
+                (request.0.resource, None),
+                request.0.context,
+                Some(&vschema),
+                Extensions::all_available(),
+            )
+            .expect("generated request should conform to the schema");
+        }
+    }
+
+    /// The schema from cedar-policy/cedar-spec#496: an entity type in the
+    /// empty namespace with `String` attributes.
+    #[test]
+    fn entities_generation_builtin_type_names_empty_namespace() {
+        let (fragment, _) = json_schema::Fragment::from_cedarschema_str(
+            "entity User { id: String, name: String };",
+            Extensions::all_available(),
+        )
+        .expect("schema str should be valid!");
+        let mut rng = rng();
+        for _ in 0..ITERATION {
+            assert!(generate_hierarchy_from_schema(&mut rng, fragment.clone()).is_ok());
+        }
+    }
+
     fn generate_hierarchy_from_schema(
         rng: &mut ThreadRng,
         fragment: json_schema::Fragment<RawName>,
