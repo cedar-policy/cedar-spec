@@ -17,6 +17,10 @@
 /// Maximum length of a pattern string
 pub const MAX_PATTERN_LEN: usize = 6;
 
+/// The largest character that SMT-LIB string literals can represent, per the
+/// [theory of Unicode strings](https://smt-lib.org/theories-UnicodeStrings.shtml)
+pub const SMT_LIB_MAX_CHAR: char = '\u{2FFFF}';
+
 /// Settings controlling the generation of ABAC hierarchies/policies/requests
 #[derive(Debug, Clone)]
 pub struct ABACSettings {
@@ -88,6 +92,13 @@ pub struct ABACSettings {
     /// Maximum number of actions in the schema (of any kind, i.e., with or
     /// without `appliesTo`).
     pub max_actions: usize,
+
+    /// Flag to restrict string literals (including patterns) and entity ids to
+    /// characters no greater than [`SMT_LIB_MAX_CHAR`], so that generated
+    /// policies can be encoded in SMT-LIB. Targets that send policies to an SMT
+    /// solver should enable this; others should leave it disabled to test the
+    /// full range of Unicode.
+    pub smtlib_compatible_strings: bool,
 }
 
 impl ABACSettings {
@@ -104,6 +115,7 @@ impl ABACSettings {
             enable_action_in_constraints: true,
             total_action_request_env_limit: 1024,
             max_actions: 16,
+            smtlib_compatible_strings: false,
         }
     }
 

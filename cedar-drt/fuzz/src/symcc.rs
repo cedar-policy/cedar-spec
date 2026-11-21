@@ -27,7 +27,7 @@ use cedar_policy_generators::{
 };
 use cedar_policy_symcc::{
     CedarSymCompiler, CompiledPolicy, CompiledPolicySet, CompiledSchema, Env, WellFormedAsserts,
-    err::{EncodeError, Error},
+    err::Error,
     solver::{self, DecisionWithModel, LocalSolver, SolverError, WriterSolver},
     term::Term,
 };
@@ -163,6 +163,9 @@ pub type MaxRequestEnvs = usize;
 /// Settings shared by all SymCC fuzz targets that use `FuzzTargetInput`s
 /// declared in this file.
 ///
+/// Strings are restricted to characters SMT-LIB can represent, so that
+/// encoding the generated policies doesn't fail.
+///
 /// See comments on the `MaxRequestEnvs` type.
 const fn settings(max_request_envs: MaxRequestEnvs) -> ABACSettings {
     ABACSettings {
@@ -170,6 +173,7 @@ const fn settings(max_request_envs: MaxRequestEnvs) -> ABACSettings {
         max_width: 3,
         total_action_request_env_limit: max_request_envs,
         max_actions: max_request_envs,
+        smtlib_compatible_strings: true,
         ..ABACSettings::type_directed()
     }
 }
@@ -523,8 +527,6 @@ const TIMEOUT_DUR: Duration = Duration::from_secs(300);
 pub enum CexError {
     /// Successfully executed, but no counterexample because the property holds
     NoCex,
-    /// Known benign error that fuzz testing should ignore
-    Benign,
     /// Solver time out. This is expected on some inputs, but fuzz target need
     /// to handle this by restarting the solver process.
     Timeout,
@@ -555,12 +557,6 @@ pub async fn get_cex(
             Err(CexError::Timeout)
         }
         Ok(Err(Error::SolverError(err))) => panic!("solver failed: {err}"),
-        Ok(Err(Error::EncodeError(EncodeError::EncodeStringFailed(_))))
-        | Ok(Err(Error::EncodeError(EncodeError::EncodePatternFailed(_)))) => {
-            // Encoding errors are benign -- SMTLIB doesn't support full unicode
-            // but our generators generate full unicode
-            Err(CexError::Benign)
-        }
         Ok(Err(err)) => panic!("{err}"), // other errors are unexpected
     }
 }
@@ -608,20 +604,6 @@ pub trait ValidationTask: Sync {
                 .await;
             // Ensure the solver process is reaped.
             let clean_up_result = compiler.solver_mut().clean_up().await;
-            let check_result = match check_result {
-                Ok(_) => Ok(()),
-                // SMT-LIB only supports a limited set of unicode
-                Err(err)
-                    if matches!(
-                        err.as_ref(),
-                        Error::EncodeError(EncodeError::EncodePatternFailed(_))
-                            | Error::EncodeError(EncodeError::EncodeStringFailed(_))
-                    ) =>
-                {
-                    Ok(())
-                }
-                Err(err) => Err(err),
-            };
             check_result?;
             clean_up_result.map_err(|e| Box::new(e.into()))
         }
