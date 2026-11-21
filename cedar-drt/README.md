@@ -12,6 +12,11 @@ The table below lists all available fuzz targets, including which component of t
 | [`abac-type-directed`](fuzz/fuzz_targets/abac-type-directed.rs) | Authorizer | DRT | Diff test authorizer on ABAC policies using (mostly) well-typed inputs |
 | [`abac`](fuzz/fuzz_targets/abac.rs) | Authorizer | DRT | Diff test authorizer on ABAC policies |
 | [`eval-type-directed`](fuzz/fuzz_targets/eval-type-directed.rs) | Evaluator | DRT | Diff test evaluator on (mostly) well-typed expressions |
+| [`decimal-parser-drt`](fuzz/fuzz_targets/decimal-parser-drt.rs) | `decimal` extension | DRT | Diff test the `decimal` constructor on arbitrary strings |
+| [`ip-parser-drt`](fuzz/fuzz_targets/ip-parser-drt.rs) | `ipaddr` extension | DRT | Diff test the `ip` constructor on arbitrary strings |
+| [`datetime-parser-drt`](fuzz/fuzz_targets/datetime-parser-drt.rs) | `datetime` extension | DRT | Diff test the `datetime` constructor on arbitrary strings |
+| [`duration-parser-drt`](fuzz/fuzz_targets/duration-parser-drt.rs) | `datetime` extension | DRT | Diff test the `duration` constructor on arbitrary strings |
+| [`extension-roundtrip-drt`](fuzz/fuzz_targets/extension-roundtrip-drt.rs) | `decimal`, `ipaddr`, and `datetime` extensions | DRT | Generate extension values, render them as strings, and check that the constructors recover them: comparisons, accessors, and range checks on the parsed values must match results computed directly from the generated values, and must agree between Rust and Lean |
 | [`rbac-authorizer`](fuzz/fuzz_targets/rbac-authorizer.rs) | Authorizer | DRT | Test for correct authorization responses over a set of simple policies |
 | [`rbac`](fuzz/fuzz_targets/rbac.rs) | Authorizer | DRT | Diff test authorizer on sets of RBAC policies, including template instantiations |
 | [`validation-drt-type-directed`](fuzz/fuzz_targets/validation-drt-type-directed.rs) | Validator | DRT | Diff test validation using (mostly) well-typed inputs |
