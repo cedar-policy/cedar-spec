@@ -26,6 +26,7 @@ public import Cedar.Thm.Validation.EnvironmentValidation
 public import Cedar.Thm.Validation.Levels
 public import Cedar.Thm.Validation.SubstituteAction
 public import Cedar.Thm.Validation.Typechecker
+public import Cedar.Thm.Validation.Relational
 public import Cedar.Thm.Authorization
 import all Cedar.Validation.Validator -- unfolds `validate`
 
