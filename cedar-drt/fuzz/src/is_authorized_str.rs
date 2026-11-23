@@ -26,9 +26,7 @@
 //! disagree on what a valid input is.
 
 use cedar_lean_ffi::CedarLeanFfi;
-use cedar_policy::{
-    Authorizer, Context, Entities, EntityUid, PolicySet, Request, Response,
-};
+use cedar_policy::{Authorizer, Context, Entities, EntityUid, PolicySet, Request, Response};
 use serde_json::json;
 
 /// Build the request JSON that Lean's request reader expects:
