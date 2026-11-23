@@ -8,11 +8,11 @@ use serde_with::{TryFromInto, serde_as};
 use smol_str::SmolStr;
 use thiserror::Error;
 
+use cedar_policy_symcc::arc_ord::ArcOrd;
 use std::char::CharTryFromError;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::num::{NonZeroU8, NonZeroU32};
 use std::str::FromStr;
-use std::sync::Arc;
 
 use crate::FfiError;
 
@@ -637,42 +637,42 @@ impl TermDefBody {
     /// resulting `Term` itself by building the term with the already resolved terms.
     fn resolve(
         self,
-        resolved: &std::collections::HashMap<String, Arc<SymccTerm>>,
-    ) -> Result<Arc<SymccTerm>, CseTermError> {
+        resolved: &std::collections::HashMap<String, ArcOrd<SymccTerm>>,
+    ) -> Result<ArcOrd<SymccTerm>, CseTermError> {
         Ok(match self {
             TermDefBody::Ref(id) => resolved
                 .get(&id)
-                .map(Arc::clone)
+                .map(ArcOrd::clone)
                 .ok_or(CseTermError::UnknownId(id))?,
-            TermDefBody::Prim(p) => Arc::new(SymccTerm::Prim(p.try_into()?)),
-            TermDefBody::Var(v) => Arc::new(SymccTerm::Var(v.into())),
-            TermDefBody::None(ty) => Arc::new(SymccTerm::None(ty.into())),
-            TermDefBody::Some(inner) => Arc::new(SymccTerm::Some(inner.resolve(resolved)?)),
+            TermDefBody::Prim(p) => ArcOrd::new(SymccTerm::Prim(p.try_into()?)),
+            TermDefBody::Var(v) => ArcOrd::new(SymccTerm::Var(v.into())),
+            TermDefBody::None(ty) => ArcOrd::new(SymccTerm::None(ty.into())),
+            TermDefBody::Some(inner) => ArcOrd::new(SymccTerm::Some(inner.resolve(resolved)?)),
             TermDefBody::Set { elts, elts_ty } => {
                 let elts = elts
                     .into_iter()
-                    .map(|n| n.resolve(resolved).map(Arc::unwrap_or_clone))
+                    .map(|n| n.resolve(resolved).map(ArcOrd::unwrap_or_clone))
                     .collect::<Result<BTreeSet<SymccTerm>, _>>()?;
-                Arc::new(SymccTerm::Set {
-                    elts: Arc::new(elts),
+                ArcOrd::new(SymccTerm::Set {
+                    elts: ArcOrd::new(elts),
                     elts_ty: elts_ty.into(),
                 })
             }
             TermDefBody::Record(entries) => {
                 let map = entries
                     .into_iter()
-                    .map(|(k, n)| Ok((k, Arc::unwrap_or_clone(n.resolve(resolved)?))))
+                    .map(|(k, n)| Ok((k, ArcOrd::unwrap_or_clone(n.resolve(resolved)?))))
                     .collect::<Result<BTreeMap<SmolStr, SymccTerm>, CseTermError>>()?;
-                Arc::new(SymccTerm::Record(Arc::new(map)))
+                ArcOrd::new(SymccTerm::Record(ArcOrd::new(map)))
             }
             TermDefBody::App { op, args, ret_ty } => {
                 let args = args
                     .into_iter()
-                    .map(|n| n.resolve(resolved).map(Arc::unwrap_or_clone))
+                    .map(|n| n.resolve(resolved).map(ArcOrd::unwrap_or_clone))
                     .collect::<Result<Vec<SymccTerm>, _>>()?;
-                Arc::new(SymccTerm::App {
+                ArcOrd::new(SymccTerm::App {
                     op: op.try_into()?,
-                    args: Arc::new(args),
+                    args: ArcOrd::new(args),
                     ret_ty: ret_ty.into(),
                 })
             }
@@ -687,7 +687,7 @@ impl TryFrom<CseTerm> for SymccTerm {
     /// representation.
     fn try_from(value: CseTerm) -> Result<Self, Self::Error> {
         let CseTerm { defs, root } = value;
-        let mut resolved: std::collections::HashMap<String, Arc<SymccTerm>> =
+        let mut resolved: std::collections::HashMap<String, ArcOrd<SymccTerm>> =
             std::collections::HashMap::with_capacity(defs.len());
         // defs should be in the correct order, otherwise we return an error
         for TermDef { id, body: main } in defs {
@@ -696,7 +696,7 @@ impl TryFrom<CseTerm> for SymccTerm {
                 return Err(CseTermError::DuplicateId(id));
             }
         }
-        Ok(Arc::unwrap_or_clone(root.resolve(&resolved)?))
+        Ok(ArcOrd::unwrap_or_clone(root.resolve(&resolved)?))
     }
 }
 
@@ -771,7 +771,7 @@ impl TryFrom<Op> for cedar_policy_symcc::op::Op {
             Op::Or => Self::Or,
             Op::Eq => Self::Eq,
             Op::Ite => Self::Ite,
-            Op::Uuf(uuf) => Self::Uuf(Arc::new(uuf.into())),
+            Op::Uuf(uuf) => Self::Uuf(ArcOrd::new(uuf.into())),
             Op::Bvneg => Self::Bvneg,
             Op::Bvadd => Self::Bvadd,
             Op::Bvsub => Self::Bvsub,
@@ -879,7 +879,7 @@ impl TryFrom<Term> for cedar_policy_symcc::term::Term {
         Ok(match value {
             Term::App { op, args, ret_ty } => Self::App {
                 op: op.try_into()?,
-                args: Arc::new(
+                args: ArcOrd::new(
                     args.into_iter()
                         .map(Self::try_from)
                         .collect::<Result<Vec<_>, _>>()?,
@@ -888,20 +888,20 @@ impl TryFrom<Term> for cedar_policy_symcc::term::Term {
             },
             Term::None(ty) => Self::None(ty.into()),
             Term::Prim(prim) => Self::Prim(prim.try_into()?),
-            Term::Record(r) => Self::Record(Arc::new(
+            Term::Record(r) => Self::Record(ArcOrd::new(
                 r.into_iter()
                     .map(|(a, t)| Ok((a, Self::try_from(t)?)))
                     .collect::<Result<BTreeMap<SmolStr, Self>, Self::Error>>()?,
             )),
             Term::Set { elts, elts_ty } => Self::Set {
-                elts: Arc::new(
+                elts: ArcOrd::new(
                     elts.into_iter()
                         .map(Self::try_from)
                         .collect::<Result<BTreeSet<Self>, _>>()?,
                 ),
                 elts_ty: elts_ty.into(),
             },
-            Term::Some(term) => Self::Some(Arc::new((*term).try_into()?)),
+            Term::Some(term) => Self::Some(ArcOrd::new((*term).try_into()?)),
             Term::Var(var) => Self::Var(var.into()),
         })
     }
@@ -922,7 +922,7 @@ impl From<TermType> for cedar_policy_symcc::term_type::TermType {
     fn from(value: TermType) -> Self {
         match value {
             TermType::Option { ty } => Self::Option {
-                ty: Arc::new((*ty).into()),
+                ty: ArcOrd::new((*ty).into()),
             },
             TermType::Prim {
                 pty: TermPrimType::Bitvec { n },
@@ -940,12 +940,12 @@ impl From<TermType> for cedar_policy_symcc::term_type::TermType {
                 pty: TermPrimType::String,
             } => Self::String,
             TermType::Record { rty } => Self::Record {
-                rty: Arc::new(BTreeMap::from_iter(
+                rty: ArcOrd::new(BTreeMap::from_iter(
                     rty.into_iter().map(|(a, ty)| (a, ty.into())),
                 )),
             },
             TermType::Set { ty } => Self::Set {
-                ty: Arc::new((*ty).into()),
+                ty: ArcOrd::new((*ty).into()),
             },
         }
     }
@@ -966,7 +966,7 @@ impl From<cedar_policy_symcc::term_type::TermType> for TermType {
     fn from(value: cedar_policy_symcc::term_type::TermType) -> Self {
         match value {
             cedar_policy_symcc::term_type::TermType::Option { ty } => Self::Option {
-                ty: Box::new(Arc::unwrap_or_clone(ty).into()),
+                ty: Box::new(ArcOrd::unwrap_or_clone(ty).into()),
             },
             cedar_policy_symcc::term_type::TermType::Bitvec { n } => Self::Prim {
                 // PANIC SAFETY: `n` should not overflow `u8`
@@ -987,13 +987,13 @@ impl From<cedar_policy_symcc::term_type::TermType> for TermType {
                 pty: TermPrimType::String,
             },
             cedar_policy_symcc::term_type::TermType::Record { rty } => Self::Record {
-                rty: Arc::unwrap_or_clone(rty)
+                rty: ArcOrd::unwrap_or_clone(rty)
                     .into_iter()
                     .map(|(a, ty)| (a, ty.into()))
                     .collect(),
             },
             cedar_policy_symcc::term_type::TermType::Set { ty } => Self::Set {
-                ty: Box::new(Arc::unwrap_or_clone(ty).into()),
+                ty: Box::new(ArcOrd::unwrap_or_clone(ty).into()),
             },
         }
     }
@@ -1111,7 +1111,7 @@ impl From<cedar_policy_symcc::op::Op> for Op {
             cedar_policy_symcc::op::Op::Bvule => Self::Bvule,
             cedar_policy_symcc::op::Op::Bvult => Self::Bvult,
             cedar_policy_symcc::op::Op::Bvurem => Self::Bvurem,
-            cedar_policy_symcc::op::Op::Uuf(uuf) => Self::Uuf(Arc::unwrap_or_clone(uuf).into()),
+            cedar_policy_symcc::op::Op::Uuf(uuf) => Self::Uuf(ArcOrd::unwrap_or_clone(uuf).into()),
             cedar_policy_symcc::op::Op::OptionGet => Self::OptionGet,
             cedar_policy_symcc::op::Op::RecordGet(a) => Self::RecordGet(a),
             cedar_policy_symcc::op::Op::SetInter => Self::SetInter,
@@ -1140,7 +1140,7 @@ impl From<cedar_policy_symcc::term::Term> for Term {
         match value {
             cedar_policy_symcc::term::Term::App { op, args, ret_ty } => Term::App {
                 op: op.into(),
-                args: Arc::unwrap_or_clone(args)
+                args: ArcOrd::unwrap_or_clone(args)
                     .into_iter()
                     .map(|t| t.into())
                     .collect(),
@@ -1149,20 +1149,20 @@ impl From<cedar_policy_symcc::term::Term> for Term {
             cedar_policy_symcc::term::Term::None(ty) => Term::None(ty.into()),
             cedar_policy_symcc::term::Term::Prim(prim) => Term::Prim(prim.into()),
             cedar_policy_symcc::term::Term::Record(r) => Term::Record(
-                Arc::unwrap_or_clone(r)
+                ArcOrd::unwrap_or_clone(r)
                     .into_iter()
                     .map(|(a, t)| (a, t.into()))
                     .collect(),
             ),
             cedar_policy_symcc::term::Term::Set { elts, elts_ty } => Term::Set {
-                elts: Arc::unwrap_or_clone(elts)
+                elts: ArcOrd::unwrap_or_clone(elts)
                     .into_iter()
                     .map(|t| t.into())
                     .collect(),
                 elts_ty: elts_ty.into(),
             },
             cedar_policy_symcc::term::Term::Some(term) => {
-                Term::Some(Box::new(Arc::unwrap_or_clone(term).into()))
+                Term::Some(Box::new(ArcOrd::unwrap_or_clone(term).into()))
             }
             cedar_policy_symcc::term::Term::Var(var) => Term::Var(var.into()),
         }

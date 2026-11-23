@@ -52,6 +52,7 @@ private theorem transitivity_option_entity_implies {t₁ t₂ : Term} {ety₁ et
   cases h₁ : εs.ancestorsOfType ety₁ ety₂ <;>
   cases h₂ : εs.ancestors ety₂ <;>
   simp only [transitivity.core, h₁, h₂]
+  repeat split <;> simp_all [transitivity.areAncestors]
 
 private theorem pe_transitivity_isAncestor_none_left {t₂ t₁' t₂' : Term} {ety₁ : EntityType} {f : UnaryFunction} :
   transitivity.isAncestor (.none (.entity ety₁)) t₂ t₁' t₂' f = false

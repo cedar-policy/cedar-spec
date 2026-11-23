@@ -88,4 +88,4 @@ theorem footprint_allowAll (εnv : SymEnv) :
 := by
   simp [verifyAlwaysAllows.allowAll]
   simp [Policy.toExpr, PrincipalScope.toExpr, ActionScope.toExpr, ResourceScope.toExpr, Scope.toExpr, Conditions.toExpr, Condition.toExpr]
-  simp [footprint, footprint.ofBranch, footprint.ofEntity, compile_bool, Factory.someOf, TermType.isOptionEntityType, typeOf_bool]
+  simp [footprint, footprint.ofBranch, compile_bool, Factory.someOf]

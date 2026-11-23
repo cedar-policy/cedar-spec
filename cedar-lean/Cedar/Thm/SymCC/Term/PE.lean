@@ -224,6 +224,12 @@ public theorem pe_implies_true_left {t : Term} :
 := by
   simp only [implies, pe_not_true, pe_or_false_left]
 
+@[simp]
+public theorem pe_implies_true_right {t : Term} :
+  Factory.implies t true = true
+:= by
+  simp only [implies, pe_or_true_right]
+
 /-! ### PE for Factory.ite -/
 
 theorem pe_ite_simplify_true {t₁ t₂ : Term} :
