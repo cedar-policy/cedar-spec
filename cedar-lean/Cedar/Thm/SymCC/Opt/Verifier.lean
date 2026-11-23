@@ -239,7 +239,7 @@ theorem verifyAlwaysAllowsOpt_eqv_verifyAlwaysAllows_ok {ps wps : Policies} {cps
   apply verifyImpliesOpt_eqv_verifyImplies_ok _ hcpset (wellTypedPolicies_allowAll (s.typeEnv reqty)) hwps
   simp [CompiledPolicySet.compile, Except.mapError, do_eq_ok, wellTypedPolicies_allowAll]
   rw [Opt.isAuthorized.correctness]
-  simp [isAuthorized_allowAll, footprint_allowAll, CompiledPolicySet.allowAll, cpset_compile_produces_the_right_env hcpset, footprints_singleton, Data.Set.map_empty]
+  simp [isAuthorized_allowAll, footprint_allowAll, CompiledPolicySet.allowAll, cpset_compile_produces_the_right_env hcpset, footprints_singleton, Data.Set.map_empty, Data.Set.union_empty_left]
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -257,7 +257,7 @@ theorem verifyAlwaysDeniesOpt_eqv_verifyAlwaysDenies_ok {ps wps : Policies} {cps
   simp [CompiledPolicySet.compile, Except.mapError, do_eq_ok, wellTypedPolicies_empty]
   rw [Opt.isAuthorized.correctness]
   simp [isAuthorized_empty, CompiledPolicySet.denyAll, cpset_compile_produces_the_right_env hcpset]
-  simp [footprints_empty, EmptyCollection.emptyCollection, Data.Set.map_empty]
+  simp [footprints_empty, EmptyCollection.emptyCollection, Data.Set.map_empty, Data.Set.union_empty_left]
   simp [wellTypedPolicies_empty]
 
 /--

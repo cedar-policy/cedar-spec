@@ -27,15 +27,13 @@ open Cedar.Data Cedar.Spec Factory
 Returns the ground acyclicity and transitivity assumptions for a single `CompiledPolicy`.
 -/
 public def enforceCompiledPolicy (cp : CompiledPolicy) : Set Term :=
-  let tr := cp.footprint.product cp.footprint|>.map λ (t₁, t₂) => transitivity t₁ t₂ cp.εnv.entities
-  cp.acyclicity ∪ tr
+  cp.acyclicityAndTransitivity
 
 /--
 Returns the ground acyclicity and transitivity assumptions for a single `CompiledPolicySet`.
 -/
 public def enforceCompiledPolicySet (cpset : CompiledPolicySet) : Set Term :=
-  let tr := cpset.footprint.product cpset.footprint|>.map λ (t₁, t₂) => transitivity t₁ t₂ cpset.εnv.entities
-  cpset.acyclicity ∪ tr
+  cpset.acyclicityAndTransitivity
 
 /--
 Returns the ground acyclicity and transitivity assumptions for a pair of `CompiledPolicy`.
@@ -43,9 +41,12 @@ Caller guarantees that `cp₁` and `cp₂` were compiled for the same `εnv`.
 -/
 public def enforcePairCompiledPolicy (cp₁ : CompiledPolicy) (cp₂ : CompiledPolicy) : Set Term :=
   assert! cp₁.εnv = cp₂.εnv
-  let footprint := cp₁.footprint ∪ cp₂.footprint
-  let tr := footprint.product footprint|>.map λ (t₁, t₂) => transitivity t₁ t₂ cp₁.εnv.entities
-  cp₁.acyclicity ∪ cp₂.acyclicity ∪ tr
+  -- pairs within a single footprint are covered by the stored `acyclicityAndTransitivity`
+  let only₁ := cp₁.footprint.difference cp₂.footprint
+  let only₂ := cp₂.footprint.difference cp₁.footprint
+  let tr₁₂ := only₁.product only₂ |>.map λ (t₁, t₂) => transitivity t₁ t₂ cp₁.εnv.entities
+  let tr₂₁ := only₂.product only₁ |>.map λ (t₁, t₂) => transitivity t₁ t₂ cp₁.εnv.entities
+  cp₁.acyclicityAndTransitivity ∪ cp₂.acyclicityAndTransitivity ∪ tr₁₂ ∪ tr₂₁
 
 /--
 Returns the ground acyclicity and transitivity assumptions for a pair of `CompiledPolicySet`.
@@ -53,8 +54,11 @@ Caller guarantees that `cpset₁` and `cpset₂` were compiled for the same `εn
 -/
 public def enforcePairCompiledPolicySet (cpset₁ : CompiledPolicySet) (cpset₂ : CompiledPolicySet) : Set Term :=
   assert! cpset₁.εnv = cpset₂.εnv
-  let footprint := cpset₁.footprint ∪ cpset₂.footprint
-  let tr := footprint.product footprint|>.map λ (t₁, t₂) => transitivity t₁ t₂ cpset₁.εnv.entities
-  cpset₁.acyclicity ∪ cpset₂.acyclicity ∪ tr
+  -- pairs within a single footprint are covered by the stored `acyclicityAndTransitivity`
+  let only₁ := cpset₁.footprint.difference cpset₂.footprint
+  let only₂ := cpset₂.footprint.difference cpset₁.footprint
+  let tr₁₂ := only₁.product only₂ |>.map λ (t₁, t₂) => transitivity t₁ t₂ cpset₁.εnv.entities
+  let tr₂₁ := only₂.product only₁ |>.map λ (t₁, t₂) => transitivity t₁ t₂ cpset₁.εnv.entities
+  cpset₁.acyclicityAndTransitivity ∪ cpset₂.acyclicityAndTransitivity ∪ tr₁₂ ∪ tr₂₁
 
 namespace Cedar.SymCC

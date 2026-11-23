@@ -65,7 +65,7 @@ theorem enforceCompiledPolicy_eqv_enforce_ok {p wp : Policy} {cp : CompiledPolic
     footprints_singleton,
     cp_compile_produces_the_right_env h₀,
     cp_compile_produces_the_right_footprint h₀,
-    cp_compile_produces_the_right_acyclicity h₀,
+    cp_compile_produces_the_right_acyclicityAndTransitivity h₀,
     cp_compile_produces_the_right_policy h₀ h₁,
   ]
 
@@ -89,18 +89,20 @@ theorem enforcePairCompiledPolicy_eqv_enforce_ok {p₁ p₂ wp₁ wp₂ : Policy
     h_split,
     footprints_append,
     footprints_singleton,
-    Data.Set.map_union,
     Data.Set.append_eq_union,
+    Data.Set.map_union,
+    Data.Set.map_product_union,
     cp_compile_produces_the_right_env h₀,
     cp_compile_produces_the_right_env h₁,
     cp_compile_produces_the_right_footprint h₀,
     cp_compile_produces_the_right_footprint h₁,
-    cp_compile_produces_the_right_acyclicity h₀,
-    cp_compile_produces_the_right_acyclicity h₁,
+    cp_compile_produces_the_right_acyclicityAndTransitivity h₀,
+    cp_compile_produces_the_right_acyclicityAndTransitivity h₁,
     cp_compile_produces_the_right_policy h₀ h₂,
     cp_compile_produces_the_right_policy h₁ h₃,
     reduceIte,
   ]
+  ac_rfl
 
 /--
 This theorem covers the "happy path" -- showing that if optimized policy
@@ -121,13 +123,15 @@ theorem enforcePairCompiledPolicySet_eqv_enforce_ok {ps₁ ps₂ wps₁ wps₂ :
     footprints_append,
     Data.Set.append_eq_union,
     Data.Set.map_union,
+    Data.Set.map_product_union,
     cpset_compile_produces_the_right_env hcpset₁,
     cpset_compile_produces_the_right_env hcpset₂,
     cpset_compile_produces_the_right_footprint hcpset₁,
     cpset_compile_produces_the_right_footprint hcpset₂,
-    cpset_compile_produces_the_right_acyclicity hcpset₁,
-    cpset_compile_produces_the_right_acyclicity hcpset₂,
+    cpset_compile_produces_the_right_acyclicityAndTransitivity hcpset₁,
+    cpset_compile_produces_the_right_acyclicityAndTransitivity hcpset₂,
     cpset_compile_produces_the_right_policies hcpset₁ hwps₁,
     cpset_compile_produces_the_right_policies hcpset₂ hwps₂,
     reduceIte,
   ]
+  ac_rfl

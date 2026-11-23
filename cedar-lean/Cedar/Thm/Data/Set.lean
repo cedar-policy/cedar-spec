@@ -570,6 +570,12 @@ public theorem union_assoc [LT α] [DecidableLT α] [StrictLT α] (s₁ s₂ s�
 := by
   simp only [Union.union, union, elts, List.mergeCanonical_assoc]
 
+public instance [LT α] [DecidableLT α] [StrictLT α] : Std.Associative (α := Set α) (· ∪ ·) :=
+  ⟨union_assoc⟩
+
+public instance [LT α] [DecidableLT α] [StrictLT α] : Std.Commutative (α := Set α) (· ∪ ·) :=
+  ⟨union_comm⟩
+
 /-- Union with the empty set does not require well-formedness. -/
 public theorem union_empty_right [LT α] [DecidableLT α] {s : Set α} :
   s ∪ Set.empty = s
@@ -892,5 +898,28 @@ public theorem product_empty {α β} (s : Set α) :
 public theorem empty_product {α β} (s : Set β) :
   (Set.empty : Set α).product s = Set.empty
 := by simp [product, List.product, empty, elts]
+
+@[simp]
+public theorem mem_map_product [LT γ] [DecidableLT γ] [StrictLT γ]
+  {c : γ} {f : α × β → γ} {s₁ : Set α} {s₂ : Set β} :
+  c ∈ (s₁.product s₂).map f ↔ ∃ a ∈ s₁, ∃ b ∈ s₂, f (a, b) = c
+:= by
+  simp only [mem_map, Prod.exists, mem_product, and_assoc, exists_and_left]
+
+/--
+Mapping over the square of `s₁ ∪ s₂` is the same as mapping over the squares of
+`s₁` and `s₂`, plus the pairs where one element is only in `s₁` and the other is
+only in `s₂`.
+-/
+public theorem map_product_union [LT α] [DecidableLT α] [StrictLT α] [DecidableEq α]
+  [LT β] [DecidableLT β] [StrictLT β] (f : α × α → β) (s₁ s₂ : Set α) :
+  ((s₁ ∪ s₂).product (s₁ ∪ s₂)).map f =
+    (s₁.product s₁).map f ∪ (s₂.product s₂).map f ∪
+    ((s₁.difference s₂).product (s₂.difference s₁)).map f ∪
+    ((s₂.difference s₁).product (s₁.difference s₂)).map f
+:= by
+  rw [eq_means_eqv (map_wf _ _) (union_wf (union_wf (union_wf (map_wf _ _) (map_wf _ _)) (map_wf _ _)) (map_wf _ _))]
+  simp only [List.Equiv, List.subset_def, mem_elts_iff_mem_set, mem_union, mem_map_product, mem_difference]
+  grind
 
 end Cedar.Data.Set

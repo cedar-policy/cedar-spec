@@ -160,9 +160,11 @@ theorem cpset_compile_produces_the_right_footprint {ps : Policies} {cpset : Comp
   simp only [Except.ok.injEq] at h₁ ; subst res
   simp
 
-theorem cp_compile_produces_the_right_acyclicity {p : Policy} {cp : CompiledPolicy} {s : CompiledSchema} {reqty : Validation.RequestType} :
+theorem cp_compile_produces_the_right_acyclicityAndTransitivity {p : Policy} {cp : CompiledPolicy} {s : CompiledSchema} {reqty : Validation.RequestType} :
   CompiledPolicy.compile p s reqty = .ok cp →
-  cp.acyclicity = cp.footprint.map (SymCC.acyclicity · cp.εnv.entities)
+  cp.acyclicityAndTransitivity =
+    cp.footprint.map (SymCC.acyclicity · cp.εnv.entities) ∪
+    (cp.footprint.product cp.footprint).map (fun (t₁, t₂) => SymCC.transitivity t₁ t₂ cp.εnv.entities)
 := by
   intro temp ; have hf := cp_compile_produces_the_right_footprint temp ; revert temp
   simp [CompiledPolicy.compile]
@@ -171,9 +173,11 @@ theorem cp_compile_produces_the_right_acyclicity {p : Policy} {cp : CompiledPoli
   simp only at *
   congr
 
-theorem cpset_compile_produces_the_right_acyclicity {ps : Policies} {cpset : CompiledPolicySet} {s : CompiledSchema} {reqty : Validation.RequestType} :
+theorem cpset_compile_produces_the_right_acyclicityAndTransitivity {ps : Policies} {cpset : CompiledPolicySet} {s : CompiledSchema} {reqty : Validation.RequestType} :
   CompiledPolicySet.compile ps s reqty = .ok cpset →
-  cpset.acyclicity = cpset.footprint.map (SymCC.acyclicity · cpset.εnv.entities)
+  cpset.acyclicityAndTransitivity =
+    cpset.footprint.map (SymCC.acyclicity · cpset.εnv.entities) ∪
+    (cpset.footprint.product cpset.footprint).map (fun (t₁, t₂) => SymCC.transitivity t₁ t₂ cpset.εnv.entities)
 := by
   intro temp ; have hf := cpset_compile_produces_the_right_footprint temp ; revert temp
   simp [CompiledPolicySet.compile]

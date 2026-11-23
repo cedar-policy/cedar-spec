@@ -54,8 +54,8 @@ structure CompiledPolicy where
   policy : Policy
   /-- footprint of the policy -/
   footprint : Set Term
-  /-- acyclicity constraints for this policy -/
-  acyclicity : Set Term
+  /-- acyclicity and transitivity constraints for this policy -/
+  acyclicityAndTransitivity : Set Term
 deriving Repr, Inhabited, DecidableEq
 
 /--
@@ -70,7 +70,9 @@ def CompiledPolicy.compile (p : Policy) (s : CompiledSchema) (reqty : Validation
   let εnv := s.symEnv reqty
   let { term, footprint, .. } ← Opt.compile policy.toExpr εnv |>.mapError .symCCError
   let acyclicity := footprint.map (SymCC.acyclicity · εnv.entities)
-  .ok { term, εnv, policy, footprint, acyclicity }
+  let transitivity := footprint.product footprint |>.map λ (t₁, t₂) => SymCC.transitivity t₁ t₂ εnv.entities
+  let acyclicityAndTransitivity := acyclicity ∪ transitivity
+  .ok { term, εnv, policy, footprint, acyclicityAndTransitivity }
 
 /--
 Represents a symbolically compiled policyset. This can be fed into the various
@@ -86,8 +88,8 @@ structure CompiledPolicySet where
   policies : Policies
   /-- footprint of the policies -/
   footprint : Set Term
-  /-- acyclicity constraints for these policies -/
-  acyclicity : Set Term
+  /-- acyclicity and transitivity constraints for these policies -/
+  acyclicityAndTransitivity : Set Term
 deriving Repr, Inhabited, DecidableEq
 
 /--
@@ -102,7 +104,9 @@ def CompiledPolicySet.compile (ps : Policies) (s : CompiledSchema) (reqty : Vali
   let εnv := s.symEnv reqty
   let { term, footprint, .. } ← Opt.isAuthorized policies εnv |>.mapError .symCCError
   let acyclicity := footprint.map (SymCC.acyclicity · εnv.entities)
-  .ok { term, εnv, policies, footprint, acyclicity }
+  let transitivity := footprint.product footprint |>.map λ (t₁, t₂) => SymCC.transitivity t₁ t₂ εnv.entities
+  let acyclicityAndTransitivity := acyclicity ∪ transitivity
+  .ok { term, εnv, policies, footprint, acyclicityAndTransitivity }
 
 /--
 A `CompiledPolicySet` that represents the policyset that allows all requests in
@@ -114,7 +118,7 @@ def CompiledPolicySet.allowAll (εnv : SymEnv) : CompiledPolicySet :=
     εnv
     policies := [verifyAlwaysAllows.allowAll]
     footprint := Set.empty
-    acyclicity := Set.empty
+    acyclicityAndTransitivity := Set.empty
   }
 
 /--
@@ -127,7 +131,7 @@ def CompiledPolicySet.denyAll (εnv : SymEnv) : CompiledPolicySet :=
     εnv
     policies := []
     footprint := Set.empty
-    acyclicity := Set.empty
+    acyclicityAndTransitivity := Set.empty
   }
 
 /--
@@ -149,7 +153,7 @@ def CompiledPolicy.intoCompiledPolicySet (cp : CompiledPolicy) : CompiledPolicyS
     εnv := cp.εnv
     policies := [cp.policy]
     footprint := cp.footprint -- the footprint of a singleton policyset is the same as the footprint of the policy
-    acyclicity := cp.acyclicity -- the acyclicity constraints for a singleton policyset are the same as the acyclicity constraints for the policy
+    acyclicityAndTransitivity := cp.acyclicityAndTransitivity -- the constraints for a singleton policyset are the same as the constraints for the policy
   }
 
 /--
