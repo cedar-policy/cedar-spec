@@ -22,6 +22,7 @@ import Cedar.Thm.Data.List
 import Cedar.Thm.Data.Map
 
 import Cedar.Thm.TPE.WellTyped.Basic
+import Cedar.Thm.TPE.State
 
 namespace Cedar.Thm
 
@@ -42,45 +43,25 @@ theorem try_decide_residual₂_is_bool
   all_goals simp only [Option.some.injEq, reduceCtorEq] at hdec
   all_goals exact ⟨_, hdec.symm⟩
 
-theorem tags_if_partial_tags
-  {env : TypeEnv} {req : Request} {es : Entities} {pes : PartialEntities}
-  {uid : EntityUID} {tags : Map Tag Value}
-  (h_wf : InstanceOfWellFormedEnvironment req es env)
-  (h_eref : EntitiesRefine es pes)
-  (h_tags : PartialEntities.tags pes uid = some tags) :
-  ∃ (edata : EntityData),
-    edata.tags = tags ∧
-    InstanceOfSchemaEntry uid edata env
-:= by
-  unfold PartialEntities.tags PartialEntities.get at h_tags
-  cases h₁ : (Map.find? pes uid) <;> rw [h₁] at h_tags
-  . simp at h_tags
-  . rename_i pe
-    have ⟨edata, h_es, _, _, h_pt, h_entry⟩ :=
-      entity_data_from_partial h_wf h_eref h₁
-    simp only [Option.bind] at h_tags
-    cases h_pe : pe.tags <;> rw [h_pe] at h_tags
-    . simp at h_tags
-    . simp only [Option.some.injEq] at h_tags
-      simp only [h_pe, PartialIsValid.some_inv] at h_pt
-      subst h_pt
-      exact ⟨edata, by simp_all, h_entry⟩
+private theorem mem_values_of_find? {m : Map Attr Value} {k : Attr} {v : Value}
+  (h : m.find? k = some v) : v ∈ m.values
+:= Map.in_list_in_values (Map.find?_mem_toList h)
 
 theorem entity_tag_well_typed
   {env : TypeEnv} {req : Request} {es : Entities} {pes : PartialEntities}
   {uid : EntityUID} {ety : EntityType}
-  {tags : Map Tag Value} {v : Value} {ty : CedarType} :
+  {tag : Tag} {v : Value} {ty : CedarType} :
   InstanceOfWellFormedEnvironment req es env →
   EntitiesRefine es pes →
   InstanceOfEntityType uid ety env →
-  PartialEntities.tags pes uid = some tags →
-  v ∈ tags.values →
+  entityTag pes uid tag = .value v →
   env.ets.tags? ety = some (some ty) →
   InstanceOfType env v ty.liftBoolTypes
 := by
-  intros h_wf h_eref h_ent h_tags h_mem h_schema
-  have ⟨edata, h_eq, h_entry⟩ := tags_if_partial_tags h_wf h_eref h_tags
-  rw [← h_eq] at h_mem
+  intros h_wf h_eref h_ent h_tag h_schema
+  obtain ⟨edata, h_find, h_tagfind⟩ := entity_tag_value h_eref h_tag
+  have h_entry := h_wf.2.2.1 uid edata h_find
+  have h_mem : v ∈ edata.tags.values := mem_values_of_find? h_tagfind
   unfold InstanceOfSchemaEntry at h_entry
   cases h_entry
   . rename_i h_ent_entry
@@ -178,6 +159,70 @@ theorem partial_eval_well_typed_app₂_values_hasTag :
     exact well_typed_bool
 
 
+/--
+The `getTag` residual that TPE falls back on, applied to the concrete uid and tag
+it discovered, is well typed.
+-/
+theorem get_tag_self_well_typed
+  {env : TypeEnv} {expr1 expr2 : Residual} {preq : PartialRequest} {pes : PartialEntities}
+  {id₁ : EntityUID} {id₂ : String} {ty : CedarType}
+  (ih₁ : Residual.WellTyped env (TPE.evaluate env expr1 preq pes))
+  (h₁ : (TPE.evaluate env expr1 preq pes).asValue = some (Value.prim (Prim.entityUID id₁)))
+  (h_expr1 : Residual.WellTyped env expr1)
+  (h_op : BinaryResidualWellTyped env BinaryOp.getTag expr1 expr2 ty) :
+  Residual.WellTyped env (Residual.binaryApp BinaryOp.getTag (id₁ : Residual) (id₂ : Residual) ty)
+:= by
+  apply Residual.WellTyped.binaryApp
+  . unfold Residual.asValue at h₁
+    cases h₃: TPE.evaluate env expr1 preq pes
+    all_goals (rw [h₃] at h₁
+               simp at h₁)
+    rename_i v ty
+    rw [h₃] at ih₁
+    rw [h₁] at ih₁
+    have h_ety_eq : ty = (CedarType.entity id₁.ty) := by {
+      have h₄ := partial_eval_preserves_typeof _ h_expr1 preq pes
+      cases ih₁
+      rename_i h₅
+      cases h₅
+      rename_i h₅
+      unfold InstanceOfEntityType at h₅
+      rw [h₅.left]
+    }
+    rw [h_ety_eq] at ih₁
+    exact ih₁
+  . exact well_typed_string
+  . cases h_op with
+    | getTag h₃ h₄ h₅ =>
+    apply BinaryResidualWellTyped.getTag
+    . simp only [Residual.typeOf, CedarType.entity.injEq]
+      rfl
+    . simp [Residual.typeOf]
+    . rename_i ety ty
+      have h₄ : ety = id₁.ty := by
+        have h₄ := partial_eval_preserves_typeof _ h_expr1 preq pes
+        simp only [Residual.asValue] at h₁
+        split at h₁
+        case h_2 =>
+          contradiction
+        rename_i x v ty h₅
+        rw [h₅] at ih₁
+        cases ih₁
+        rename_i h₆
+        injection h₁ with h₇
+        rw [h₇] at h₆
+        rw [h₅, h₃, h₇] at h₄
+        simp only [Residual.typeOf] at h₄
+        cases h₆
+        rename_i ety₂ h₈
+        injection h₄ with h₄
+        unfold InstanceOfEntityType at h₈
+        rcases h₈ with ⟨h₉, _⟩
+        rw [h₉] at h₄
+        rw [h₄]
+      rw [h₄] at h₅
+      exact h₅
+
 theorem partial_eval_well_typed_app₂_values_getTag :
   Residual.WellTyped env (TPE.evaluate env expr1 preq pes) →
   Residual.WellTyped env (TPE.evaluate env expr2 preq pes) →
@@ -195,94 +240,12 @@ theorem partial_eval_well_typed_app₂_values_getTag :
   cases h_wt with
   | binaryApp h_expr1 h_expr2 h_op =>
 
+  have hself := get_tag_self_well_typed (id₂ := id₂) ih₁ h₁ h_expr1 h_op
+  -- and reducing it to what TPE knows about the tag preserves that
   unfold TPE.getTag
-  split
-  . unfold someOrError
-    split
-    . apply Residual.WellTyped.val
-      rename Option (Data.Map Tag Value) => x
-      rename_i tags heq x₁ x₂ x₃ v h₃
-      cases h_op
-      rename_i ety ty h₄ h₅ h₆
-      unfold Data.Map.find? at h₃
-      split at h₃ <;> try contradiction
-      rename_i v₂ v₃ _
-      injection h₃; rename_i h₃; rw [← h₃]
-      have h_v_mem : v₃ ∈ tags.values := by
-        have h₁₉ := List.mem_of_find?_eq_some (by assumption)
-        exact Map.in_list_in_values h₁₉
-      have h_ent : InstanceOfEntityType id₁ ety env := by
-        have h₂₁ := partial_eval_preserves_typeof _ h_expr1 preq pes
-        unfold Residual.asValue at h₁
-        cases h₂₂: TPE.evaluate env expr1 preq pes
-        case val v ty₃ =>
-          replace h₁ : v = .prim (.entityUID id₁) := by
-            simpa [h₂₂] using h₁
-          rw [h₁] at h₂₂
-          rw [h₂₂] at ih₁
-          replace h₂₁ : ty₃ = CedarType.entity ety := by
-            rw [h₅, h₂₂] at h₂₁
-            simpa [Residual.typeOf] using h₂₁
-          cases ih₁; rename_i h₂₃
-          rw [h₂₁] at h₂₃
-          cases h₂₃; rename_i h₂₄
-          exact h₂₄
-        all_goals
-          rw [h₂₂] at h₁
-          simp at h₁
-      exact entity_tag_well_typed h_wf h_eref h_ent heq h_v_mem h₄
-    . apply Residual.WellTyped.error
-  . apply Residual.WellTyped.binaryApp
-    . unfold Residual.asValue at h₁
-      cases h₃: TPE.evaluate env expr1 preq pes
-      all_goals (rw [h₃] at h₁
-                 simp at h₁)
-      rename_i x heq v ty
-      rw [h₃] at ih₁
-      rw [h₁] at ih₁
-      have h_ety_eq : ty = (CedarType.entity id₁.ty) := by {
-        have h₄ := partial_eval_preserves_typeof _ h_expr1 preq pes
-        cases ih₁
-        rename_i h₅
-        cases h₅
-        rename_i h₅
-        unfold InstanceOfEntityType at h₅
-        rw [h₅.left]
-      }
-      rw [h_ety_eq] at ih₁
-      exact ih₁
-    . exact well_typed_string
-    . cases h_op with
-      | getTag h₃ h₄ h₅ =>
-      apply BinaryResidualWellTyped.getTag
-      . simp only [Residual.typeOf, CedarType.entity.injEq]
-        rfl
-      . simp [Residual.typeOf]
-      . rename_i ety ty
-        have h₄ : ety = id₁.ty := by
-          have h₄ := partial_eval_preserves_typeof _ h_expr1 preq pes
-          simp only [Residual.asValue] at h₁
-          split at h₁
-          case h_2 =>
-            contradiction
-          rename_i x v ty h₅
-          rw [h₅] at ih₁
-          cases ih₁
-          rename_i h₆
-          injection h₁ with h₇
-          rw [h₇] at h₆
-          rw [h₅, h₃, h₇] at h₄
-          simp only [Residual.typeOf] at h₄
-          cases h₆
-          rename_i ety₂ h₈
-          injection h₄ with h₄
-          unfold InstanceOfEntityType at h₈
-          rcases h₈ with ⟨h₉, _⟩
-          rw [h₉] at h₄
-          rw [h₄]
-        rw [h₄] at h₅
-        exact h₅
-
+  refine stateToResidual_well_typed h_wf ?_ hself rfl
+  have hcons := residualState_sound h_wf h_ref _ hself
+  simpa only [residualState] using hcons
 
 theorem partial_eval_well_typed_app₂_values_mem :
   Residual.WellTyped env (TPE.evaluate env expr1 preq pes) →

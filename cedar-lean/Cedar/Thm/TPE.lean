@@ -19,6 +19,8 @@ import Cedar.TPE.Authorizer
 import Cedar.Spec
 import Cedar.Validation
 import Cedar.Thm.TPE.Input
+import Cedar.Thm.TPE.Attrs
+import Cedar.Thm.TPE.State
 import Cedar.Thm.TPE.Conversion
 import Cedar.Thm.TPE.Soundness
 import Cedar.Thm.TPE.PreservesTypeOf

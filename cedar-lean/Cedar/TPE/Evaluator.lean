@@ -43,12 +43,29 @@ def someOrSelf : Option Value → CedarType → Residual → Residual
   | .some v, ty, _   => .val v ty
   | .none,   _, self => self
 
+/--
+Reduce a resolved attribute state to a residual
+-/
+def stateToResidual (s : AttrState) (ty : CedarType) (self : Residual) : Residual :=
+  match s with
+  | .value v => .val v ty
+  | .absent  => .error ty
+  | .partialRecord r =>
+    match ty with
+    | .record rty => someOrSelf ((PartialRecord.asValues? r rty).map Value.record) ty self
+    | _           => self
+  | .present
+  | .unknown => self
+
 def varₚ (req : PartialRequest) (var : Var) (ty : CedarType) : Residual :=
   match var with
   | .principal => varₒ req.principal.asEntityUID
   | .resource  => varₒ req.resource.asEntityUID
   | .action    => varₒ req.action
-  | .context   => varₒ (req.context.map (.record ·))
+  | .context   =>
+    match req.context with
+    | .some r => stateToResidual (.partialRecord r) ty (.var var ty)
+    | .none   => .var var ty
 where
   varₒ := (someOrSelf · ty (.var var ty))
 
@@ -102,12 +119,15 @@ def inₛ (uid : EntityUID) (vs : Set Value) (es : PartialEntities): Option Bool
   (← vs.toList.mapM (Except.toOption ∘ Value.asEntityUID)).ternaryAny (inₑ uid · es)
 
 def hasTag (uid : EntityUID) (tag : String) (es : PartialEntities) : Option Bool :=
-  (es.tags uid).map (Map.contains · tag)
+  match entityTag es uid tag with
+  | .value _
+  | .partialRecord _
+  | .present => .some true
+  | .absent  => .some false
+  | .unknown => .none
 
 def getTag (uid : EntityUID) (tag : String) (es : PartialEntities) (ty : CedarType) : Residual :=
-  match es.tags uid with
-  | .some tags => someOrError (tags.find? tag) ty
-  | .none => .binaryApp .getTag uid tag ty
+  stateToResidual (entityTag es uid tag) ty (.binaryApp .getTag uid tag ty)
 
 /- Given a unary operation applied to a non-value residuals, reduce it to a value if possible -/
 def tryDecideResidual₂ (env : TypeEnv) (op₂ : BinaryOp) (r₁ r₂ : Residual) : Option Value :=
@@ -170,12 +190,6 @@ def apply₂ (env : TypeEnv) (op₂ : BinaryOp) (r₁ r₂ : Residual) (es : Par
   self := .binaryApp op₂ r₁ r₂ ty
 
 
-def attrsOf (r : Residual) (lookup : EntityUID → Option (Map Attr Value)) : Option (Map Attr Value) :=
-  match r with
-  | .val (.record m) _              => .some m
-  | .val (.prim (.entityUID uid)) _ => lookup uid
-  | _                               => none
-
 /- Given a `has` expression applied to a non-value residuals, reduce it to a value if possible -/
 def tryDecideHasResidual (env : TypeEnv) (r : Residual) (a : Attr) : Option Value :=
   if r.errorFree then
@@ -190,54 +204,77 @@ def tryDecideHasResidual (env : TypeEnv) (r : Residual) (a : Attr) : Option Valu
     | _ => .none
   else .none
 
-def hasAttr (env : TypeEnv) (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
+def hasAttr (env : TypeEnv) (req : PartialRequest) (r : Residual) (a : Attr)
+  (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
   | .error _ => .error ty
   | _ =>
   match tryDecideHasResidual env r a with
   | .some v => .val v ty
   | .none =>
-  match attrsOf r es.attrs with
-  | .some m => m.contains a
-  | .none   => .hasAttr r a ty
+  match attrStateAt env req es r a with
+  | .value _
+  | .partialRecord _
+  | .present => .val true ty
+  | .absent  => .val false ty
+  | .unknown => .hasAttr r a ty
 
+/--
+Decide `r has a` as `hasAttr` does, from the schema or from what is known about
+attribute `a` of `r`.
+-/
+def decideHasAttr (env : TypeEnv) (req : PartialRequest) (r : Residual) (a : Attr)
+  (es : PartialEntities) : Option Bool :=
+  match tryDecideHasResidual env r a with
+  | .some _ => .some false
+  | .none =>
+    match attrStateAt env req es r a with
+    | .value _
+    | .partialRecord _
+    | .present => .some true
+    | .absent  => .some false
+    | .unknown => .none
 
-def extHasAttr (env : TypeEnv) (r : Residual) (a : Attr) (as : List Attr)
+/-- The declared type of attribute `a` of a value of type `ty`, if any -/
+def attrTypeOf (env : TypeEnv) (ty : CedarType) (a : Attr) : Option CedarType :=
+  match ty with
+  | .record rty => (rty.find? a).map Qualified.getType
+  | .entity ety =>
+    ((env.ets.attrs? ety).map RecordType.liftBoolTypes).bind λ rty =>
+      (rty.find? a).map Qualified.getType
+  | _ => .none
+
+/--
+`r has a.b.c` behaves like `r has a && r.a has b && r.a.b has c`, so decide each
+`has` as `hasAttr` does, and stop at the first step that is `false` or undecided.
+-/
+def extHasAttr (env : TypeEnv) (req : PartialRequest) (r : Residual) (a : Attr) (as : List Attr)
   (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
   | .error _ => .error ty
-  | _ =>
-    match attrsOf r es.attrs with
-    | .some m => extHasAttr.loop env m (a :: as) es ty
-    | .none   => extHasAttr.tryDecide env r a as ty
+  | _ => extHasAttr.loop env req r a as es ty
 where
-  tryDecide (env : TypeEnv) (r : Residual) (a : Attr) (as : List Attr) (ty : CedarType) : Residual :=
-    match tryDecideHasResidual env r a with
-    | .some v => .val v ty
-    | .none   => .extHasAttr r a as ty
-  loop (env : TypeEnv) (m : Map Attr Value) (attrs : List Attr) (es : PartialEntities)
-    (ty : CedarType) : Residual :=
-    match attrs with
-    | []     => true
-    | [a]    => m.contains a
-    | a :: rest =>
-      match m.find? a with
-      | .none => false
-      | .some next =>
-        match attrsOf (.val next ty) es.attrs with
-        | .some m' => loop env m' rest es ty
-        | .none    => match next with
-          | .prim (.entityUID uid) =>
-            tryDecide env (.val next (.entity uid.ty)) rest.head! rest.tail ty
-          | _ => .error ty
+  loop (env : TypeEnv) (req : PartialRequest) (r : Residual) (a : Attr) (as : List Attr)
+    (es : PartialEntities) (ty : CedarType) : Residual :=
+    match decideHasAttr env req r a es with
+    | .some false => .val false ty
+    | .none       => .extHasAttr r a as ty
+    | .some true  =>
+      match as with
+      -- The last attribute is only checked for membership, never dereferenced.
+      | []      => .val true ty
+      | b :: bs =>
+        match attrTypeOf env r.typeOf a with
+        | .none     => .extHasAttr r a as ty
+        | .some aty =>
+          loop env req (stateToResidual (attrStateAt env req es r a) aty (.getAttr r a aty))
+            b bs es ty
 
-def getAttr (r : Residual) (a : Attr) (es : PartialEntities) (ty : CedarType) : Residual :=
+def getAttr (env : TypeEnv) (req : PartialRequest) (r : Residual) (a : Attr)
+  (es : PartialEntities) (ty : CedarType) : Residual :=
   match r with
   | .error _ => .error ty
-  | _ =>
-    match attrsOf r es.attrs with
-    | .some m => someOrError (m.find? a) ty
-    | .none   => .getAttr r a ty
+  | _ => stateToResidual (attrStateAt env req es r a) ty (.getAttr r a ty)
 
 def set (rs : List Residual) (ty : CedarType) : Residual :=
   match rs.mapM Residual.asValue with
@@ -274,11 +311,11 @@ def evaluate
   | .binaryApp op₂ x₁ x₂ ty =>
     apply₂ env op₂ (evaluate env x₁ req es) (evaluate env x₂ req es) es ty
   | .hasAttr x₁ a ty =>
-    hasAttr env (evaluate env x₁ req es) a es ty
+    hasAttr env req (evaluate env x₁ req es) a es ty
   | .extHasAttr x₁ a as ty =>
-    extHasAttr env (evaluate env x₁ req es) a as es ty
+    extHasAttr env req (evaluate env x₁ req es) a as es ty
   | .getAttr x₁ a ty =>
-    getAttr (evaluate env x₁ req es) a es ty
+    getAttr env req (evaluate env x₁ req es) a es ty
   | .set xs ty =>
     set (xs.map₁ (λ ⟨x₁, _⟩ => evaluate env x₁ req es)) ty
   | .record axs ty =>

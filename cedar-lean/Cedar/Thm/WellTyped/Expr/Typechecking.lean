@@ -742,7 +742,7 @@ private theorem typeOfHasAttr_ok_implies_entity_or_record
   case h_2 ety heq => exact Or.inl ⟨ety, heq⟩
   case h_3 => simp only [err, reduceCtorEq] at h
 
-private theorem qualifiedType_liftBoolTypes_getType (qty : QualifiedType) :
+theorem qualifiedType_liftBoolTypes_getType (qty : QualifiedType) :
   (QualifiedType.liftBoolTypes qty).getType = qty.getType.liftBoolTypes := by
   cases qty <;> simp [QualifiedType.liftBoolTypes, Qualified.getType]
 
@@ -962,7 +962,7 @@ private theorem ExtHasAttrChainValid_liftBoolTypes_entity
   (h : ExtHasAttrChainValid ets (.entity ety) attrs) :
   ExtHasAttrChainValid ets (.entity ety) attrs := h
 
-private theorem ExtHasAttrChainValid_liftBoolTypes_record
+theorem ExtHasAttrChainValid_liftBoolTypes_record
   {ets : EntitySchema} {rty : RecordType} {attrs : List Attr}
   (h : ExtHasAttrChainValid ets (.record rty) attrs) :
   ExtHasAttrChainValid ets (.record (RecordType.liftBoolTypes rty)) attrs := by
