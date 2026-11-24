@@ -21,7 +21,7 @@ use crate::settings::*;
 use crate::size_hint_utils::size_hint_for_choose;
 use crate::{accum, gen, gen_inner, uniform};
 use arbitrary::{Arbitrary, Unstructured};
-use ast::{EntityUID, Name, RestrictedExpr};
+use ast::{Eid, EntityUID, Name, RestrictedExpr};
 use cedar_policy_core::ast::{self, EntityType};
 use cedar_policy_core::extensions;
 use indexmap::IndexMap;
@@ -69,6 +69,32 @@ fn mutate_str(u: &mut Unstructured<'_>, s: &str) -> Result<String> {
     Ok(res.into_iter().collect())
 }
 
+/// Restrict `s` to the characters SMT-LIB can represent (see
+/// [`ABACSettings::smtlib_compatible_strings`]) by dropping the others, if
+/// `smtlib_compatible` is true.
+pub(crate) fn restrict_str(s: &str, smtlib_compatible: bool) -> SmolStr {
+    if smtlib_compatible {
+        s.chars().filter(|c| *c <= SMT_LIB_MAX_CHAR).collect()
+    } else {
+        s.into()
+    }
+}
+
+/// Get an arbitrary string, which only contains characters SMT-LIB can
+/// represent if `smtlib_compatible` is true.
+pub fn arbitrary_string(
+    smtlib_compatible: bool,
+    u: &mut Unstructured<'_>,
+) -> arbitrary::Result<SmolStr> {
+    Ok(restrict_str(u.arbitrary()?, smtlib_compatible))
+}
+
+/// Get an arbitrary `Eid`, which only contains characters SMT-LIB can
+/// represent if `smtlib_compatible` is true.
+pub fn arbitrary_eid(smtlib_compatible: bool, u: &mut Unstructured<'_>) -> arbitrary::Result<Eid> {
+    arbitrary_string(smtlib_compatible, u).map(Eid::new)
+}
+
 /// Pool of integer and string constants
 #[derive(Debug, Clone)]
 pub struct ConstantPool {
@@ -82,6 +108,9 @@ pub struct ConstantPool {
     /// equal (eg, two attributes having equal values, or an attribute value
     /// being equal to a constant mentioned in the policy)
     string_constants: Vec<SmolStr>,
+    /// whether string constants only contain characters SMT-LIB can represent.
+    /// See [`ABACSettings::smtlib_compatible_strings`].
+    smtlib_compatible_strings: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -114,12 +143,7 @@ impl From<BiasedI64> for i64 {
 
 impl<'a> Arbitrary<'a> for ConstantPool {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        let sc: Vec<String> = u.arbitrary()?;
-        Ok(Self {
-            int_constants: <Vec<BiasedI64> as Arbitrary>::arbitrary(u)
-                .map(|bis| bis.into_iter().map(|bi| bi.into()).collect::<Vec<i64>>())?,
-            string_constants: sc.iter().map(|s| s.into()).collect(),
-        })
+        Self::arbitrary_with_smtlib_compatibility(false, u)
     }
     fn size_hint(depth: usize) -> (usize, Option<usize>) {
         arbitrary::size_hint::and_all(&[
@@ -130,6 +154,31 @@ impl<'a> Arbitrary<'a> for ConstantPool {
 }
 
 impl ConstantPool {
+    /// Get an arbitrary `ConstantPool` whose string constants respect
+    /// `settings.smtlib_compatible_strings`.
+    pub fn arbitrary_for_settings(
+        settings: &ABACSettings,
+        u: &mut Unstructured<'_>,
+    ) -> arbitrary::Result<Self> {
+        Self::arbitrary_with_smtlib_compatibility(settings.smtlib_compatible_strings, u)
+    }
+
+    fn arbitrary_with_smtlib_compatibility(
+        smtlib_compatible_strings: bool,
+        u: &mut Unstructured<'_>,
+    ) -> arbitrary::Result<Self> {
+        let sc: Vec<&str> = u.arbitrary()?;
+        Ok(Self {
+            int_constants: <Vec<BiasedI64> as Arbitrary>::arbitrary(u)
+                .map(|bis| bis.into_iter().map(|bi| bi.into()).collect::<Vec<i64>>())?,
+            string_constants: sc
+                .into_iter()
+                .map(|s| restrict_str(s, smtlib_compatible_strings))
+                .collect(),
+            smtlib_compatible_strings,
+        })
+    }
+
     /// Get an arbitrary int constant from the pool.
     /// If there are no int constants in the pool, get a purely arbitrary int constant
     pub fn arbitrary_int_constant(&self, u: &mut Unstructured<'_>) -> Result<i64> {
@@ -164,7 +213,7 @@ impl ConstantPool {
     /// If there are no string constants in the pool, get a purely arbitrary string constant
     pub fn arbitrary_string_constant(&self, u: &mut Unstructured<'_>) -> Result<SmolStr> {
         u.choose(&self.string_constants).cloned().or_else(|_| {
-            u.arbitrary::<SmolStr>()
+            arbitrary_string(self.smtlib_compatible_strings, u)
                 .map_err(|e| while_doing("getting an arbitrary string constant".into(), e))
         })
     }

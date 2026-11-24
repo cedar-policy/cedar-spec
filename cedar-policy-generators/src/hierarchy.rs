@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use crate::abac::arbitrary_eid;
 use crate::err::{Error, Result};
 use crate::schema_gen::SchemaGen;
 use crate::size_hint_utils::{size_hint_for_choose, size_hint_for_ratio};
@@ -198,7 +199,9 @@ impl Hierarchy {
             let choices = schema
                 .map(|schema| schema.get_uid_enum_choices(typename))
                 .unwrap_or_default();
-            generate_uid_with_type(typename.clone(), choices, u)
+            let smtlib_compatible_strings =
+                schema.is_some_and(|schema| schema.get_abac_settings().smtlib_compatible_strings);
+            generate_uid_with_type(typename.clone(), choices, smtlib_compatible_strings, u)
         }
     }
     /// size hint for arbitrary_uid_with_type()
@@ -440,16 +443,20 @@ pub enum AttributesMode {
 /// Unlike `Hierarchy::arbitrary_uid_with_type()`, this doesn't take a
 /// `Hierarchy` parameter and doesn't make any effort to generate a UID that
 /// actually exists (yet) in any given hierarchy.
+///
+/// If `choices` is `None`, the EID is arbitrary, and only contains characters
+/// SMT-LIB can represent if `smtlib_compatible_strings` is true.
 pub(crate) fn generate_uid_with_type(
     ty: ast::EntityType,
     choices: Option<&NonEmpty<Eid>>,
+    smtlib_compatible_strings: bool,
     u: &mut Unstructured<'_>,
 ) -> Result<ast::EntityUID> {
     let eid: Eid = if let Some(choices) = choices {
         let idx = u.int_in_range(0..=choices.len() - 1)?;
         choices.get(idx).unwrap().clone()
     } else {
-        u.arbitrary()?
+        arbitrary_eid(smtlib_compatible_strings, u)?
     };
     Ok(ast::EntityUID::from_components(ty, eid, None))
 }
@@ -472,11 +479,13 @@ impl HierarchyGenerator<'_, '_> {
         let uids_by_type: IndexMap<ast::EntityType, IndexSet<EntityUID>> = entity_types
             .iter()
             .map(|name| {
-                let (name, uid_choices) = match &self.mode {
-                    HierarchyGeneratorMode::SchemaBased { schema } => {
-                        (name.clone(), schema.get_uid_enum_choices(name))
-                    }
-                    HierarchyGeneratorMode::Arbitrary { .. } => (name.clone(), None),
+                let (name, uid_choices, smtlib_compatible_strings) = match &self.mode {
+                    HierarchyGeneratorMode::SchemaBased { schema } => (
+                        name.clone(),
+                        schema.get_uid_enum_choices(name),
+                        schema.get_abac_settings().smtlib_compatible_strings,
+                    ),
+                    HierarchyGeneratorMode::Arbitrary { .. } => (name.clone(), None, false),
                 };
                 let uids = match &self.num_entities {
                     NumEntities::RangePerEntityType(r) => {
@@ -485,7 +494,12 @@ impl HierarchyGenerator<'_, '_> {
                             Some((*r.start()).try_into().unwrap()),
                             Some((*r.end()).try_into().unwrap()),
                             |u| {
-                                uids.insert(generate_uid_with_type(name.clone(), uid_choices, u)?);
+                                uids.insert(generate_uid_with_type(
+                                    name.clone(),
+                                    uid_choices,
+                                    smtlib_compatible_strings,
+                                    u,
+                                )?);
                                 Ok(std::ops::ControlFlow::Continue(()))
                             },
                         )?;
@@ -494,7 +508,14 @@ impl HierarchyGenerator<'_, '_> {
                     NumEntities::ExactlyPerEntityType(num_entities_per_type) => {
                         // generate `num_entities` entity UIDs of this type
                         (1..=*num_entities_per_type)
-                            .map(|_| generate_uid_with_type(name.clone(), uid_choices, self.u))
+                            .map(|_| {
+                                generate_uid_with_type(
+                                    name.clone(),
+                                    uid_choices,
+                                    smtlib_compatible_strings,
+                                    self.u,
+                                )
+                            })
                             .collect::<Result<_>>()?
                     }
                     NumEntities::Exactly(num_entities) => {
@@ -507,7 +528,12 @@ impl HierarchyGenerator<'_, '_> {
                             if self.u.is_empty() {
                                 return Err(Error::NotEnoughData);
                             }
-                            let uid = generate_uid_with_type(name.clone(), uid_choices, self.u)?;
+                            let uid = generate_uid_with_type(
+                                name.clone(),
+                                uid_choices,
+                                smtlib_compatible_strings,
+                                self.u,
+                            )?;
                             uids.insert(uid);
                         }
                         uids

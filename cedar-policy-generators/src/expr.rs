@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-use crate::abac::{AttrValue, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type};
+use crate::abac::{
+    arbitrary_eid, AttrValue, AvailableExtensionFunctions, ConstantPool, QualifiedType, Type,
+};
 use crate::err::{while_doing, Error, Result};
 use crate::hierarchy::{generate_uid_with_type, Hierarchy};
 use crate::schema_gen::SchemaGen;
@@ -754,7 +756,7 @@ impl ExprGenerator<'_> {
                         // UID literal, that exists
                         11 => Ok(ast::Expr::val(self.arbitrary_uid_with_type(ety, u)?)),
                         // UID literal, that doesn't exist
-                        2 => Ok(ast::Expr::val(u.arbitrary::<ast::EntityUID>()?)),
+                        2 => Ok(ast::Expr::val(self.arbitrary_nonexistent_uid(u)?)),
                         // `principal`
                         6 => Ok(ast::Expr::var(ast::Var::Principal)),
                         // `action`
@@ -947,7 +949,7 @@ impl ExprGenerator<'_> {
                 // UID literal, that exists
                 3 => Ok(ast::Expr::val(self.arbitrary_uid_with_type(ety, u)?)),
                 // UID literal, that doesn't exist
-                1 => Ok(ast::Expr::val(u.arbitrary::<ast::EntityUID>()?))
+                1 => Ok(ast::Expr::val(self.arbitrary_nonexistent_uid(u)?))
                 )
             }
             Type::IPAddr | Type::Decimal | Type::DateTime | Type::Duration => {
@@ -1291,7 +1293,7 @@ impl ExprGenerator<'_> {
             self.constant_pool.arbitrary_string_constant(u)?,
         )),
         20 => Ok(ast::Expr::val(self.generate_uid(u)?)),
-        4 => Ok(ast::Expr::val(u.arbitrary::<ast::EntityUID>()?))
+        4 => Ok(ast::Expr::val(self.arbitrary_nonexistent_uid(u)?))
         )
     }
 
@@ -1367,7 +1369,12 @@ impl ExprGenerator<'_> {
         u: &mut Unstructured<'_>,
     ) -> Result<ast::EntityUID> {
         match self.hierarchy {
-            None => generate_uid_with_type(ty.clone(), self.schema.get_uid_enum_choices(ty), u),
+            None => generate_uid_with_type(
+                ty.clone(),
+                self.schema.get_uid_enum_choices(ty),
+                self.settings.smtlib_compatible_strings,
+                u,
+            ),
             Some(hierarchy) => hierarchy.arbitrary_uid_with_type(Some(self.schema), ty, u),
         }
     }
@@ -1377,6 +1384,14 @@ impl ExprGenerator<'_> {
             <ast::Eid as Arbitrary>::size_hint(depth),
             Hierarchy::arbitrary_uid_with_type_size_hint(depth),
         )
+    }
+
+    /// generate a UID with an arbitrary typename and EID, which (probably)
+    /// doesn't exist in the schema or hierarchy
+    fn arbitrary_nonexistent_uid(&self, u: &mut Unstructured<'_>) -> Result<ast::EntityUID> {
+        let ty = u.arbitrary()?;
+        let eid = arbitrary_eid(self.settings.smtlib_compatible_strings, u)?;
+        Ok(ast::EntityUID::from_components(ty, eid, None))
     }
 }
 
