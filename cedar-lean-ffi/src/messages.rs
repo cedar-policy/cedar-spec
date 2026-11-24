@@ -246,6 +246,10 @@ pub mod tpe {
         Entities, EntityUid, PartialEntities, PartialEntityUid, PartialRequest, PolicySet, Request,
         RestrictedExpression, Schema, proto::models as cedar_proto,
     };
+    use cedar_policy_core::ast::Expr;
+    use cedar_policy_core::tpe::value::{
+        AttrState as CoreAttrState, PartialRecord as CorePartialRecord,
+    };
     use smol_str::SmolStr;
     use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -420,26 +424,41 @@ pub mod tpe {
         }
     }
 
+    /// Encode only records representable by the legacy concrete-value wire format.
+    /// Returning `None` makes the entire component unknown, which is conservative.
+    fn partial_record_exprs(record: &CorePartialRecord) -> Option<BTreeMap<SmolStr, Expr>> {
+        record
+            .attrs()
+            .filter_map(|(key, state)| match state {
+                CoreAttrState::Value(value) => Some(Some((key.clone(), Expr::from(value.clone())))),
+                CoreAttrState::Absent => None,
+                CoreAttrState::PartialRecord(_)
+                | CoreAttrState::Present
+                | CoreAttrState::Unknown => Some(None),
+            })
+            .collect()
+    }
+
+    fn partial_record_to_proto(
+        record: &CorePartialRecord,
+    ) -> Option<HashMap<String, cedar_proto::Expr>> {
+        Some(
+            partial_record_exprs(record)?
+                .into_iter()
+                .map(|(key, expr)| (key.to_string(), cedar_proto::Expr::from(&expr)))
+                .collect(),
+        )
+    }
+
     impl proto::PartialRequest {
         fn from_inner(req: &cedar_policy_core::tpe::request::PartialRequest) -> Self {
-            use cedar_policy_core::ast::Expr;
-            let (context, has_context) = match req.context_attrs() {
-                Some(ctx) => (
-                    ctx.iter()
-                        .map(|(k, v)| {
-                            (
-                                k.to_string(),
-                                cedar_policy::proto::models::Expr::from(&Expr::from(v.clone())),
-                            )
-                        })
-                        .collect(),
-                    true,
-                ),
-                None => (Default::default(), false),
-            };
+            let (context, has_context) = req
+                .context()
+                .and_then(partial_record_to_proto)
+                .map_or_else(|| (Default::default(), false), |context| (context, true));
             Self {
                 principal: Some(proto::PartialEntityUid::from_inner(req.principal())),
-                action: Some(cedar_policy::proto::models::EntityUid::from(req.action())),
+                action: Some(cedar_proto::EntityUid::from(req.action())),
                 resource: Some(proto::PartialEntityUid::from_inner(req.resource())),
                 context,
                 has_context,
@@ -460,46 +479,25 @@ pub mod tpe {
 
     impl proto::PartialEntity {
         fn from_inner(entity: &cedar_policy_core::tpe::entities::PartialEntity) -> Self {
-            use cedar_policy_core::ast::Expr;
-            let (attrs, has_attrs) = match entity.attrs() {
-                Some(a) => (
-                    a.iter()
-                        .map(|(k, v)| {
-                            (
-                                k.to_string(),
-                                cedar_policy::proto::models::Expr::from(&Expr::from(v.clone())),
-                            )
-                        })
-                        .collect(),
-                    true,
-                ),
-                None => (Default::default(), false),
-            };
-            let (ancestors, has_ancestors) = match entity.ancestors() {
-                Some(a) => (
-                    a.iter()
-                        .map(cedar_policy::proto::models::EntityUid::from)
-                        .collect(),
-                    true,
-                ),
-                None => (Default::default(), false),
-            };
-            let (tags, has_tags) = match entity.tags() {
-                Some(t) => (
-                    t.iter()
-                        .map(|(k, v)| {
-                            (
-                                k.to_string(),
-                                cedar_policy::proto::models::Expr::from(&Expr::from(v.clone())),
-                            )
-                        })
-                        .collect(),
-                    true,
-                ),
-                None => (Default::default(), false),
-            };
+            let (attrs, has_attrs) = entity
+                .attrs()
+                .and_then(partial_record_to_proto)
+                .map_or_else(|| (Default::default(), false), |attrs| (attrs, true));
+            let (ancestors, has_ancestors) = entity.ancestors().map_or_else(
+                || (Default::default(), false),
+                |ancestors| {
+                    (
+                        ancestors.iter().map(cedar_proto::EntityUid::from).collect(),
+                        true,
+                    )
+                },
+            );
+            let (tags, has_tags) = entity
+                .tags()
+                .and_then(partial_record_to_proto)
+                .map_or_else(|| (Default::default(), false), |tags| (tags, true));
             Self {
-                uid: Some(cedar_policy::proto::models::EntityUid::from(entity.uid())),
+                uid: Some(cedar_proto::EntityUid::from(entity.uid())),
                 attrs,
                 ancestors,
                 tags,

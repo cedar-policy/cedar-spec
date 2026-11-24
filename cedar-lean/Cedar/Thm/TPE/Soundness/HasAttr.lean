@@ -27,6 +27,7 @@ import Cedar.Thm.Data.Control
 
 import Cedar.Thm.TPE.Soundness.Basic
 import Cedar.Thm.TPE.PreservesTypeOf
+import Cedar.Thm.TPE.State
 
 namespace Cedar.Thm
 
@@ -134,12 +135,14 @@ theorem partial_evaluate_is_sound_has_attr
   Except.toOption ((x₁.hasAttr attr (CedarType.bool BoolType.anyBool)).evaluate req es) =
   Except.toOption ((TPE.evaluate env (x₁.hasAttr attr (CedarType.bool BoolType.anyBool)) preq pes).evaluate req es)
 := by
-  simp [TPE.evaluate, TPE.hasAttr]
+  have h_eref := h₄.2
+  simp only [TPE.evaluate, TPE.hasAttr]
   split
-  case _ heq =>
+  case h_1 heq =>
     simp [heq, Residual.evaluate] at hᵢ₁
     rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
     simp [Residual.evaluate, hᵢ₁, Except.toOption]
+  case h_2 =>
   split
   case h_1 hdec =>
     have hwt' := partial_eval_preserves_well_typed h₂ h₄ hwt
@@ -149,31 +152,22 @@ theorem partial_evaluate_is_sound_has_attr
     rw [to_option_some] at hev₁
     simp [Residual.evaluate, hev₁, hres, Except.toOption]
   case h_2 =>
+  have hself := partial_eval_preserves_well_typed h₂ h₄ hwt
   split
-  case _ heq =>
-    simp [TPE.attrsOf] at heq
-    split at heq
-    case _ heq₁ =>
-      simp only [Option.some.injEq] at heq
-      simp [heq₁, Residual.evaluate] at hᵢ₁
-      replace hᵢ₁ := to_option_right_ok' hᵢ₁
-      simp [Residual.evaluate, hᵢ₁, Spec.hasAttr, Spec.attrsOf, Except.toOption, heq]
-    case _ uid _ heq₁ =>
-      simp [heq₁, Residual.evaluate] at hᵢ₁
-      replace hᵢ₁ := to_option_right_ok' hᵢ₁
-      simp [Residual.evaluate, hᵢ₁, Spec.hasAttr, Spec.attrsOf, Except.toOption]
-      simp [PartialEntities.attrs, PartialEntities.get, Option.bind_eq_some_iff] at heq
-      rcases heq with ⟨data, heq₂, heq₃⟩
-      simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
-      rcases h₄ with ⟨_, h₄⟩
-      specialize h₄ uid data heq₂
-      rcases h₄ with ⟨_, h₄₁, h₄₂, _⟩
-      simp only [heq₃, PartialIsValid.some_inv] at h₄₂
-      subst h₄₂
-      simp [Entities.attrsOrEmpty, h₄₁]
-    case _ => cases heq
-  case _ =>
-    simp [Residual.evaluate]
+  case h_1 v hst | h_2 pr hst | h_3 hst =>
+    obtain ⟨v, hev, hhas⟩ := hasAttr_true_of_state_exists h₂ h₄ hself (by rw [hst]; rfl)
+    have hev₁ : Except.toOption (x₁.evaluate req es) = some v := by
+      rw [hᵢ₁, hev]; rfl
+    rw [to_option_some] at hev₁
+    simp only [Residual.evaluate, hev₁, Except.bind_ok, hhas, Except.toOption]
+  case h_4 hst =>
+    obtain ⟨v, hev, hhas⟩ := hasAttr_false_of_state_absent h₂ h₄ hself hst
+    have hev₁ : Except.toOption (x₁.evaluate req es) = some v := by
+      rw [hᵢ₁, hev]; rfl
+    rw [to_option_some] at hev₁
+    simp only [Residual.evaluate, hev₁, Except.bind_ok, hhas, Except.toOption]
+  case h_5 =>
+    simp only [Residual.evaluate]
     exact to_option_eq_do₁ (λ x => Spec.hasAttr x attr es) hᵢ₁
 
 end Cedar.Thm

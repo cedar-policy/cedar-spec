@@ -59,19 +59,160 @@ theorem partial_is_valid_rfl {f : α → Bool} {p : α → Prop} {o : Option α}
     simp only [partialIsValid, Option.map_some, Option.getD_some] at h₂
     exact .some x rfl (h₁ x h₂)
 
+/-- What the partial attribute state `s` claims about a concrete lookup result.-/
+inductive AttrStateConsistent : AttrState → Option Value → Prop where
+  | value {v : Value} :
+    AttrStateConsistent (.value v) (.some v)
+  | partialRecord {r : PartialRecord} {m : Data.Map Attr Value}
+    (hrwf : r.WellFormed) (hmwf : m.WellFormed)
+    (h : ∀ a, AttrStateConsistent (r.attr a) (m.find? a)) :
+    AttrStateConsistent (.partialRecord r) (.some (.record m))
+  | present {v : Value} :
+    AttrStateConsistent .present (.some v)
+  | absent :
+    AttrStateConsistent .absent .none
+  | unknown {o : Option Value} :
+    AttrStateConsistent .unknown o
+
+def PartialRecordConsistent (r : PartialRecord) (m : Data.Map Attr Value) : Prop :=
+  ∀ a, AttrStateConsistent (r.attr a) (m.find? a)
+
+theorem AttrStateConsistent.value_inv {v : Value} {o : Option Value}
+  (h : AttrStateConsistent (.value v) o) : o = .some v
+:= by cases h; rfl
+
+theorem AttrStateConsistent.present_inv {o : Option Value}
+  (h : AttrStateConsistent .present o) : ∃ v, o = .some v
+:= by cases h; exact ⟨_, rfl⟩
+
+theorem AttrStateConsistent.absent_inv {o : Option Value}
+  (h : AttrStateConsistent .absent o) : o = .none
+:= by cases h; rfl
+
+theorem AttrStateConsistent.partialRecord_inv {r : PartialRecord} {o : Option Value}
+  (h : AttrStateConsistent (.partialRecord r) o) :
+  ∃ m, o = .some (.record m) ∧ r.WellFormed ∧ m.WellFormed ∧ PartialRecordConsistent r m
+:= by cases h with | partialRecord hrwf hmwf h => exact ⟨_, rfl, hrwf, hmwf, h⟩
+
+theorem AttrStateConsistent.exists_inv {s : AttrState} {o : Option Value}
+  (hs : s.exists? = true) (h : AttrStateConsistent s o) : ∃ v, o = .some v
+:= by
+  cases h <;> simp only [AttrState.exists?, Bool.false_eq_true] at hs
+  · exact ⟨_, rfl⟩
+  · exact ⟨_, rfl⟩
+  · exact ⟨_, rfl⟩
+
+def AttrsRefine (es : Entities) (uid : EntityUID) (r : PartialRecord) : Prop :=
+  ∃ e, es.find? uid = .some e ∧ PartialRecordConsistent r e.attrs
+
+def TagsRefine (es : Entities) (uid : EntityUID) (r : PartialRecord) : Prop :=
+  ∃ e, es.find? uid = .some e ∧ PartialRecordConsistent r e.tags
+
+def ContextRefines (m : Data.Map Attr Value) (r : PartialRecord) : Prop :=
+  r.WellFormed ∧ m.WellFormed ∧ PartialRecordConsistent r m
+
+theorem ContextRefines.toAttrState {m : Data.Map Attr Value} {r : PartialRecord}
+  (h : ContextRefines m r) :
+  AttrStateConsistent (.partialRecord r) (.some (.record m))
+:= .partialRecord h.1 h.2.1 h.2.2
+
 def RequestRefines (req : Request) (preq : PartialRequest) : Prop :=
   PartialIsValid (· = req.principal) preq.principal.asEntityUID ∧
   req.action = preq.action ∧
   PartialIsValid (· = req.resource) preq.resource.asEntityUID  ∧
-  PartialIsValid (· = req.context) preq.context ∧
+  PartialIsValid (ContextRefines req.context) preq.context ∧
   preq.principal.ty = req.principal.ty ∧
   preq.resource.ty = req.resource.ty
 
 def EntitiesRefine (es : Entities) (pes : PartialEntities) : Prop :=
-   ∀ a e₂, pes.find? a = some e₂ → (∃ e₁, es.find? a = some e₁ ∧
-    PartialIsValid (· = e₁.attrs) e₂.attrs ∧
-    PartialIsValid (· = e₁.ancestors) e₂.ancestors  ∧
-    PartialIsValid (· = e₁.tags) e₂.tags)
+   ∀ uid ped, pes.find? uid = some ped →
+    PartialIsValid (AttrsRefine es uid) ped.attrs ∧
+    PartialIsValid (· = es.ancestorsOrEmpty uid) ped.ancestors  ∧
+    PartialIsValid (TagsRefine es uid) ped.tags
+
+theorem sizeOf_attr_lt {r : PartialRecord} {a : Attr} :
+  sizeOf (r.attr a) < sizeOf r
+:= by
+  have hmk : sizeOf r = 1 + sizeOf r.toList := by
+    cases r; simp only [Data.Map.toList_mk_id, Data.Map.mk.sizeOf_spec]
+  simp only [PartialRecord.attr]
+  cases hfind : r.find? a with
+  | none =>
+    have hpos : 0 < sizeOf r.toList := by
+      cases hl : r.toList with
+      | nil => simp only [List.nil.sizeOf_spec]; omega
+      | cons hd tl => simp only [List.cons.sizeOf_spec]; omega
+    simp only [Option.getD_none, hmk, AttrState.unknown.sizeOf_spec]
+    omega
+  | some s =>
+    have hmem := Data.Map.find?_mem_toList hfind
+    have hlt : sizeOf ((a, s) : Attr × AttrState).snd < 1 + sizeOf r.toList :=
+      List.sizeOf_snd_lt_sizeOf_list hmem
+    simp only at hlt
+    simp only [Option.getD_some, hmk]
+    omega
+
+theorem consistentWith_attr {r : PartialRecord} {m : Data.Map Attr Value}
+  (h : PartialRecord.consistentWith r m = true) (a : Attr) :
+  (r.attr a).consistentWith (m.find? a) = true
+:= by
+  simp only [PartialRecord.consistentWith, List.all_eq_true, List.attach₂] at h
+  simp only [PartialRecord.attr]
+  cases hfind : r.find? a with
+  | none => simp only [Option.getD_none, AttrState.consistentWith]
+  | some s =>
+    have hmem := Data.Map.find?_mem_toList hfind
+    simp only [Data.Map.toList] at hmem
+    have hp : sizeOf ((a, s) : Attr × AttrState).snd < 1 + sizeOf r.toList :=
+      List.sizeOf_snd_lt_sizeOf_list hmem
+    have := h ⟨(a, s), hp⟩ ((List.mem_pmap_subtype _ _ (a, s) hp).mpr hmem)
+    simpa only [Option.getD_some] using this
+
+theorem attr_state_consistent_of_consistentWith {s : AttrState} {o : Option Value} :
+  s.consistentWith o = true → AttrStateConsistent s o
+:= by
+  intro h
+  cases s with
+  | value v =>
+    cases o with
+    | none => simp only [AttrState.consistentWith, Bool.false_eq_true] at h
+    | some v' =>
+      simp only [AttrState.consistentWith, beq_iff_eq] at h
+      subst h
+      exact .value
+  | partialRecord r =>
+    cases o with
+    | none => simp only [AttrState.consistentWith, Bool.false_eq_true] at h
+    | some v' =>
+      cases v' with
+      | record m =>
+        rw [AttrState.consistentWith] at h
+        simp only [Bool.and_eq_true] at h
+        obtain ⟨⟨hrwf, hmwf⟩, h⟩ := h
+        refine .partialRecord (Data.Map.wellFormed_correct.mp hrwf)
+          (Data.Map.wellFormed_correct.mp hmwf) (fun a => ?_)
+        have hsz : sizeOf (PartialRecord.attr r a) < sizeOf (AttrState.partialRecord r) := by
+          have h₁ := @sizeOf_attr_lt r a
+          simp only [AttrState.partialRecord.sizeOf_spec]
+          omega
+        exact attr_state_consistent_of_consistentWith (consistentWith_attr h a)
+      | prim _ | set _ | ext _ =>
+        simp only [AttrState.consistentWith, Bool.false_eq_true] at h
+  | present =>
+    cases o with
+    | none => simp only [AttrState.consistentWith, Bool.false_eq_true] at h
+    | some v => exact .present
+  | absent =>
+    cases o with
+    | none => exact .absent
+    | some v => simp only [AttrState.consistentWith, Bool.false_eq_true] at h
+  | unknown => exact .unknown
+termination_by sizeOf s
+
+theorem partial_record_consistent_of_consistentWith {r : PartialRecord} {m : Data.Map Attr Value} :
+  PartialRecord.consistentWith r m = true → PartialRecordConsistent r m
+:= fun h a => attr_state_consistent_of_consistentWith (consistentWith_attr h a)
+
 
 /-- Concrete request `req` and entities `es` refine their partial counterparts
 `peq` and `pes`.
@@ -102,12 +243,12 @@ theorem entitiesIsConsistent_implies_refines {es : Entities} {pes : PartialEntit
   split at h <;> simp only [Bool.false_eq_true, Bool.and_eq_true] at h
   rcases h with ⟨⟨h₂₁, h₂₂⟩, h₂₃⟩
   rename_i data₁ heq
-  exists data₁
+  have hanc : es.ancestorsOrEmpty uid = data₁.ancestors := by
+    simp only [Entities.ancestorsOrEmpty, heq]
   and_intros
-  · exact heq
-  · exact partial_is_valid_rfl decide_eq_implies_eq h₂₁
-  · exact partial_is_valid_rfl decide_eq_implies_eq h₂₂
-  · exact partial_is_valid_rfl decide_eq_implies_eq h₂₃
+  · exact partial_is_valid_rfl (fun r hr => ⟨data₁, heq, partial_record_consistent_of_consistentWith hr⟩) h₂₁
+  · exact partial_is_valid_rfl (fun _ hx => hanc ▸ decide_eq_implies_eq _ hx) h₂₂
+  · exact partial_is_valid_rfl (fun r hr => ⟨data₁, heq, partial_record_consistent_of_consistentWith hr⟩) h₂₃
 
 theorem requestIsConsistent_implies_refines {req : Request} {preq : PartialRequest} :
   requestIsConsistent req preq →
@@ -120,7 +261,10 @@ theorem requestIsConsistent_implies_refines {req : Request} {preq : PartialReque
   · exact partial_is_valid_rfl decide_eq_implies_eq h₁₁
   · exact h₁₂
   · exact partial_is_valid_rfl decide_eq_implies_eq h₁₃
-  · exact partial_is_valid_rfl decide_eq_implies_eq h₁₄
+  · exact partial_is_valid_rfl (fun _ hx => by
+      simp only [Bool.and_eq_true] at hx
+      exact ⟨Data.Map.wellFormed_correct.mp hx.1.1, Data.Map.wellFormed_correct.mp hx.1.2,
+        partial_record_consistent_of_consistentWith hx.2⟩) h₁₄
   · exact h_pty
   · exact h_rty
 

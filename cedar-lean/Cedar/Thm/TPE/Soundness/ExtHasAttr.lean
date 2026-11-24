@@ -27,6 +27,8 @@ import Cedar.Thm.Data.Control
 
 import Cedar.Thm.TPE.Soundness.Basic
 import Cedar.Thm.TPE.Soundness.HasAttr
+import Cedar.Thm.TPE.State
+import Cedar.Thm.TPE.WellTyped.ExtHasAttr
 
 namespace Cedar.Thm
 
@@ -59,98 +61,135 @@ private theorem hasAttrs_loop_false_of_hasAttr
       | some _ => simp [Map.contains, hf] at hha
     simp only [hasAttrs.loop, hao, hfind]
 
-/--
-A concrete entity whose type cannot declare `a` ends the chain at `false`, whether or not the
-entity is in the store: absent, its attributes read as empty; present, store conformance keeps
-it from carrying an undeclared attribute.
--/
-private theorem attrsOrEmpty_find?_none_of_schema
-  {env : TypeEnv} {req : Request} {es : Entities} {uid : EntityUID} {a : Attr} {v : Value}
-  (hwf : InstanceOfWellFormedEnvironment req es env)
-  (hdec : TPE.tryDecideHasResidual env (.val (.prim (.entityUID uid)) (.entity uid.ty)) a
-    = .some v) :
-  (es.attrsOrEmpty uid).find? a = .none := by
-  unfold TPE.tryDecideHasResidual at hdec
-  simp only [Residual.errorFree, Residual.typeOf, ite_true] at hdec
-  split at hdec
-  case h_2 => simp at hdec
-  case h_1 rty hsch =>
-    split at hdec
-    case isFalse => simp at hdec
-    case isTrue hnone =>
-      have hattr_none : rty.find? a = .none := Option.isNone_iff_eq_none.mp hnone
-      cases hes : es.find? uid with
-      | none =>
-        simp only [Entities.attrsOrEmpty, hes]
-        simp [Map.find?, Map.empty]
-      | some edata =>
-        have h_inst := well_typed_entity_attributes hwf hes hsch
-        simp only [Entities.attrsOrEmpty, hes]
-        exact absent_attribute_is_absent h_inst hattr_none
+/-- A `has` of `true` on the last attribute ends the chain at `true`. -/
+private theorem hasAttrs_loop_true_of_hasAttr
+  {v : Value} {a : Attr} {es : Entities}
+  (hha : Spec.hasAttr v a es = .ok (.prim (.bool true))) :
+  hasAttrs.loop v [a] es = .ok (.prim (.bool true)) := by
+  simp only [Spec.hasAttr] at hha
+  cases hao : Spec.attrsOf v (fun uid => .ok (es.attrsOrEmpty uid)) with
+  | error => simp [hao] at hha
+  | ok r =>
+    simp only [hao, Except.bind_ok, Except.ok.injEq] at hha
+    cases hf : r.find? a with
+    | none => simp [Map.contains, hf] at hha
+    | some _ => simp only [hasAttrs.loop, hao, hf]
 
-/-- The TPE extHasAttr loop is sound: evaluating its output equals the spec's hasAttrs.loop
-    when the loop is called with a record value. -/
+/-- Once attribute `a` of `v` is read as `w`, the rest of the chain continues from `w`. -/
+private theorem hasAttrs_loop_of_getAttr
+  {v w : Value} {a : Attr} {rest : List Attr} {es : Entities}
+  (h : (Spec.getAttr v a es).toOption = .some w) :
+  hasAttrs.loop v (a :: rest) es = hasAttrs.loop w rest es := by
+  cases v with
+  | prim p =>
+    cases p with
+    | entityUID uid =>
+      rw [getAttr_entity_toOption] at h
+      simp only [hasAttrs.loop, Spec.attrsOf, h]
+    | _ => simp [Spec.getAttr, Spec.attrsOf, Except.toOption] at h
+  | record m =>
+    rw [getAttr_record_toOption] at h
+    simp only [hasAttrs.loop, Spec.attrsOf, h]
+  | _ => simp [Spec.getAttr, Spec.attrsOf, Except.toOption] at h
+
+private theorem evaluate_extHasAttr_eq {r : Residual} {a : Attr} {l : List Attr}
+  {ty : CedarType} {req : Request} {es : Entities} :
+  (Residual.extHasAttr r a l ty).evaluate req es =
+  Except.bind (r.evaluate req es) (λ v => Spec.hasAttrs v a l es) := by
+  simp only [Residual.evaluate, bind]
+
+/--
+The `extHasAttr` loop is sound: each step it decides agrees with the concrete
+`has`, and each attribute it reads through agrees with the concrete value.
+-/
 private theorem extHasAttr_loop_sound
-  {env : TypeEnv} {m : Map Attr Value} {attrs : List Attr}
-  {req : Request} {es : Entities}
+  {env : TypeEnv} {req : Request} {es : Entities}
   {preq : PartialRequest} {pes : PartialEntities}
+  {r : Residual} {a : Attr} {rest : List Attr}
   (hwf : InstanceOfWellFormedEnvironment req es env)
-  (h_ref : RequestAndEntitiesRefine req es preq pes) :
-  Except.toOption (hasAttrs.loop (.record m) attrs es) =
-  Except.toOption ((TPE.extHasAttr.loop env m attrs pes (.bool .anyBool)).evaluate req es) := by
-  induction attrs generalizing m with
+  (href : RequestAndEntitiesRefine req es preq pes)
+  (hwt : Residual.WellTyped env (.extHasAttr r a rest (.bool .anyBool))) :
+  Except.toOption ((TPE.extHasAttr.loop env preq r a rest pes (.bool .anyBool)).evaluate req es) =
+  Except.toOption (Except.bind (r.evaluate req es) (λ v => Spec.hasAttrs v a rest es))
+:= by
+  induction rest generalizing r a with
   | nil =>
-    simp [hasAttrs.loop, TPE.extHasAttr.loop, Residual.evaluate]
-  | cons a rest ih =>
+    have hr : Residual.WellTyped env r := by cases hwt <;> assumption
     unfold TPE.extHasAttr.loop
-    cases rest with
-    | nil =>
-      simp [hasAttrs.loop, Spec.attrsOf, Residual.evaluate, Map.contains]
-      cases m.find? a <;> simp [Except.toOption]
-    | cons b rest' =>
-      simp only [hasAttrs.loop, Spec.attrsOf]
-      cases h₁ : m.find? a with
-      | none => simp [Residual.evaluate, Except.toOption]
-      | some next =>
-        cases next with
-        | record m_next =>
-          simp only [TPE.attrsOf]
-          exact ih
-        | prim p =>
-          cases p with
-          | entityUID uid =>
-            simp only [TPE.attrsOf]
-            cases h₂ : pes.attrs uid with
-            | some m' =>
-              simp [PartialEntities.attrs, PartialEntities.get, Option.bind_eq_some_iff] at h₂
-              rcases h₂ with ⟨h₃, h₄, h₅⟩
-              simp [RequestAndEntitiesRefine, EntitiesRefine] at h_ref
-              rcases h_ref with ⟨_, h₆⟩
-              have h₇ := h₆ uid h₃ h₄
-              rcases h₇ with ⟨_, h₈, h₉, _, _⟩
-              simp only [h₅, PartialIsValid.some_inv] at h₉; subst h₉
-              simp only [Entities.attrsOrEmpty, h₈]
-              exact ih
-            | none =>
-              -- The subject is a known uid the partial store lacks; the schema may still
-              -- rule out the next attribute.
-              simp only [TPE.extHasAttr.tryDecide]
-              cases hdec : TPE.tryDecideHasResidual env
-                  (Residual.val (.prim (.entityUID uid)) (.entity uid.ty)) b with
-              | some w =>
-                have hfalse := tryDecideHasResidual_false hdec
-                subst hfalse
-                have hfind := attrsOrEmpty_find?_none_of_schema (a := b) hwf hdec
-                simp [hdec, hfind, List.head!, Residual.evaluate, Except.toOption]
-              | none =>
-                simp [hdec, Residual.evaluate, Spec.hasAttrs, List.head!, List.tail,
-                  hasAttrs.loop, Spec.attrsOf]
-          | _ =>
-            simp [TPE.attrsOf,  Residual.evaluate, Except.toOption]
-        | set _ =>
-          simp [TPE.attrsOf, Residual.evaluate, Except.toOption]
-        | ext _ =>
-          simp [TPE.attrsOf, Residual.evaluate, Except.toOption]
+    split
+    case h_1 hd =>
+      unfold TPE.decideHasAttr at hd
+      split at hd
+      case h_1 w hdec =>
+        have hfalse := tryDecideHasResidual_false hdec
+        subst hfalse
+        obtain ⟨v, hev, hha⟩ := try_decide_has_residual_sound hwf hr hdec
+        simp [Residual.evaluate, hev, Except.bind, Spec.hasAttrs,
+          hasAttrs_loop_false_of_hasAttr hha, Except.toOption]
+      case h_2 =>
+        split at hd <;> simp only [Option.some.injEq, Bool.true_eq_false, reduceCtorEq] at hd
+        rename_i habs
+        obtain ⟨v, hev, hha⟩ := hasAttr_false_of_state_absent hwf href hr habs
+        simp [Residual.evaluate, hev, Except.bind, Spec.hasAttrs,
+          hasAttrs_loop_false_of_hasAttr hha, Except.toOption]
+    case h_2 => rw [evaluate_extHasAttr_eq]
+    case h_3 hd =>
+      unfold TPE.decideHasAttr at hd
+      split at hd
+      case h_1 => simp at hd
+      case h_2 =>
+        have hex : (attrStateAt env preq pes r a).exists? = true := by
+          split at hd <;> simp_all [AttrState.exists?]
+        obtain ⟨v, hev, hha⟩ := hasAttr_true_of_state_exists hwf href hr hex
+        simp [Residual.evaluate, hev, Except.bind, Spec.hasAttrs,
+          hasAttrs_loop_true_of_hasAttr hha, Except.toOption]
+  | cons b bs ih =>
+    have hr : Residual.WellTyped env r := by cases hwt <;> assumption
+    unfold TPE.extHasAttr.loop
+    split
+    case h_1 hd =>
+      unfold TPE.decideHasAttr at hd
+      split at hd
+      case h_1 w hdec =>
+        have hfalse := tryDecideHasResidual_false hdec
+        subst hfalse
+        obtain ⟨v, hev, hha⟩ := try_decide_has_residual_sound hwf hr hdec
+        simp [Residual.evaluate, hev, Except.bind, Spec.hasAttrs,
+          hasAttrs_loop_false_of_hasAttr hha, Except.toOption]
+      case h_2 =>
+        split at hd <;> simp only [Option.some.injEq, Bool.true_eq_false, reduceCtorEq] at hd
+        rename_i habs
+        obtain ⟨v, hev, hha⟩ := hasAttr_false_of_state_absent hwf href hr habs
+        simp [Residual.evaluate, hev, Except.bind, Spec.hasAttrs,
+          hasAttrs_loop_false_of_hasAttr hha, Except.toOption]
+    case h_2 => rw [evaluate_extHasAttr_eq]
+    case h_3 hd =>
+      dsimp only
+      split
+      case h_1 => rw [evaluate_extHasAttr_eq]
+      case h_2 aty haty =>
+        unfold TPE.decideHasAttr at hd
+        split at hd
+        case h_1 => simp at hd
+        case h_2 =>
+          have hex : (attrStateAt env preq pes r a).exists? = true := by
+            split at hd <;> simp_all [AttrState.exists?]
+          obtain ⟨v, hev, _⟩ := hasAttr_true_of_state_exists hwf href hr hex
+          have hcons := attrStateAt_sound (a := a) hwf href hr
+          obtain ⟨w, hw⟩ := AttrStateConsistent.exists_inv hex hcons
+          simp only [hev, Except.bind] at hw
+          obtain ⟨hself, hwt'⟩ := extHasAttr_step_well_typed hwf href hwt haty
+          have hcons' : AttrStateConsistent (attrStateAt env preq pes r a)
+              (((Residual.getAttr r a aty).evaluate req es).toOption) := by
+            simpa only [Residual.evaluate, bind, Except.bind] using hcons
+          have hsound := stateToResidual_sound (ty := aty) hwf hcons' hself rfl
+          have hev' : (TPE.stateToResidual (attrStateAt env preq pes r a) aty
+              (.getAttr r a aty)).evaluate req es = .ok w := by
+            apply to_option_some.mp
+            rw [hsound]
+            simpa only [Residual.evaluate, hev, bind, Except.bind] using hw
+          rw [@ih _ _ hwt', hev']
+          simp only [hev, Except.bind, Spec.hasAttrs, hasAttrs_loop_of_getAttr hw]
 
 theorem partial_evaluate_is_sound_ext_has_attr
 {env : TypeEnv}
@@ -162,62 +201,24 @@ theorem partial_evaluate_is_sound_ext_has_attr
 {attr : Attr}
 {attrs : List Attr}
 (hwf : InstanceOfWellFormedEnvironment req es env)
-(hwt : Residual.WellTyped env x₁)
+(hwt : Residual.WellTyped env (.extHasAttr x₁ attr attrs (.bool .anyBool)))
 (h₄ : RequestAndEntitiesRefine req es preq pes)
 (hᵢ₁ : Except.toOption (x₁.evaluate req es) = Except.toOption ((TPE.evaluate env x₁ preq pes).evaluate req es)) :
   Except.toOption ((x₁.extHasAttr attr attrs (CedarType.bool BoolType.anyBool)).evaluate req es) =
   Except.toOption ((TPE.evaluate env (x₁.extHasAttr attr attrs (CedarType.bool BoolType.anyBool)) preq pes).evaluate req es)
 := by
-  simp [TPE.evaluate, TPE.extHasAttr]
+  have hx₁ : Residual.WellTyped env x₁ := by cases hwt <;> assumption
+  have hwt' := ext_has_attr_residual_well_typed
+    (partial_eval_preserves_well_typed hwf h₄ hx₁) hwt
+  simp only [TPE.evaluate, TPE.extHasAttr]
   split
   case _ h₁ =>
     simp [h₁, Residual.evaluate] at hᵢ₁
     rcases to_option_right_err hᵢ₁ with ⟨_, hᵢ₁⟩
     simp [Residual.evaluate, hᵢ₁, Except.toOption]
-  split
-  case _ h₁ =>
-    simp [TPE.attrsOf] at h₁
-    split at h₁
-    case h_1 _ _ h₃ =>
-      simp only [Option.some.injEq] at h₁; subst h₁
-      simp only [h₃, Residual.evaluate] at hᵢ₁
-      replace hᵢ₁ := to_option_right_ok' hᵢ₁
-      simp [Residual.evaluate, hᵢ₁, Spec.hasAttrs]
-      exact extHasAttr_loop_sound hwf h₄
-    case h_2 u₁ _ h₃ =>
-      simp [h₃, Residual.evaluate] at hᵢ₁
-      replace hᵢ₁ := to_option_right_ok' hᵢ₁
-      simp [PartialEntities.attrs, PartialEntities.get, Option.bind_eq_some_iff] at h₁
-      rcases h₁ with ⟨x₅, h₉, h₁₀⟩
-      have h₄' := h₄
-      simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄'
-      rcases h₄' with ⟨_, h₅⟩
-      rcases h₅ u₁ x₅ h₉ with ⟨x₆, h₇, h₈, _, _⟩
-      simp only [h₁₀, PartialIsValid.some_inv] at h₈; subst h₈
-      have h₁₁ : Except.toOption (hasAttrs.loop (.record x₆.attrs) (attr :: attrs) es) =
-                 Except.toOption ((TPE.extHasAttr.loop env x₆.attrs (attr :: attrs) pes (.bool .anyBool)).evaluate req es) :=
-        extHasAttr_loop_sound hwf h₄
-      have h₁₂ : (x₁.extHasAttr attr attrs (.bool .anyBool)).evaluate req es =
-                   hasAttrs.loop (.record x₆.attrs) (attr :: attrs) es := by
-        simp [Residual.evaluate, hᵢ₁, Spec.hasAttrs, hasAttrs, hasAttrs.loop, Spec.attrsOf,
-              Entities.attrsOrEmpty, h₇]
-      rw [h₁₂]
-      exact h₁₁
-    case h_3 => cases h₁
   case _ =>
-    -- attrsOf fails: the schema may still rule out the head attribute
-    simp only [TPE.extHasAttr.tryDecide]
-    cases hdec : TPE.tryDecideHasResidual env (TPE.evaluate env x₁ preq pes) attr with
-    | some w =>
-      have hfalse := tryDecideHasResidual_false hdec
-      subst hfalse
-      have hwt' := partial_eval_preserves_well_typed hwf h₄ hwt
-      obtain ⟨v', hev, hha⟩ := try_decide_has_residual_sound hwf hwt' hdec
-      have hx₁ : x₁.evaluate req es = .ok v' := to_option_some.mp (by rw [hᵢ₁, hev]; rfl)
-      simp only [Residual.evaluate, hx₁, Except.bind_ok, Spec.hasAttrs,
-        hasAttrs_loop_false_of_hasAttr hha, Except.toOption]
-    | none =>
-      simp only [Residual.evaluate]
-      exact to_option_eq_do₁ (λ x => Spec.hasAttrs x attr attrs es) hᵢ₁
+    rw [extHasAttr_loop_sound hwf h₄ hwt']
+    simp only [Residual.evaluate]
+    exact to_option_eq_do₁ (λ x => Spec.hasAttrs x attr attrs es) hᵢ₁
 
 end Cedar.Thm

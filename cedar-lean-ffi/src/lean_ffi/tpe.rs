@@ -189,9 +189,9 @@ mod test {
     unsafe extern "C" {}
 
     use cedar_policy::{
-        Context, Entities, EntityTypeName, EntityUid, PartialEntities, PartialEntity,
-        PartialEntityUid, PartialRequest, Policy, PolicyId, PolicySet, RestrictedExpression,
-        Schema,
+        Context, Entities, EntityTypeName, EntityUid, PartialAttribute, PartialContext,
+        PartialEntities, PartialEntity, PartialEntityUid, PartialRecord, PartialRequest, Policy,
+        PolicyId, PolicySet, RestrictedExpression, Schema,
     };
     use cool_asserts::assert_matches;
 
@@ -203,6 +203,20 @@ mod test {
     };
     use cedar_policy_core::ast::{EntityUID, Value, Var};
     use cedar_policy_core::tpe::residual::{Residual, ResidualKind};
+
+    fn partial_attrs<const N: usize>(
+        attrs: [(smol_str::SmolStr, RestrictedExpression); N],
+    ) -> PartialRecord {
+        PartialRecord::new(
+            attrs
+                .into_iter()
+                .map(|(key, value)| (key.to_string(), PartialAttribute::value(value))),
+        )
+    }
+
+    fn empty_record() -> PartialRecord {
+        PartialRecord::new(Vec::<(String, PartialAttribute)>::new())
+    }
     use cedar_policy_core::validator::types::{EntityKind, EntityLUB, Type};
 
     /// Helper to compare Rust and Lean TPE responses: decision, policy categorizations,
@@ -485,12 +499,18 @@ mod test {
             ),
         ])
         .unwrap();
-        let request =
-            PartialRequest::new(principal, action, resource, Some(context), &schema).unwrap();
+        let request = PartialRequest::new(
+            principal,
+            action.clone(),
+            resource,
+            PartialContext::from_concrete(context, &action, &schema).unwrap(),
+            &schema,
+        )
+        .unwrap();
 
         let account = PartialEntity::new(
             EntityUid::from_str(r#"Account::"checking""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 ("balance".into(), RestrictedExpression::new_long(10000)),
                 (
                     "owner".into(),
@@ -498,13 +518,13 @@ mod test {
                 ),
             ])),
             Some(HashSet::new()),
-            Some(BTreeMap::new()),
+            Some(empty_record()),
             &schema,
         )
         .unwrap();
         let user = PartialEntity::new(
             EntityUid::from_str(r#"User::"alice""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 (
                     "name".into(),
                     RestrictedExpression::new_string("Alice".into()),
@@ -515,7 +535,7 @@ mod test {
                 r#"Account::"checking""#,
             )
             .unwrap()])),
-            Some(BTreeMap::new()),
+            Some(empty_record()),
             &schema,
         )
         .unwrap();
@@ -567,12 +587,18 @@ mod test {
             ),
         ])
         .unwrap();
-        let request =
-            PartialRequest::new(principal, action, resource, Some(context), &schema).unwrap();
+        let request = PartialRequest::new(
+            principal,
+            action.clone(),
+            resource,
+            PartialContext::from_concrete(context, &action, &schema).unwrap(),
+            &schema,
+        )
+        .unwrap();
 
         let user = PartialEntity::new(
             EntityUid::from_str(r#"User::"alice""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 (
                     "name".into(),
                     RestrictedExpression::new_string("Alice".into()),
@@ -580,7 +606,7 @@ mod test {
                 ("age".into(), RestrictedExpression::new_long(30)),
             ])),
             Some(HashSet::new()),
-            Some(BTreeMap::new()),
+            Some(empty_record()),
             &schema,
         )
         .unwrap();
@@ -621,11 +647,18 @@ mod test {
         let resource =
             PartialEntityUid::from_concrete(EntityUid::from_str(r#"Account::"checking""#).unwrap());
         // No context → unknown
-        let request = PartialRequest::new(principal, action, resource, None, &schema).unwrap();
+        let request = PartialRequest::new(
+            principal,
+            action,
+            resource,
+            PartialContext::unknown(),
+            &schema,
+        )
+        .unwrap();
 
         let account = PartialEntity::new(
             EntityUid::from_str(r#"Account::"checking""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 ("balance".into(), RestrictedExpression::new_long(10000)),
                 (
                     "owner".into(),
@@ -633,13 +666,13 @@ mod test {
                 ),
             ])),
             Some(HashSet::new()),
-            Some(BTreeMap::new()),
+            Some(empty_record()),
             &schema,
         )
         .unwrap();
         let user = PartialEntity::new(
             EntityUid::from_str(r#"User::"alice""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 (
                     "name".into(),
                     RestrictedExpression::new_string("Alice".into()),
@@ -650,7 +683,7 @@ mod test {
                 r#"Account::"checking""#,
             )
             .unwrap()])),
-            Some(BTreeMap::new()),
+            Some(empty_record()),
             &schema,
         )
         .unwrap();
@@ -698,12 +731,18 @@ mod test {
             ),
         ])
         .unwrap();
-        let request =
-            PartialRequest::new(principal, action, resource, Some(context), &schema).unwrap();
+        let request = PartialRequest::new(
+            principal,
+            action.clone(),
+            resource,
+            PartialContext::from_concrete(context, &action, &schema).unwrap(),
+            &schema,
+        )
+        .unwrap();
 
         let user = PartialEntity::new(
             EntityUid::from_str(r#"User::"alice""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 (
                     "name".into(),
                     RestrictedExpression::new_string("Alice".into()),
@@ -714,7 +753,7 @@ mod test {
                 r#"Account::"checking""#,
             )
             .unwrap()])),
-            Some(BTreeMap::new()),
+            Some(empty_record()),
             &schema,
         )
         .unwrap();
@@ -723,7 +762,7 @@ mod test {
             EntityUid::from_str(r#"Account::"checking""#).unwrap(),
             None, // unknown attrs
             Some(HashSet::new()),
-            Some(BTreeMap::new()),
+            Some(empty_record()),
             &schema,
         )
         .unwrap();
@@ -793,11 +832,18 @@ mod test {
         let resource =
             PartialEntityUid::from_concrete(EntityUid::from_str(r#"Account::"checking""#).unwrap());
         // Unknown context
-        let request = PartialRequest::new(principal, action, resource, None, &schema).unwrap();
+        let request = PartialRequest::new(
+            principal,
+            action,
+            resource,
+            PartialContext::unknown(),
+            &schema,
+        )
+        .unwrap();
 
         let account = PartialEntity::new(
             EntityUid::from_str(r#"Account::"checking""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 ("balance".into(), RestrictedExpression::new_long(10000)),
                 (
                     "owner".into(),
@@ -805,13 +851,13 @@ mod test {
                 ),
             ])),
             Some(HashSet::new()),
-            Some(BTreeMap::new()),
+            Some(empty_record()),
             &schema,
         )
         .unwrap();
         let user = PartialEntity::new(
             EntityUid::from_str(r#"User::"alice""#).unwrap(),
-            Some(BTreeMap::from([
+            Some(partial_attrs([
                 (
                     "name".into(),
                     RestrictedExpression::new_string("Alice".into()),
@@ -822,7 +868,7 @@ mod test {
                 r#"Account::"checking""#,
             )
             .unwrap()])),
-            Some(BTreeMap::new()),
+            Some(empty_record()),
             &schema,
         )
         .unwrap();
@@ -1005,7 +1051,7 @@ mod test {
                 PartialEntityUid::new(EntityTypeName::from_str("User").unwrap(), None),
                 action.clone(),
                 PartialEntityUid::from_concrete(EntityUid::from_str(resource).unwrap()),
-                None,
+                PartialContext::unknown(),
                 &schema,
             )
             .unwrap()
@@ -1061,7 +1107,14 @@ mod test {
             EntityTypeName::from_str("A").unwrap(),
             None, // unknown resource eid
         );
-        let request = PartialRequest::new(principal, action, resource, None, &schema).unwrap();
+        let request = PartialRequest::new(
+            principal,
+            action,
+            resource,
+            PartialContext::unknown(),
+            &schema,
+        )
+        .unwrap();
 
         let entity_a = PartialEntity::new(
             EntityUid::from_str(r#"A::"Y" "#.trim()).unwrap(),
@@ -1073,9 +1126,9 @@ mod test {
         .unwrap();
         let action_entity = PartialEntity::new(
             EntityUid::from_str(r#"Action::"action""#).unwrap(),
-            Some(BTreeMap::new()),
+            Some(empty_record()),
             Some(HashSet::new()),
-            Some(BTreeMap::new()),
+            Some(empty_record()),
             &schema,
         )
         .unwrap();

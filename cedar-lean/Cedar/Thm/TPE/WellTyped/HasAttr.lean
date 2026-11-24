@@ -42,12 +42,36 @@ theorem try_decide_has_residual_is_bool
   all_goals simp only [Option.some.injEq, reduceCtorEq] at hdec
   all_goals exact ⟨_, hdec.symm⟩
 
+/-- The residual `has` produces when it cannot decide the attribute is well
+typed, since partial evaluation preserves the operand's type. -/
+private theorem has_attr_residual_well_typed
+  {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType}
+  {preq : PartialRequest} {pes : PartialEntities} :
+  Residual.WellTyped env (TPE.evaluate env expr preq pes) →
+  Residual.WellTyped env (Residual.hasAttr expr attr ty) →
+  Residual.WellTyped env (Residual.hasAttr (TPE.evaluate env expr preq pes) attr ty)
+:= by
+  intros h_expr_wt h_wt
+  cases h_wt
+  case hasAttr_entity ety h₅ h₆ =>
+    apply Residual.WellTyped.hasAttr_entity
+    case h₁ => exact h_expr_wt
+    case h₂ =>
+      have h₁₀ := partial_eval_preserves_typeof _ h₅
+      rw [h₁₀, h₆]
+  case hasAttr_record rty h₆ h₇ =>
+    apply Residual.WellTyped.hasAttr_record
+    case h₁ => exact h_expr_wt
+    case h₂ =>
+      have h₁₀ := partial_eval_preserves_typeof _ h₆
+      rw [h₁₀, h₇]
+
 theorem partial_eval_well_typed_hasAttr {env : TypeEnv} {expr : Residual} {attr : Attr} {ty : CedarType} {req : Request} {preq : PartialRequest} {es : Entities} {pes : PartialEntities} :
   Residual.WellTyped env (TPE.evaluate env expr preq pes) →
   PEWellTyped env (Residual.hasAttr expr attr ty) (TPE.evaluate env (Residual.hasAttr expr attr ty) preq pes) req preq es pes
 := by
   intros h_expr_wt h_wf h_ref h_wt
-  simp only [TPE.evaluate, TPE.hasAttr, TPE.attrsOf]
+  simp only [TPE.evaluate, TPE.hasAttr]
   split
   case h_1 =>
     apply Residual.WellTyped.error
@@ -59,22 +83,5 @@ theorem partial_eval_well_typed_hasAttr {env : TypeEnv} {expr : Residual} {attr 
       cases h_wt <;> exact well_typed_bool
     case h_2 =>
     split
-    case h_1 x m h₂ =>
-      exact well_typed_bool
-    case h_2 x h₂ =>
-      cases h_wt
-      case hasAttr_entity ety  h₅ h₆ =>
-        apply Residual.WellTyped.hasAttr_entity
-        case h₁ =>
-          exact h_expr_wt
-        case h₂ =>
-          have h₁₀ := partial_eval_preserves_typeof _ h₅
-          rw [h₁₀, h₆]
-      case hasAttr_record rty h₆ h₇ =>
-        apply Residual.WellTyped.hasAttr_record
-        case h₁ =>
-          exact h_expr_wt
-        case h₂ =>
-          have h₁₀ := partial_eval_preserves_typeof _ h₆
-          rw [h₁₀]
-          rw [h₇]
+    case h_1 | h_2 | h_3 | h_4 => cases h_wt <;> exact well_typed_bool
+    case h_5 => exact has_attr_residual_well_typed h_expr_wt h_wt

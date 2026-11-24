@@ -29,23 +29,31 @@ theorem evaluatePolicy_ok_implies_env_some {schema : Schema} {p : Policy}
   simp only [evaluatePolicy, validatePartialRequest] at h
   split at h <;> grind
 
-private theorem requestIsValid_asPartialRequest_eq {env : TypeEnv} {req : Request} :
-  requestIsValid env req.asPartialRequest = instanceOfRequestType req env
+private theorem requestIsValid_asPartialRequest_implies {env : TypeEnv} {req : Request}
+  (hctxwf : req.context.WellFormed)
+  (h : requestIsValid env (req.asPartialRequest env.reqty.context) = true) :
+  instanceOfRequestType req env = true
 := by
   simp only [requestIsValid, Request.asPartialRequest, PartialEntityUID.asEntityUID,
-    partialIsValid, Option.map_some, Option.getD_some, instanceOfRequestType]
+    partialIsValid, Option.map_some, Option.getD_some, Bool.and_eq_true] at h
+  obtain ⟨⟨⟨hp, ha⟩, hr⟩, hc⟩ := h
+  simp only [instanceOfRequestType, Bool.and_eq_true]
+  exact ⟨⟨⟨hp, ha⟩, hr⟩, instanceOfType_of_ofConcrete_valid hctxwf hc⟩
 
 theorem evaluatePolicy_ok_implies_requestMatchesEnvironment
-  {schema : Schema} {p : Policy} {req : Request} {r : Residual} {pes : PartialEntities} :
-  evaluatePolicy schema p req.asPartialRequest pes = .ok r →
-  ∀ env, schema.environment? req.asPartialRequest.principal.ty req.asPartialRequest.resource.ty req.asPartialRequest.action = .some env →
+  {schema : Schema} {p : Policy} {req : Request} {r : Residual} {pes : PartialEntities}
+  {env : TypeEnv} :
+  req.context.WellFormed →
+  evaluatePolicy schema p (req.asPartialRequest env.reqty.context) pes = .ok r →
+  schema.environment? (req.asPartialRequest env.reqty.context).principal.ty (req.asPartialRequest env.reqty.context).resource.ty (req.asPartialRequest env.reqty.context).action = .some env →
   requestMatchesEnvironment env req
 := by
-  intro h env h_env
+  intro hctxwf h h_env
   simp only [evaluatePolicy, validatePartialRequest, h_env] at h
-  by_cases h_valid : requestIsValid env req.asPartialRequest <;>
+  by_cases h_valid : requestIsValid env (req.asPartialRequest env.reqty.context) <;>
     simp only [h_valid, Bool.false_eq_true, ↓reduceIte, reduceCtorEq] at h
-  simp only [h_valid, requestMatchesEnvironment, ← requestIsValid_asPartialRequest_eq]
+  simp only [requestMatchesEnvironment]
+  exact requestIsValid_asPartialRequest_implies hctxwf h_valid
 
 /--
 If `evaluatePolicy` succeeds on a concrete request, and the schema and entities
@@ -53,22 +61,21 @@ pass validation, then `InstanceOfWellFormedEnvironment` holds for the
 environment determined by the schema and request.
 -/
 theorem evaluatePolicy_ok_implies_well_formed_env
-  {schema : Schema} {p : Policy} {req : Request} {es : Entities} {r : Residual}
+  {schema : Schema} {p : Policy} {req : Request} {es : Entities} {r : Residual} {env : TypeEnv}
   {pes : PartialEntities} :
-  evaluatePolicy schema p req.asPartialRequest pes = .ok r →
+  req.context.WellFormed →
+  evaluatePolicy schema p (req.asPartialRequest env.reqty.context) pes = .ok r →
+  schema.environment? (req.asPartialRequest env.reqty.context).principal.ty (req.asPartialRequest env.reqty.context).resource.ty (req.asPartialRequest env.reqty.context).action = .some env →
   schema.validateWellFormed = .ok () →
   validateEntities schema es = .ok () →
-  ∃ env,
-    schema.environment? req.asPartialRequest.principal.ty req.asPartialRequest.resource.ty req.asPartialRequest.action = .some env ∧
-    InstanceOfWellFormedEnvironment req es env
+  InstanceOfWellFormedEnvironment req es env
 := by
-  intro h_ep h_schema_wf h_entities
-  obtain ⟨env, h_env⟩ := evaluatePolicy_ok_implies_env_some h_ep
+  intro hctxwf h_ep h_env h_schema_wf h_entities
   have h_mem := environment_some_mem_environments h_env
-  exact ⟨env, h_env, instance_of_well_formed_env
+  exact instance_of_well_formed_env
     (List.forM_ok_implies_all_ok _ _ h_schema_wf _ h_mem)
-    (evaluatePolicy_ok_implies_requestMatchesEnvironment h_ep env h_env)
-    (List.forM_ok_implies_all_ok _ _ h_entities _ h_mem)⟩
+    (evaluatePolicy_ok_implies_requestMatchesEnvironment hctxwf h_ep h_env)
+    (List.forM_ok_implies_all_ok _ _ h_entities _ h_mem)
 
 def ResidualPoliciesEquivAndWellTyped
   (env : TypeEnv)
@@ -93,9 +100,9 @@ theorem residuals_equiv_preserved
   {req : Request} {es : Entities} {pes : PartialEntities}
   (h_sound : ResidualPoliciesEquivAndWellTyped env policies residuals req es)
   (h_wf : InstanceOfWellFormedEnvironment req es env)
-  (h_ref : RequestAndEntitiesRefine req es req.asPartialRequest pes) :
+  (h_ref : RequestAndEntitiesRefine req es (req.asPartialRequest env.reqty.context) pes) :
   ResidualPoliciesEquivAndWellTyped env policies
-    (residuals.map λ rp => ⟨rp.id, rp.effect, Cedar.TPE.evaluate env rp.residual req.asPartialRequest pes⟩)
+    (residuals.map λ rp => ⟨rp.id, rp.effect, Cedar.TPE.evaluate env rp.residual (req.asPartialRequest env.reqty.context) pes⟩)
     req es
 := by
   unfold ResidualPoliciesEquivAndWellTyped at *
@@ -110,15 +117,16 @@ theorem residuals_equiv_preserved
 theorem batched_authorize_loop_equiv
   {policies : List Policy} {residuals : List ResidualPolicy} {req : Request}
   (es : Entities) {current_store : PartialEntities} {env : TypeEnv} :
-  EntityLoader.WellBehaved es loader →
+  req.context.WellFormed →
+  EntityLoader.WellBehaved env.ets es loader →
   ResidualPoliciesEquivAndWellTyped env policies residuals req es →
-  RequestAndEntitiesRefine req es req.asPartialRequest current_store →
+  RequestAndEntitiesRefine req es (req.asPartialRequest env.reqty.context) current_store →
   InstanceOfWellFormedEnvironment req es env →
   ∃ rps, batchedAuthorizeLoop env residuals req loader current_store iters
       = isAuthorizedFromResiduals rps ∧
     ResidualPoliciesEquivAndWellTyped env policies rps req es
 := by
-  intro h₀ h₁ h₂ h₃
+  intro hctxwf h₀ h₁ h₂ h₃
   unfold batchedAuthorizeLoop
   simp only
   split
@@ -127,31 +135,31 @@ theorem batched_authorize_loop_equiv
     cases iters with
     | zero => exact ⟨residuals, rfl, h₁⟩
     | succ n =>
-      have h₆ : RequestAndEntitiesRefine req es req.asPartialRequest
-        ((((loader
+      have h₆ : RequestAndEntitiesRefine req es (req.asPartialRequest env.reqty.context)
+        ((SlicedEntities.asPartial env.ets (loader
           (Set.filter (fun uid => (Map.find? current_store uid).isNone)
-            (List.mapUnion (fun rp => rp.residual.allLiteralUIDs) residuals))).mapOnValues
-            MaybeEntityData.asPartial)) ++ current_store) := by
+            (List.mapUnion (fun rp => rp.residual.allLiteralUIDs) residuals)))) ++ current_store) := by
         constructor
-        · exact as_partial_request_refines
+        · exact as_partial_request_refines hctxwf
         · apply entities_refine_append
           · exact h₂.right
-          · exact (h₀ _).2
-      exact batched_authorize_loop_equiv es h₀ (residuals_equiv_preserved h₁ h₃ h₆) h₆ h₃
+          · exact (h₀ _)
+      exact batched_authorize_loop_equiv es hctxwf h₀ (residuals_equiv_preserved h₁ h₃ h₆) h₆ h₃
 
 /-- The loop's decision agrees with concrete authorization. -/
 theorem batched_authorize_loop_decision_agrees
   {policies : List Policy} {residuals : List ResidualPolicy} {req : Request}
   (es : Entities) {current_store : PartialEntities} {env : TypeEnv} {d : Decision} :
-  EntityLoader.WellBehaved es loader →
+  req.context.WellFormed →
+  EntityLoader.WellBehaved env.ets es loader →
   ResidualPoliciesEquivAndWellTyped env policies residuals req es →
-  RequestAndEntitiesRefine req es req.asPartialRequest current_store →
+  RequestAndEntitiesRefine req es (req.asPartialRequest env.reqty.context) current_store →
   InstanceOfWellFormedEnvironment req es env →
   (batchedAuthorizeLoop env residuals req loader current_store iters).decision = some d →
   (Spec.isAuthorized req es policies).decision = d
 := by
-  intro h₀ h₁ h₂ h₃ h_dec
-  obtain ⟨rps, heq, hequiv⟩ := batched_authorize_loop_equiv es h₀ h₁ h₂ h₃
+  intro hctxwf h₀ h₁ h₂ h₃ h_dec
+  obtain ⟨rps, heq, hequiv⟩ := batched_authorize_loop_equiv es hctxwf h₀ h₁ h₂ h₃
   rw [heq] at h_dec
   exact residuals_decision_agrees (equiv_well_typed_implies_equiv hequiv) h_dec
 

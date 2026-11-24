@@ -26,6 +26,8 @@ import Cedar.Thm.WellTyped
 import Cedar.Thm.Data.Control
 
 import Cedar.Thm.TPE.Soundness.Basic
+import Cedar.Thm.TPE.Attrs
+import Cedar.Thm.TPE.State
 
 namespace Cedar.Thm
 
@@ -132,10 +134,45 @@ theorem tpe_inₑ_agrees
   case isFalse hneq =>
     simp only [beq_eq_false_iff_ne.mpr hneq, Bool.false_or, Spec.inₑ,
       Option.map_eq_some_iff, PartialEntities.ancestors, PartialEntities.get,
-      Option.bind_eq_some_iff, Entities.ancestorsOrEmpty] at hdec ⊢
-    obtain ⟨anc, ⟨e₂, hfind, hanc⟩, hcontains⟩ := hdec
-    obtain ⟨e₁, hfind_es, _, hpv, _⟩ := href uid₁ e₂ hfind
-    cases hpv <;> simp_all
+      Option.bind_eq_some_iff] at hdec ⊢
+    obtain ⟨anc, ⟨ped, hfind, hanc⟩, hcontains⟩ := hdec
+    have hpv := (href uid₁ ped hfind).2.1
+    rw [hanc] at hpv
+    have hpeq := PartialIsValid.some_inv.mp hpv
+    rw [hpeq] at hcontains
+    exact hcontains
+
+/-- Whenever `TPE.hasTag` decides `hasTag`, concrete evaluation agrees. -/
+theorem tpe_hasTag_agrees
+{es : Entities} {pes : PartialEntities} {uid : EntityUID} {tag : Tag} {b : Bool}
+(href : EntitiesRefine es pes)
+(hdec : TPE.hasTag uid tag pes = .some b) :
+  (es.tagsOrEmpty uid).contains tag = b
+:= by
+  simp only [TPE.hasTag] at hdec
+  split at hdec
+  case h_1 v hv | h_2 hv | h_3 hv =>
+    simp only [Option.some.injEq] at hdec; subst hdec
+    obtain ⟨v, hv⟩ := entity_tag_exists href (by rw [hv]; rfl)
+    simp only [Map.contains, hv, Option.isSome_some]
+  case h_4 ha =>
+    simp only [Option.some.injEq] at hdec; subst hdec
+    simp only [Map.contains, entity_tag_absent href ha, Option.isSome_none]
+  case h_5 => simp at hdec
+
+/-- `getTag` on an entity errors exactly when the (concrete) tag is missing. -/
+theorem get_tag_entity_none {es : Entities} {uid : EntityUID} {tag : Tag}
+  (h : (es.tagsOrEmpty uid).find? tag = .none) :
+  Spec.getTag uid tag es = .error .entityDoesNotExist ∨
+  Spec.getTag uid tag es = .error .tagDoesNotExist
+:= by
+  simp only [Spec.getTag, Entities.tags, Entities.tagsOrEmpty] at *
+  cases hf : es.find? uid with
+  | none => left; simp [hf, Data.Map.findOrErr, bind, Except.bind]
+  | some d =>
+    right
+    simp only [hf] at h
+    simp [hf, Data.Map.findOrErr, h, bind, Except.bind]
 
 /--
 If `tryDecideResidual₂` decides a binary operation from the operands' types,
@@ -336,46 +373,30 @@ theorem partial_evaluate_is_sound_binary_app
     case _ uid _ =>
       simp [someOrSelf, apply₂.self]
       split
-      case _ heq =>
+      case _ b heq =>
+        -- `hasTag` decided a value
         rw [Option.bind_eq_some_iff] at heq
-        rcases heq with ⟨_, heq₁, heq₂⟩
-        simp at heq₂
+        rcases heq with ⟨b', heq₁, heq₂⟩
+        simp only [Option.some.injEq] at heq₂
         subst heq₂
-        simp [TPE.hasTag] at heq₁
-        rcases heq₁ with ⟨_, heq₁, heq₂⟩
-        simp [PartialEntities.tags, PartialEntities.get] at heq₁
-        rw [Option.bind_eq_some_iff] at heq₁
-        rcases heq₁ with ⟨data, heq₃, heq₄⟩
-        subst heq₂
-        simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
-        rcases h₄ with ⟨_, h₄⟩
-        specialize h₄ uid data heq₃
-        rcases h₄ with ⟨_, h₄₁, _, _, h₄₂⟩
-        simp only [heq₄, PartialIsValid.some_inv] at h₄₂
-        subst h₄₂
-        simp only [Spec.hasTag, Entities.tagsOrEmpty, h₄₁, Residual.evaluate]
+        simp only [Spec.hasTag, tpe_hasTag_agrees h₄.right heq₁, Residual.evaluate]
       case _ =>
         rw [asValue_some] at heq₁ heq₂
         rw [heq₁.choose_spec, heq₂.choose_spec]
         simp only [Residual.evaluate, Spec.apply₂, Except.bind_ok]
-    case _ uid _ =>
-      simp [TPE.getTag, someOrError]
-      split
-      case _ heq =>
-        simp [PartialEntities.tags, PartialEntities.get] at heq
-        rw [Option.bind_eq_some_iff] at heq
-        rcases heq with ⟨data, heq₂, heq₃⟩
-        simp [RequestAndEntitiesRefine, EntitiesRefine] at h₄
-        rcases h₄ with ⟨_, h₄⟩
-        specialize h₄ uid data heq₂
-        rcases h₄ with ⟨_, h₄₁, _, _, h₄₂⟩
-        simp only [heq₃, PartialIsValid.some_inv] at h₄₂
-        subst h₄₂
-        simp only [Spec.getTag, Entities.tags, Data.Map.findOrErr, h₄₁]
-        split <;>
-        (rename_i heq₁; simp [heq₁, Residual.evaluate, Except.toOption])
-      case _ =>
-        simp only [Residual.evaluate, Spec.apply₂, Except.bind_ok]
+    case _ uid tag =>
+      have hself : Residual.WellTyped env
+          (Residual.binaryApp BinaryOp.getTag (uid : Residual) (tag : Residual) ty) :=
+        get_tag_self_well_typed (id₂ := tag)
+          (partial_eval_preserves_well_typed h₂ h₄ hwt₁) heq₁ hwt₁ howt
+      have hcons : AttrStateConsistent (entityTag pes uid tag)
+          (((Residual.binaryApp BinaryOp.getTag (uid : Residual) (tag : Residual) ty).evaluate
+            req es).toOption) := by
+        simp only [Residual.evaluate, Spec.apply₂, Except.bind_ok, getTag_toOption]
+        exact entity_tag_consistent h₄.2
+      simp only [TPE.getTag]
+      rw [stateToResidual_sound (ty := ty) h₂ hcons hself rfl]
+      simp only [Residual.evaluate, Spec.apply₂, Except.bind_ok]
     case _ => simp [Except.toOption]
   case _ =>
     simp [Residual.evaluate, apply₂.self]
