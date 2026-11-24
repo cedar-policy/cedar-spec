@@ -34,7 +34,9 @@ private theorem entity_link_comm
     (h : x.link ety y = .ok z) :
     y.link ety x = .ok z := by
   cases x <;> cases y <;> simp only [PartialEntitySchemaEntry.link] at h ⊢
-  case defined.defined => contradiction
+  case defined.defined e₁ e₂ =>
+    cases e₁ <;> cases e₂ <;> simp at h ⊢
+    split at h <;> simp_all
   case external.external parents₁ parents₂ =>
     simp only [Except.ok.injEq] at h ⊢
     rw [← h, Set.union_comm]
@@ -58,7 +60,9 @@ private theorem entity_link_defined
     (h : PartialEntitySchemaEntry.link ety (.defined entry) other = .ok result) :
     result = .defined entry := by
   cases other with
-  | defined => simp [PartialEntitySchemaEntry.link] at h
+  | defined other =>
+    cases entry <;> cases other <;> simp [PartialEntitySchemaEntry.link] at h
+    split at h <;> simp_all
   | external =>
     cases entry with
     | enum => simp [PartialEntitySchemaEntry.link] at h
@@ -140,7 +144,12 @@ private theorem entity_link_ancestors
       ancestors.subset std.ancestors = true → (a ∈ std.ancestors ↔ a ∈ ancestors ∨ a ∈ std.ancestors) :=
     fun hsub => ⟨.inr, fun h => h.elim (Set.subset_def.mp hsub a) id⟩
   cases x <;> cases y <;> simp only [PartialEntitySchemaEntry.link] at h
-  case defined.defined => contradiction
+  case defined.defined e₁ e₂ =>
+    cases e₁ <;> cases e₂ <;> simp at h
+    split at h
+    · cases Except.ok.inj h
+      simp [PartialEntitySchemaEntry.ancestors, EntitySchemaEntry.ancestors, Set.not_mem_empty]
+    · contradiction
   case external.external =>
     cases Except.ok.inj h
     simp [PartialEntitySchemaEntry.ancestors, Set.mem_union]
@@ -176,9 +185,9 @@ private theorem action_link_eq
       simp
     · contradiction
 
-/-- Two entity entries that are not both definitions link when one entry keeps both. -/
+/-- Two entity entries link when one entry keeps both and neither duplicates a standard definition. -/
 private theorem entity_link_exists {ety : EntityType} {x y z : PartialEntitySchemaEntry}
-    (hdup : ∀ e₁ e₂, x = .defined e₁ → y = .defined e₂ → False)
+    (hdup : ∀ e₁ e₂, x = .defined e₁ → y = .defined e₂ → e₁.isStandard = false)
     (hx : EntryKept x z) (hy : EntryKept y z) :
     ∃ v, x.link ety y = .ok v := by
   -- A definition linked with an external is the common entry, so it is standard.
@@ -195,7 +204,11 @@ private theorem entity_link_exists {ety : EntityType} {x y z : PartialEntitySche
   cases x with
   | defined e₁ =>
     cases y with
-    | defined e₂ => exact (hdup e₁ e₂ rfl rfl).elim
+    | defined e₂ =>
+      have he := (hx.definition e₁ rfl).symm.trans (hy.definition e₂ rfl)
+      cases he
+      have hn := hdup e₁ e₁ rfl rfl
+      cases e₁ <;> simp [EntitySchemaEntry.isStandard, PartialEntitySchemaEntry.link] at hn ⊢
     | external a₂ =>
       obtain ⟨std, rfl, hsub⟩ := hstd hx hy
       simp [PartialEntitySchemaEntry.link, hsub]
@@ -479,24 +492,6 @@ private theorem linkMaps_entity_defined {ets₁ ets₂ out : PartialEntitySchema
     · exact .inl h₁
     · exact .inr h₂
 
-/-- An external entity type in linked entity maps is defined by neither input. -/
-private theorem linkMaps_entity_external {ets₁ ets₂ out : PartialEntitySchema}
-    {ety : EntityType} {parents : Set EntityType} {entry : EntitySchemaEntry}
-    (hlink : linkMaps PartialEntitySchemaEntry.link ets₁ ets₂ = .ok out)
-    (hfind : out.find? ety = some (.external parents)) :
-    ets₁.find? ety ≠ some (.defined entry) ∧ ets₂.find? ety ≠ some (.defined entry) := by
-  rcases linkAt_some (hfind ▸ linkMaps_find? hlink ety) with
-    ⟨h₁, h₂⟩ | ⟨h₁, h₂⟩ | ⟨x, y, h₁, h₂, hlinked⟩
-  · exact ⟨by simp [h₁], by simp [h₂]⟩
-  · exact ⟨by simp [h₁], by simp [h₂]⟩
-  · refine ⟨fun hdef => ?_, fun hdef => ?_⟩
-    · rw [hdef, Option.some.injEq] at h₁
-      subst h₁
-      exact absurd (entity_link_defined hlinked) (by simp)
-    · rw [hdef, Option.some.injEq] at h₂
-      subst h₂
-      exact absurd (entity_link_defined (entity_link_comm ety x _ _ hlinked)) (by simp)
-
 /-- Linking entity entries with well-formed ancestors gives an entry with well-formed ancestors. -/
 private theorem entity_link_ancestors_wf
     {ety : EntityType} {x y z : PartialEntitySchemaEntry}
@@ -688,33 +683,21 @@ private theorem closeAncestors_wf {m : Map EntityType (Set EntityType)} (hm : Al
 private def closedAncestors (ets : PartialEntitySchema) (ety : EntityType) : Set EntityType :=
   ((closeAncestors (ets.mapOnValues (·.ancestors))).find? ety).getD Set.empty
 
-/-- A successful closure keeps every definition's ancestors, leaves no external entity type with an enum ancestor, and replaces every entry's ancestors with the closed ones. -/
+/-- A successful closure keeps each definition's ancestors and closes each external's ancestors. -/
 private theorem closeForLink_ok {ets out : PartialEntitySchema}
     (h : ets.closeForLink = .ok out) :
     (∀ ety std, (ety, .defined (.standard std)) ∈ ets.toList →
       closedAncestors ets ety = std.ancestors) ∧
-    (∀ ety parents ancestor entry, (ety, .external parents) ∈ ets.toList →
-      ancestor ∈ closedAncestors ets ety →
-      ets.find? ancestor = some entry → entry.isStandard) ∧
     out = Map.make (ets.toList.map fun kv =>
       (kv.fst, kv.snd.withAncestors (closedAncestors ets kv.fst))) := by
   unfold PartialEntitySchema.closeForLink at h
   obtain ⟨_, hcheck, hout⟩ := do_eq_ok.mp h
-  refine ⟨?_, ?_, ?_⟩
+  refine ⟨?_, ?_⟩
   · intro ety std hmem
     have hstep := List.forM_ok_implies_all_ok' hcheck _ hmem
     simp only at hstep
     split at hstep
     · exact beq_iff_eq.mp ‹_›
-    · contradiction
-  · intro ety parents ancestor entry hmem hanc hfind
-    have hstep := List.forM_ok_implies_all_ok' hcheck _ hmem
-    simp only at hstep
-    have hparent := List.forM_ok_implies_all_ok' hstep ancestor
-      ((Set.mem_elts_iff_mem_set _ _).mpr hanc)
-    simp only [hfind] at hparent
-    split at hparent
-    · assumption
     · contradiction
   · simp only [pure, Except.pure, Except.ok.injEq] at hout
     exact hout.symm
@@ -723,7 +706,7 @@ private theorem closeForLink_ok {ets out : PartialEntitySchema}
 private theorem closeForLink_find? {ets out : PartialEntitySchema}
     (h : ets.closeForLink = .ok out) (ety : EntityType) :
     out.find? ety = (ets.find? ety).map (·.withAncestors (closedAncestors ets ety)) := by
-  rw [(closeForLink_ok h).2.2,
+  rw [(closeForLink_ok h).2,
     Map.make_toList_map_find? ets fun ety entry => entry.withAncestors (closedAncestors ets ety)]
 
 /-- A successful closure keeps every definition unchanged. -/
@@ -738,25 +721,6 @@ private theorem closeForLink_find?_defined
   | standard std =>
     rw [(closeForLink_ok hclose).1 ety std (Map.find?_mem_toList hfind)]
     rfl
-
-/-- A successful closure leaves no external entity type with an enum ancestor. -/
-private theorem closeForLink_external_isStandard {ets out : PartialEntitySchema}
-    {ety parent : EntityType} {parents : Set EntityType} {entry : PartialEntitySchemaEntry}
-    (hclose : ets.closeForLink = .ok out)
-    (hfind : out.find? ety = some (.external parents)) (hmem : parent ∈ parents)
-    (hparent : out.find? parent = some entry) :
-    entry.isStandard := by
-  rw [closeForLink_find? hclose, Option.map_eq_some_iff] at hfind hparent
-  obtain ⟨raw, hraw, rfl⟩ := hparent
-  obtain ⟨rawEty, hrawEty, hview⟩ := hfind
-  rw [PartialEntitySchemaEntry.withAncestors_isStandard]
-  cases rawEty with
-  | defined entry => simp [PartialEntitySchemaEntry.withAncestors] at hview
-  | external rawParents =>
-    simp only [PartialEntitySchemaEntry.withAncestors,
-      PartialEntitySchemaEntry.external.injEq] at hview
-    exact (closeForLink_ok hclose).2.1 ety rawParents parent raw
-      (Map.find?_mem_toList hrawEty) (hview ▸ hmem) hraw
 
 /-- An entity type's closed ancestors are the entity types reachable through listed ancestors. -/
 private theorem mem_closedAncestors {ets : PartialEntitySchema} {x y : EntityType} :
@@ -797,25 +761,16 @@ private theorem mem_closedAncestors_linkMaps {ets₁ ets₂ out : PartialEntityS
     exact propext (linkMaps_entity_ancestors hlink a b)
   rw [mem_closedAncestors, hedges]
 
-/-- `closeForLink` succeeds when closing keeps every definition's ancestors and leaves no external entity type with an enum ancestor. -/
+/-- `closeForLink` succeeds when closing keeps every definition's ancestors. -/
 private theorem closeForLink_exists {ets : PartialEntitySchema}
     (h : ∀ ety std, (ety, .defined (.standard std)) ∈ ets.toList →
-      closedAncestors ets ety = std.ancestors)
-    (hext : ∀ ety parents ancestor entry, (ety, .external parents) ∈ ets.toList →
-      ancestor ∈ closedAncestors ets ety →
-      ets.find? ancestor = some entry → entry.isStandard) :
+      closedAncestors ets ety = std.ancestors) :
     ∃ out, ets.closeForLink = .ok out := by
   unfold PartialEntitySchema.closeForLink
   refine ⟨_, do_eq_ok.mpr ⟨(), List.all_ok_implies_forM_ok _ _
     fun ⟨ety, entry⟩ hmem => ?_, rfl⟩⟩
   cases entry with
-  | external parents =>
-    refine List.all_ok_implies_forM_ok _ _ fun ancestor hanc => ?_
-    cases hfind : ets.find? ancestor with
-    | none => rfl
-    | some entry =>
-      simp [hext ety parents ancestor entry hmem
-        ((Set.mem_elts_iff_mem_set _ _).mp hanc) hfind]
+  | external => rfl
   | defined entry =>
     cases entry with
     | enum => rfl
@@ -908,7 +863,7 @@ private theorem link_of_steps {p c : PartialSchema} {ets ets' : PartialEntitySch
 private theorem link_ets_wf {p c t : PartialSchema} (hlink : link p c = .ok t) :
     t.ets.WellFormed := by
   obtain ⟨-, _, -, -, hclose⟩ := link_ok hlink
-  rw [(closeForLink_ok hclose).2.2]
+  rw [(closeForLink_ok hclose).2]
   exact Map.make_wf _
 
 /-- A link has a well-formed action map. -/
@@ -936,26 +891,17 @@ private theorem link_external_ancestors_wf {p c t : PartialSchema} {ety : Entity
 -- Linking partial schemas that one partial schema keeps.
 
 /--
-Well-formed partial schemas without a common definition link when a
-well-formed partial schema keeps the declarations of both and an entity type
-reaching an enum entity type is defined by one of them.
+Well-formed partial schemas without a common standard or action definition link when a
+well-formed partial schema keeps the declarations of both.
 -/
 private theorem link_exists_of_kept {s₁ s₂ t : PartialSchema}
     (hs₁ : s₁.WellFormed) (hs₂ : s₂.WellFormed) (ht : t.WellFormed)
     (h₁ : DeclarationsKept s₁ t) (h₂ : DeclarationsKept s₂ t)
     (hdisjoint :
       (∀ ety e₁ e₂, s₁.ets.find? ety = some (.defined e₁) →
-        s₂.ets.find? ety ≠ some (.defined e₂)) ∧
+        s₂.ets.find? ety = some (.defined e₂) → e₁.isStandard = false) ∧
       (∀ uid e₁ e₂, s₁.acts.find? uid = some (.defined e₁) →
-        s₂.acts.find? uid ≠ some (.defined e₂)))
-    (henum : ∀ ety ancestor es,
-      (s₁.ets.find? ancestor = some (.defined (.enum es)) ∨
-        s₂.ets.find? ancestor = some (.defined (.enum es))) →
-      Relation.TransGen (fun a b =>
-        (∃ e, s₁.ets.find? a = some e ∧ b ∈ e.ancestors) ∨
-        (∃ e, s₂.ets.find? a = some e ∧ b ∈ e.ancestors)) ety ancestor →
-      (∃ e, s₁.ets.find? ety = some (.defined e)) ∨
-        (∃ e, s₂.ets.find? ety = some (.defined e))) :
+        s₂.acts.find? uid ≠ some (.defined e₂))) :
     ∃ t', link s₁ s₂ = .ok t' := by
   -- No action type is an entity type, since `t` declares the actions and entity types of both.
   have hcollision : collisionCheck s₁ s₂ = .ok () := by
@@ -997,29 +943,16 @@ private theorem link_exists_of_kept {s₁ s₂ t : PartialSchema}
     rintro x y (⟨e, he, hy⟩ | ⟨e, he, hy⟩)
     · exact h₁.ancestors x e y he hy
     · exact h₂.ancestors x e y he hy)
-    -- An enum ancestor would make `ety` a definition of an input, not an external of the link.
-    (fun ety parents ancestor entry hmem hanc hfind => by
-      cases entry with
-      | external => rfl
-      | defined entry =>
-        cases entry with
-        | standard => rfl
-        | enum es =>
-          exfalso
-          have hety := (Map.in_list_iff_find?_some (linkMaps_wf hets)).mp hmem
-          rcases henum ety ancestor es (linkMaps_entity_defined hets hfind)
-            ((mem_closedAncestors_linkMaps hets).mp hanc) with ⟨_, hdef⟩ | ⟨_, hdef⟩
-          · exact (linkMaps_entity_external hets hety).1 hdef
-          · exact (linkMaps_entity_external hets hety).2 hdef)
   exact ⟨_, link_of_steps hcollision hets hacts hclose⟩
 
 -- Facts about the complement, which `linker_completion` links with.
 
-/-- The entity entry that completes an entry: a parentless external for a definition, and a
-definition with `attrs` for an external. -/
+/-- Keep enum definitions, declare standard definitions as parentless externals,
+and define externals with `attrs`. -/
 private def PartialEntitySchemaEntry.complement (attrs : RecordType) :
     PartialEntitySchemaEntry → PartialEntitySchemaEntry
-  | .defined _ => .external Set.empty
+  | .defined (.enum es) => .defined (.enum es)
+  | .defined (.standard _) => .external Set.empty
   | .external ancestors => .defined (.standard { ancestors, attrs, tags := none })
 
 /-- The action entry that completes an entry: an external for a definition, the view of an external. -/
@@ -1030,11 +963,11 @@ private def PartialActionSchemaEntry.complement :
 
 /--
 The partial schema that completes `p`: it defines the externals of `p`, giving
-entity types the attributes `attrs`, and declares the other standard entity
-types and actions of `p` external.
+entity types the attributes `attrs`, keeps enums so they can be named as
+ancestors, and declares the other standard entity types and actions external.
 -/
 private def PartialSchema.complement (p : PartialSchema) (attrs : RecordType) : PartialSchema where
-  ets := (p.ets.filter fun _ entry => entry.isStandard).mapOnValues (·.complement attrs)
+  ets := p.ets.mapOnValues (·.complement attrs)
   acts := p.acts.mapOnValues PartialActionSchemaEntry.complement
 
 /-- The entry completing an external keeps its parents. -/
@@ -1045,7 +978,8 @@ private theorem PartialEntitySchemaEntry.complement_external_ancestors (attrs : 
 /-- The entry completing a definition lists no parent. -/
 private theorem PartialEntitySchemaEntry.complement_defined_ancestors (attrs : RecordType)
     (entry : EntitySchemaEntry) :
-    ((PartialEntitySchemaEntry.defined entry).complement attrs).ancestors = Set.empty := rfl
+    ((PartialEntitySchemaEntry.defined entry).complement attrs).ancestors = Set.empty := by
+  cases entry <;> rfl
 
 private theorem PartialActionSchemaEntry.complement_ancestors (entry : PartialActionSchemaEntry) :
     entry.complement.ancestors = entry.ancestors := by
@@ -1058,19 +992,12 @@ private theorem PartialActionSchemaEntry.complement_validationView
       (PartialActionSchemaEntry.external entry.ancestors).validationView := by
   cases entry <;> rfl
 
-/-- The complement completes exactly the standard and external entity types. -/
+/-- The complement has an entry for each entity type. -/
 private theorem PartialSchema.complement_ets_find? {p : PartialSchema} {attrs : RecordType}
-    (hp : p.ets.WellFormed) {ety : EntityType} {entry : PartialEntitySchemaEntry} :
+    {ety : EntityType} {entry : PartialEntitySchemaEntry} :
     (p.complement attrs).ets.find? ety = some entry ↔
-      ∃ pe, p.ets.find? ety = some pe ∧ pe.isStandard = true ∧
-        pe.complement attrs = entry := by
+      ∃ pe, p.ets.find? ety = some pe ∧ pe.complement attrs = entry := by
   simp only [PartialSchema.complement, Map.find?_mapOnValues, Option.map_eq_some_iff]
-  constructor
-  · rintro ⟨pe, hpe, rfl⟩
-    have := (Map.find?_filter_iff_find hp).mpr hpe
-    exact ⟨pe, this.1, this.2, rfl⟩
-  · rintro ⟨pe, hpe, hstd, rfl⟩
-    exact ⟨pe, Map.find?_filter_if_find? hpe hstd, rfl⟩
 
 private theorem PartialSchema.complement_acts_find? (p : PartialSchema) (attrs : RecordType)
     (uid : EntityUID) :
@@ -1078,45 +1005,55 @@ private theorem PartialSchema.complement_acts_find? (p : PartialSchema) (attrs :
       (p.acts.find? uid).map PartialActionSchemaEntry.complement :=
   Map.find?_mapOnValues _ _ _
 
-/-- A partial schema and its complement define no entity type or action in common. -/
-private theorem PartialSchema.complement_definitions_disjoint {p : PartialSchema}
-    {attrs : RecordType} (hp : p.ets.WellFormed) :
+/-- A partial schema and its complement only share enum definitions. -/
+private theorem PartialSchema.complement_definitions_compatible {p : PartialSchema}
+    {attrs : RecordType} :
     (∀ ety e₁ e₂, p.ets.find? ety = some (.defined e₁) →
-      (p.complement attrs).ets.find? ety ≠ some (.defined e₂)) ∧
+      (p.complement attrs).ets.find? ety = some (.defined e₂) → e₁.isStandard = false) ∧
     (∀ uid e₁ e₂, p.acts.find? uid = some (.defined e₁) →
       (p.complement attrs).acts.find? uid ≠ some (.defined e₂)) := by
   constructor
   · intro ety e₁ e₂ h₁ h₂
-    obtain ⟨_, hpe, -, hcomplement⟩ := (PartialSchema.complement_ets_find? hp).mp h₂
+    obtain ⟨_, hpe, hcomplement⟩ := PartialSchema.complement_ets_find?.mp h₂
     rw [h₁, Option.some.injEq] at hpe
-    simp [← hpe, PartialEntitySchemaEntry.complement] at hcomplement
+    subst hpe
+    cases e₁ <;> simp_all [PartialEntitySchemaEntry.complement, EntitySchemaEntry.isStandard]
   · intro uid e₁ e₂ h₁ h₂
     simp [PartialSchema.complement_acts_find?, h₁, PartialActionSchemaEntry.complement] at h₂
 
 /-- Completing `p` keeps the declarations of the complement of `p`. -/
 private theorem DeclarationsKept.complement_completeWith {p : PartialSchema} {attrs : RecordType}
-    (hp : p.ets.WellFormed) :
-    DeclarationsKept (p.complement attrs) (p.completeWith attrs) where
+    : DeclarationsKept (p.complement attrs) (p.completeWith attrs) where
   entities ety h := by
     obtain ⟨entry, hentry⟩ := Map.contains_iff_some_find?.mp h
-    obtain ⟨pe, hpe, -⟩ := (PartialSchema.complement_ets_find? hp).mp hentry
+    obtain ⟨pe, hpe, -⟩ := PartialSchema.complement_ets_find?.mp hentry
     simp [Map.contains, toPartialSchema_completeWith_ets_find?, hpe]
   definitions ety entry h := by
-    obtain ⟨pe, hpe, -, hcomplement⟩ := (PartialSchema.complement_ets_find? hp).mp h
+    obtain ⟨pe, hpe, hcomplement⟩ := PartialSchema.complement_ets_find?.mp h
     cases pe with
-    | defined => simp [PartialEntitySchemaEntry.complement] at hcomplement
+    | defined e =>
+      cases e with
+      | standard => simp [PartialEntitySchemaEntry.complement] at hcomplement
+      | enum es =>
+        simp only [PartialEntitySchemaEntry.complement, PartialEntitySchemaEntry.defined.injEq]
+          at hcomplement
+        rw [toPartialSchema_completeWith_ets_find?, hpe, ← hcomplement]
+        rfl
     | external =>
       simp only [PartialEntitySchemaEntry.complement, PartialEntitySchemaEntry.defined.injEq]
         at hcomplement
       rw [toPartialSchema_completeWith_ets_find?, hpe, ← hcomplement]
       rfl
-  standard ety entry h _ := by
-    obtain ⟨pe, hpe, hstd, -⟩ := (PartialSchema.complement_ets_find? hp).mp h
+  standard ety entry h hstd := by
+    obtain ⟨pe, hpe, rfl⟩ := PartialSchema.complement_ets_find?.mp h
     exact ⟨.defined (pe.completeWith attrs),
       by rw [toPartialSchema_completeWith_ets_find?, hpe]; rfl,
-      by rw [← hstd]; exact PartialEntitySchemaEntry.completeWith_isStandard attrs pe⟩
+      by
+        cases pe with
+        | external => rfl
+        | defined e => cases e <;> exact hstd⟩
   ancestors ety entry a h ha := by
-    obtain ⟨pe, hpe, -, rfl⟩ := (PartialSchema.complement_ets_find? hp).mp h
+    obtain ⟨pe, hpe, rfl⟩ := PartialSchema.complement_ets_find?.mp h
     refine ⟨.defined (pe.completeWith attrs),
       by rw [toPartialSchema_completeWith_ets_find?, hpe]; rfl, ?_⟩
     show a ∈ (pe.completeWith attrs).ancestors
@@ -1146,7 +1083,7 @@ private theorem DeclarationsKept.complement_completeWith {p : PartialSchema} {at
 
 /-- A partial schema keeping the declarations of `p` and its complement keeps its completion's. -/
 private theorem DeclarationsKept.completeWith_of_complement {p t : PartialSchema}
-    {attrs : RecordType} (hp : p.ets.WellFormed) (hpt : DeclarationsKept p t)
+    {attrs : RecordType} (hpt : DeclarationsKept p t)
     (hct : DeclarationsKept (p.complement attrs) t) :
     DeclarationsKept (p.completeWith attrs) t where
   entities ety h := by
@@ -1159,8 +1096,8 @@ private theorem DeclarationsKept.completeWith_of_complement {p t : PartialSchema
     cases pe with
     | defined => exact hview ▸ hpt.definitions ety _ hpe
     | external =>
-      exact hct.definitions ety entry ((PartialSchema.complement_ets_find? hp).mpr
-        ⟨_, hpe, rfl, by rw [← hview]; rfl⟩)
+      exact hct.definitions ety entry (PartialSchema.complement_ets_find?.mpr
+        ⟨_, hpe, by rw [← hview]; rfl⟩)
   standard ety entry h hstd := by
     rw [toPartialSchema_completeWith_ets_find?, Option.map_eq_some_iff] at h
     obtain ⟨pe, hpe, rfl⟩ := h
@@ -1195,33 +1132,22 @@ private theorem PartialSchema.WellFormed.complement {p : PartialSchema} {attrs :
     (hlifted : (CedarType.record attrs).IsLifted) :
     (p.complement attrs).WellFormed := by
   have hets : ∀ {ety entry}, (p.complement attrs).ets.find? ety = some entry ↔
-      ∃ pe, p.ets.find? ety = some pe ∧ pe.isStandard = true ∧ pe.complement attrs = entry :=
-    PartialSchema.complement_ets_find? hp.etsMap
-  -- Every standard entity type of `p` is declared in the complement.
-  have hdeclared : ∀ ety pe, p.ets.find? ety = some pe → pe.isStandard = true →
+      ∃ pe, p.ets.find? ety = some pe ∧ pe.complement attrs = entry :=
+    PartialSchema.complement_ets_find?
+  -- Every entity type of `p` is declared in the complement.
+  have hdeclared : ∀ ety pe, p.ets.find? ety = some pe →
       ∃ ventry, (p.complement attrs).wfEnv.ets.find? ety = some ventry := by
-    intro ety pe hpe hstd
+    intro ety pe hpe
     refine ⟨(pe.complement attrs).validationView, ?_⟩
-    rw [PartialSchema.wfEnv, validationView_find?_ets, hets.mpr ⟨pe, hpe, hstd, rfl⟩]
+    rw [PartialSchema.wfEnv, validationView_find?_ets, hets.mpr ⟨pe, hpe, rfl⟩]
     rfl
   rw [PartialSchema.wellFormed_iff]
-  refine ⟨?closed, ?externals, ⟨?etsMap, ?ets⟩,
+  refine ⟨?closed, ⟨?etsMap, ?ets⟩,
     ⟨?actsMap, ?acts, ?disjoint, ?acyclic, ?transitive⟩⟩
-  case externals =>
-    -- The complement declares an external only for a definition, with no parents.
-    intro ety parents parent hfind hmem
-    obtain ⟨pe, -, -, hcomplement⟩ := hets.mp hfind
-    cases pe with
-    | defined entry =>
-      simp only [PartialEntitySchemaEntry.complement,
-        PartialEntitySchemaEntry.external.injEq] at hcomplement
-      rw [← hcomplement] at hmem
-      exact absurd hmem (Set.not_mem_empty parent)
-    | external => simp [PartialEntitySchemaEntry.complement] at hcomplement
   case closed =>
     intro ety entry ancestor ancestorEntry hfind hmem hfind'
-    obtain ⟨pe, hpe, -, rfl⟩ := hets.mp hfind
-    obtain ⟨pa, hpa, -, rfl⟩ := hets.mp hfind'
+    obtain ⟨pe, hpe, rfl⟩ := hets.mp hfind
+    obtain ⟨pa, hpa, rfl⟩ := hets.mp hfind'
     cases pe with
     | defined entry =>
       rw [PartialEntitySchemaEntry.complement_defined_ancestors] at hmem
@@ -1236,20 +1162,23 @@ private theorem PartialSchema.WellFormed.complement {p : PartialSchema} {attrs :
         rw [PartialEntitySchemaEntry.complement_external_ancestors]
         exact hp.1 _ _ _ _ hpe hmem hpa
   case etsMap =>
-    exact Map.mapOnValues_wf.mp (Map.mapOnValues_wf.mp (Map.filter_wf _ _ hp.etsMap))
+    exact Map.mapOnValues_wf.mp (Map.mapOnValues_wf.mp hp.etsMap)
   case ets =>
-    -- Each entry is a standard entity type, with no parents for a definition of `p`.
+    -- Enums stay unchanged; standard definitions become parentless externals.
     intro ety ventry hventry
     obtain ⟨entry, hfind, rfl⟩ := PartialSchema.wfEnv_ets_find? hventry
-    obtain ⟨pe, hpe, -, rfl⟩ := hets.mp hfind
+    obtain ⟨pe, hpe, rfl⟩ := hets.mp hfind
     cases pe with
-    | defined =>
-      exact standardEntry_wf Set.empty_wf (fun a ha => absurd ha (Set.not_mem_empty a))
-        emptyRecord_wf emptyRecord_lifted
+    | defined e =>
+      cases e with
+      | standard =>
+        exact standardEntry_wf Set.empty_wf (fun a ha => absurd ha (Set.not_mem_empty a))
+          emptyRecord_wf emptyRecord_lifted
+      | enum es => exact hp.entry hpe
     | external parents =>
       refine standardEntry_wf (hp.ancestors_wf hpe) (fun a ha => ?_) (hwf _) hlifted
-      obtain ⟨pa, hpa, hstd⟩ := hp.external_parent_isStandard hpe ha
-      exact hdeclared a pa hpa hstd
+      obtain ⟨pa, hpa⟩ := hp.ancestor_declared hpe ha
+      exact hdeclared a pa hpa
   case actsMap => exact Map.mapOnValues_wf.mp (Map.mapOnValues_wf.mp hp.actsMap)
   case acts =>
     intro uid ventry hventry
@@ -1567,20 +1496,22 @@ theorem linker_result_kept
       (hpu.actionDefinitions uid entry) (hcu.actionDefinitions uid entry)
 
 /--
-No entity type or action is defined by both inputs.
+Only enums can be defined by both inputs; action definitions are disjoint.
 -/
-theorem linker_definitions_disjoint
+theorem linker_definitions_compatible
     {p c t : PartialSchema}
     (hlink : link p c = .ok t) :
     (∀ ety e₁ e₂, p.ets.find? ety = some (.defined e₁) →
-      c.ets.find? ety ≠ some (.defined e₂)) ∧
+      c.ets.find? ety = some (.defined e₂) → e₁.isStandard = false) ∧
     (∀ uid e₁ e₂, p.acts.find? uid = some (.defined e₁) →
       c.acts.find? uid ≠ some (.defined e₂)) := by
   obtain ⟨-, ets, hets, hacts, -⟩ := link_ok hlink
   constructor
   · intro ety e₁ e₂ h₁ h₂
     have := linkMaps_find? hets ety
-    simp [h₁, h₂, linkAt, PartialEntitySchemaEntry.link, Functor.map, Except.map] at this
+    cases e₁ <;> cases e₂ <;>
+      simp [h₁, h₂, linkAt, PartialEntitySchemaEntry.link, Functor.map, Except.map,
+        EntitySchemaEntry.isStandard] at this ⊢
   · intro uid e₁ e₂ h₁ h₂
     have := linkMaps_find? hacts uid
     simp [h₁, h₂, linkAt, PartialActionSchemaEntry.link, Functor.map, Except.map] at this
@@ -1600,37 +1531,15 @@ theorem linker_completion
   have hc := hp.complement hwf hlifted
   have hu := hp.completeWith hwf hlifted
   have hpu := DeclarationsKept.completeWith p attrs
-  have hcu := DeclarationsKept.complement_completeWith (attrs := attrs) hp.etsMap
-  have hets : ∀ {ety entry}, (p.complement attrs).ets.find? ety = some entry ↔
-      ∃ pe, p.ets.find? ety = some pe ∧ pe.isStandard = true ∧ pe.complement attrs = entry :=
-    PartialSchema.complement_ets_find? hp.etsMap
-  -- One of the two defines every entity type either declares, so no external survives.
-  have henum : ∀ ety ancestor es,
-      (p.ets.find? ancestor = some (.defined (.enum es)) ∨
-        (p.complement attrs).ets.find? ancestor = some (.defined (.enum es))) →
-      Relation.TransGen (fun a b =>
-        (∃ e, p.ets.find? a = some e ∧ b ∈ e.ancestors) ∨
-        (∃ e, (p.complement attrs).ets.find? a = some e ∧ b ∈ e.ancestors)) ety ancestor →
-      (∃ e, p.ets.find? ety = some (.defined e)) ∨
-        (∃ e, (p.complement attrs).ets.find? ety = some (.defined e)) := by
-    intro ety ancestor es _ hreach
-    -- An ancestor edge leaves `ety`, so `p` declares it.
-    obtain ⟨pe, hpe⟩ : ∃ pe, p.ets.find? ety = some pe := by
-      obtain ⟨_, ⟨e, he, -⟩ | ⟨_, he, -⟩⟩ := Relation.transGen_head hreach
-      · exact ⟨e, he⟩
-      · exact (hets.mp he).imp fun _ h => h.1
-    cases pe with
-    | defined entry => exact .inl ⟨entry, hpe⟩
-    | external parents =>
-      exact .inr ⟨.standard { ancestors := parents, attrs, tags := none },
-        hets.mpr ⟨_, hpe, rfl, rfl⟩⟩
+  have hcu := DeclarationsKept.complement_completeWith (p := p) (attrs := attrs)
+  have hcompatible := PartialSchema.complement_definitions_compatible (p := p) (attrs := attrs)
   obtain ⟨t, hlink⟩ := link_exists_of_kept hp hc hu hpu hcu
-    (PartialSchema.complement_definitions_disjoint hp.etsMap) henum
+    hcompatible
   -- The link is the completion of `p`, since each keeps the declarations of the other.
   obtain ⟨hpt, hct⟩ := linker_keeps_declarations hlink
   have heq := DeclarationsKept.eq_toPartialSchema (link_ets_wf hlink) (link_acts_wf hlink) hu
     (linker_result_kept hlink hu.1 hpu hcu)
-    (DeclarationsKept.completeWith_of_complement hp.etsMap hpt hct)
+    (DeclarationsKept.completeWith_of_complement hpt hct)
   exact ⟨_, hc, heq ▸ hlink⟩
 
 /--
@@ -1682,7 +1591,7 @@ theorem linker_preserves_well_formedness
     t.WellFormed := by
   obtain ⟨hpt, hct⟩ := linker_keeps_declarations hlink
   rw [PartialSchema.wellFormed_iff]
-  refine ⟨?closed, ?externals, ⟨?etsMap, ?ets⟩,
+  refine ⟨?closed, ⟨?etsMap, ?ets⟩,
     ⟨?actsMap, ?acts, ?disjoint, ?acyclic, ?transitive⟩⟩
   case closed =>
     -- Ancestors are reachable sets, and reachability is transitive.
@@ -1691,19 +1600,6 @@ theorem linker_preserves_well_formedness
     intro a ha
     rw [linker_entity_ancestors hlink hfind] at hmem ⊢
     exact hmem.trans ((linker_entity_ancestors hlink hfind').mp ha)
-  case externals =>
-    -- An input declares each ancestor, and closing rejects an enum among them.
-    intro ety parents parent hfind hmem
-    obtain ⟨-, _, -, -, hclose⟩ := link_ok hlink
-    obtain ⟨entry, hentry⟩ : ∃ entry, t.ets.find? parent = some entry := by
-      obtain ⟨_, hedge⟩ :=
-        Relation.transGen_tail ((linker_entity_ancestors hlink hfind).mp hmem)
-      refine Map.contains_iff_some_find?.mp
-        ((linker_preserves_entity_declarations hlink parent).mpr ?_)
-      rcases hedge with ⟨_, he, hmem'⟩ | ⟨_, he, hmem'⟩
-      · exact .inl (Map.find?_some_implies_contains (hp.ancestor_declared he hmem').choose_spec)
-      · exact .inr (Map.find?_some_implies_contains (hc.ancestor_declared he hmem').choose_spec)
-    exact ⟨entry, hentry, closeForLink_external_isStandard hclose hfind hmem hentry⟩
   case etsMap => exact Map.mapOnValues_wf.mp (link_ets_wf hlink)
   case ets =>
     intro ety ventry hventry
@@ -1762,7 +1658,7 @@ theorem linker_completed_schema_well_formed
     (hlink : link p c = .ok t)
     (hcomplete : t.asSchema? = some schema) :
     schema.validateWellFormed = .ok () := by
-  obtain ⟨-, -, hwf⟩ :=
+  obtain ⟨-, hwf⟩ :=
     PartialSchema.wellFormed_iff.mp (linker_preserves_well_formedness hp hc hlink)
   have hview := validationView_eq_of_asSchema? hcomplete
   -- Every environment of `schema` has the maps of the environment `t.WellFormed` checks.
@@ -1770,53 +1666,6 @@ theorem linker_completed_schema_well_formed
   obtain ⟨hets, hacts, -⟩ := Cedar.Thm.mem_environments henv
   exact TypeEnv.maps_wf_of_eq (by simp [PartialSchema.wfEnv, hview, hets])
     (by simp [PartialSchema.wfEnv, hview, hacts]) hwf
-
-/-- A successful link has no entity type that one input declares and the other defines as an enum. -/
-private theorem link_enums_undeclared {p c t : PartialSchema} {ety : EntityType}
-    {es : Set String} (hlink : link p c = .ok t) :
-    (p.ets.contains ety → c.ets.find? ety ≠ some (.defined (.enum es))) ∧
-    (c.ets.contains ety → p.ets.find? ety ≠ some (.defined (.enum es))) := by
-  obtain ⟨-, ets, hets, -, -⟩ := link_ok hlink
-  have hspec := linkMaps_find? hets ety
-  constructor <;> intro hdecl hdef <;>
-    obtain ⟨entry, hentry⟩ := Map.contains_iff_some_find?.mp hdecl <;>
-    rw [hdef] at hspec <;> rw [hentry] at hspec <;>
-    cases entry <;>
-    simp [linkAt, PartialEntitySchemaEntry.link, Functor.map, Except.map] at hspec
-
-/-- An entity type reaching an enum entity type through two inputs whose declarations a well-formed `t` keeps is defined in `t`, with that enum among its ancestors. -/
-private theorem reaches_enum_defined {s₁ s₂ t : PartialSchema}
-    {ety ancestor : EntityType} {es : Set String}
-    (ht : t.WellFormed) (h₁ : DeclarationsKept s₁ t) (h₂ : DeclarationsKept s₂ t)
-    (hdef : s₁.ets.find? ancestor = some (.defined (.enum es)) ∨
-      s₂.ets.find? ancestor = some (.defined (.enum es)))
-    (hreach : Relation.TransGen (fun a b =>
-      (∃ e, s₁.ets.find? a = some e ∧ b ∈ e.ancestors) ∨
-      (∃ e, s₂.ets.find? a = some e ∧ b ∈ e.ancestors)) ety ancestor) :
-    ∃ e, t.ets.find? ety = some (.defined e) ∧ ancestor ∈ e.ancestors := by
-  -- `t` defines `ancestor` as an enum, since it keeps the definitions of both inputs.
-  have htenum : t.ets.find? ancestor = some (.defined (.enum es)) :=
-    hdef.elim (h₁.definitions ancestor _) (h₂.definitions ancestor _)
-  -- An ancestor edge leaves `ety`, so an input, and hence `t`, declares it.
-  obtain ⟨entry, hentry⟩ : ∃ entry, t.ets.find? ety = some entry := by
-    obtain ⟨_, ⟨_, he, -⟩ | ⟨_, he, -⟩⟩ := Relation.transGen_head hreach
-    · exact Map.contains_iff_some_find?.mp
-        (h₁.entities ety (Map.find?_some_implies_contains he))
-    · exact Map.contains_iff_some_find?.mp
-        (h₂.entities ety (Map.find?_some_implies_contains he))
-  -- Ancestors are closed in `t`, so the enum is an ancestor of `ety` there.
-  have hmem : ancestor ∈ entry.ancestors := by
-    refine ht.1.reach hentry (Relation.transGen_mono ?_ hreach)
-    rintro x y (⟨e, he, hy⟩ | ⟨e, he, hy⟩)
-    · exact h₁.ancestors x e y he hy
-    · exact h₂.ancestors x e y he hy
-  cases entry with
-  | defined e => exact ⟨e, hentry, hmem⟩
-  | external parents =>
-    obtain ⟨_, he, hstd⟩ := ht.external_parent_isStandard hentry hmem
-    rw [htenum, Option.some.injEq] at he
-    rw [← he] at hstd
-    simp [PartialEntitySchemaEntry.isStandard, EntitySchemaEntry.isStandard] at hstd
 
 /-- Changing the grouping does not change a successful link. -/
 theorem linker_associativity
@@ -1836,41 +1685,20 @@ theorem linker_associativity
   -- `c` and `d` link, since `t` keeps both and `t₁` keeps the definitions of `c`.
   obtain ⟨t₂, hcd⟩ := link_exists_of_kept hc hd ht hct hdt
     ⟨fun ety e₁ e₂ h =>
-        (linker_definitions_disjoint hpcd).1 ety e₁ e₂ (hct₁.definitions ety e₁ h),
+        (linker_definitions_compatible hpcd).1 ety e₁ e₂ (hct₁.definitions ety e₁ h),
       fun uid e₁ e₂ h =>
-        (linker_definitions_disjoint hpcd).2 uid e₁ e₂ (hct₁.actionDefinitions uid e₁ h)⟩
-    fun ety ancestor es hdef hreach => by
-      obtain ⟨e, he, hmem⟩ := reaches_enum_defined ht hct hdt hdef hreach
-      rcases linker_definitions_come_from_inputs hpcd he with h | h
-      · rcases linker_definitions_come_from_inputs hpc h with h | h
-        · -- `p` defines `ety`, so `p` declares the enum, which no input may define.
-          exfalso
-          obtain ⟨_, hanc⟩ := hp.ancestor_declared h hmem
-          have hcontains := Map.find?_some_implies_contains hanc
-          rcases hdef with hdef | hdef
-          · exact (link_enums_undeclared hpc).1 hcontains hdef
-          · exact (link_enums_undeclared hpcd).1
-              ((linker_preserves_entity_declarations hpc ancestor).mpr (.inl hcontains)) hdef
-        · exact .inl ⟨e, h⟩
-      · exact .inr ⟨e, h⟩
+        (linker_definitions_compatible hpcd).2 uid e₁ e₂ (hct₁.actionDefinitions uid e₁ h)⟩
   have ht₂ := linker_preserves_well_formedness hc hd hcd
   have ht₂t := linker_result_kept hcd ht.1 hct hdt
   -- `p` and `t₂` link, since `t` keeps both and each definition of `t₂` is one of `c` or `d`.
   obtain ⟨t', hpt₂⟩ := link_exists_of_kept hp ht₂ ht hpt ht₂t
     ⟨fun ety e₁ e₂ h₁ h₂ => (linker_definitions_come_from_inputs hcd h₂).elim
-        ((linker_definitions_disjoint hpc).1 ety e₁ e₂ h₁)
-        ((linker_definitions_disjoint hpcd).1 ety e₁ e₂ (hpt₁.definitions ety e₁ h₁)),
+        ((linker_definitions_compatible hpc).1 ety e₁ e₂ h₁)
+        ((linker_definitions_compatible hpcd).1 ety e₁ e₂ (hpt₁.definitions ety e₁ h₁)),
       fun uid e₁ e₂ h₁ h₂ => (linker_actions_come_from_inputs hcd h₂).elim
-        ((linker_definitions_disjoint hpc).2 uid e₁ e₂ h₁)
-        ((linker_definitions_disjoint hpcd).2 uid e₁ e₂
+        ((linker_definitions_compatible hpc).2 uid e₁ e₂ h₁)
+        ((linker_definitions_compatible hpcd).2 uid e₁ e₂
           (hpt₁.actionDefinitions uid e₁ h₁))⟩
-    fun ety ancestor es hdef hreach => by
-      obtain ⟨e, he, -⟩ := reaches_enum_defined ht hpt ht₂t hdef hreach
-      rcases linker_definitions_come_from_inputs hpcd he with h | h
-      · rcases linker_definitions_come_from_inputs hpc h with h | h
-        · exact .inl ⟨e, h⟩
-        · exact .inr ⟨e, (linker_preserves_definitions hcd).1 ety e h⟩
-      · exact .inr ⟨e, (linker_preserves_definitions hcd).2.1 ety e h⟩
   -- Both groupings give the same result, since each keeps the declarations of the other.
   have ht' := linker_preserves_well_formedness hp ht₂ hpt₂
   obtain ⟨hpt', ht₂t'⟩ := linker_keeps_declarations hpt₂

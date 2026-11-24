@@ -39,9 +39,11 @@ public inductive LinkError where
   | duplicateAction (uid : EntityUID)
   /-- An external entity type links to an enumerated entity type. -/
   | externalIsEnum (ety : EntityType)
+  /-- Two enum definitions have different possible values. -/
+  | enumValuesMismatch (ety : EntityType)
   /-- An external entity has ancestors absent from its definition. -/
   | externalAncestorsNotInDefinition (ety : EntityType)
-  /-- An external entity type has an enumerated entity type among its ancestors. -/
+  /-- Former restriction on enum ancestors of external entity types; no longer emitted. -/
   | externalAncestorIsEnum (ety : EntityType)
   /-- Linking would add ancestors to a defined entity type. -/
   | definedEntityAncestorsChanged (ety : EntityType)
@@ -55,6 +57,7 @@ public instance : ToString LinkError where
     | .duplicateEntityType ety => s!"entity type {ety} is defined twice"
     | .duplicateAction uid => s!"action {uid} is defined twice"
     | .externalIsEnum ety => s!"external entity type {ety} links to an enumerated entity type"
+    | .enumValuesMismatch ety => s!"enumerated entity type {ety} has different values in different schemas"
     | .externalAncestorsNotInDefinition ety =>
       s!"external entity type {ety} has ancestors absent from its definition"
     | .externalAncestorIsEnum ety =>
@@ -97,7 +100,6 @@ public def closeAncestors {α} [LT α] [DecidableLT α] [DecidableEq α]
 /--
 Close entity ancestors if doing so does not change a defined entity.
 Error if taking closure causes any completed entity ancestor to enlarge.
-Error if an external entity type has an enumerated ancestor, which no definition of it could list.
 -/
 public def PartialEntitySchema.closeForLink (ets : PartialEntitySchema) : Except LinkError PartialEntitySchema := do
   let ancs := closeAncestors (ets.mapOnValues (·.ancestors))
@@ -106,13 +108,7 @@ public def PartialEntitySchema.closeForLink (ets : PartialEntitySchema) : Except
     | .defined (.standard std) =>
       if (ancs.find? ety).getD Set.empty == std.ancestors then .ok ()
       else .error (.definedEntityAncestorsChanged ety)
-    | .defined (.enum _) => .ok ()
-    | .external _ =>
-      ((ancs.find? ety).getD Set.empty).toList.forM λ ancestor =>
-        match ets.find? ancestor with
-        | some entry =>
-          if entry.isStandard then .ok () else .error (.externalAncestorIsEnum ety)
-        | none => .ok ()
+    | .defined (.enum _) | .external _ => .ok ()
   pure (Map.make (ets.toList.map λ (ety, entry) =>
     (ety, entry.withAncestors ((ancs.find? ety).getD Set.empty))))
 
@@ -120,12 +116,15 @@ public def PartialEntitySchema.closeForLink (ets : PartialEntitySchema) : Except
 
 /--
 Link a single PartialEntitySchemaEntry.
-Error when both are not external.
-Error when the defined entity is Enum.
+Two definitions can only link if both are enums with equal value sets.
+An external declaration cannot link to an enum definition.
 Error when an external ancestor is absent from the entity's definition.
 -/
 public def PartialEntitySchemaEntry.link (ety : EntityType) :
     PartialEntitySchemaEntry → PartialEntitySchemaEntry → Except LinkError PartialEntitySchemaEntry
+  | .defined (.enum eids₁), .defined (.enum eids₂) =>
+    if eids₁ = eids₂ then .ok (.defined (.enum eids₁))
+    else .error (.enumValuesMismatch ety)
   | .defined _, .defined _ => .error (.duplicateEntityType ety)
   | .external parents₁, .external parents₂ => .ok (.external (parents₁ ∪ parents₂))
   | .external parents, .defined entry
@@ -169,7 +168,7 @@ public def linkMaps {α β} [LT α] [DecidableLT α] [DecidableEq α]
 Link two partial schemas.
 Error if partial schema have colliding names across action types and entity types.
 -/
-public def link (p c : PartialSchema) : Except LinkError PartialSchema := do
+@[expose] public def link (p c : PartialSchema) : Except LinkError PartialSchema := do
   (p.acts.toList ++ c.acts.toList).forM λ (uid, _) =>
     if p.ets.contains uid.ty || c.ets.contains uid.ty then
       .error (.actionEntityTypeDeclared uid.ty)

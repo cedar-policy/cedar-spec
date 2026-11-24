@@ -115,7 +115,7 @@ public instance : Coe Schema PartialSchema := ⟨Schema.toPartialSchema⟩
 public def PartialSchema.isComplete (ps : PartialSchema) : Bool :=
   ps.ets.values.all (!·.isExternal) && ps.acts.values.all (!·.isExternal)
 
-public def PartialSchema.asSchema? (ps : PartialSchema) : Option Schema := do
+@[expose] public def PartialSchema.asSchema? (ps : PartialSchema) : Option Schema := do
   let ets  ← ps.ets.mapMOnValues (·.toEntitySchemaEntry?)
   let acts ← ps.acts.mapMOnValues (·.toActionSchemaEntry?)
   pure { ets, acts }

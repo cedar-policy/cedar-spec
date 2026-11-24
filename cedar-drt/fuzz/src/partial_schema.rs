@@ -91,8 +91,7 @@ impl<'a> Arbitrary<'a> for PartialSchemaInput {
 pub(crate) fn declare_entity_type_external<N: Clone>(et: &mut json_schema::EntityType<N>) {
     let member_of_types = match &et.kind {
         EntityTypeKind::Standard(std) => std.member_of_types.clone(),
-        // An enum has no parents. Callers exclude enums, since RFC 116 does not
-        // allow linking a declaration to one; this arm keeps the rewrite total.
+        // An enum has no parents.
         EntityTypeKind::Enum { .. } => vec![],
     };
     et.kind = EntityTypeKind::Standard(StandardEntityType {
@@ -115,15 +114,14 @@ pub(crate) fn schema_from_fragment(fragment: json_schema::Fragment<RawName>) -> 
     Schema::from_schema_fragments([SchemaFragment::try_from(fragment).ok()?]).ok()
 }
 
-/// Externalize each declaration independently with probability 1/2. Enums are
-/// never selected, since RFC 116 does not allow linking a declaration to one.
+/// Externalize each declaration independently with probability 1/2.
 pub fn declare_some_external<N: Clone>(
     fragment: &mut json_schema::Fragment<N>,
     u: &mut Unstructured<'_>,
 ) -> arbitrary::Result<()> {
     for nsdef in fragment.0.values_mut() {
         for et in nsdef.entity_types.values_mut() {
-            if !et.external && matches!(et.kind, EntityTypeKind::Standard(_)) && u.ratio(1, 2)? {
+            if !et.external && u.ratio(1, 2)? {
                 declare_entity_type_external(et);
             }
         }
