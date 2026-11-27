@@ -14,14 +14,18 @@
  limitations under the License.
 -/
 
-import Cedar.Spec.Ext
-import Cedar.Validation.TypedExpr
-import Cedar.TPE.Residual
-import Cedar.Thm.Validation
+module
+
+public import Cedar.Spec.Ext
+public import Cedar.Validation.TypedExpr
+public import Cedar.TPE.Residual
+public import Cedar.Thm.Validation
 
 /-!
 This file contains well-typedness definitions of `TypedExpr`
 -/
+
+public section
 
 namespace Cedar.Spec
 

@@ -742,10 +742,6 @@ private theorem typeOfHasAttr_ok_implies_entity_or_record
   case h_2 ety heq => exact Or.inl ⟨ety, heq⟩
   case h_3 => simp only [err, reduceCtorEq] at h
 
-private theorem qualifiedType_liftBoolTypes_getType (qty : QualifiedType) :
-  (QualifiedType.liftBoolTypes qty).getType = qty.getType.liftBoolTypes := by
-  cases qty <;> simp [QualifiedType.liftBoolTypes, Qualified.getType]
-
 private theorem typeOfGetAttr_entity_ok_implies
   {ty₁ : TypedExpr} {x₁ : Expr} {attr : Attr} {c : Capabilities} {env : TypeEnv}
   {tyNext : TypedExpr} {cga : Capabilities} {ety : EntityType}

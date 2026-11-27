@@ -14,16 +14,21 @@
  limitations under the License.
 -/
 
-import Cedar.Thm.WellTyped.Residual.Definition
-import Cedar.Thm.WellTyped.Residual.Soundness
-import Cedar.Thm.WellTyped.Expr.Typechecking
-import Cedar.TPE -- `Cedar.TPE` namespace was previously reached transitively through TypeLifting
-import Cedar.TPE.Residual
-import Cedar.Data.Map
+module
+
+public import Cedar.Thm.WellTyped.Residual.Definition
+public import Cedar.Thm.WellTyped.Residual.Soundness
+public import Cedar.Thm.WellTyped.Expr.Typechecking
+public import Cedar.TPE -- `Cedar.TPE` namespace was previously reached transitively through TypeLifting
+public import Cedar.TPE.Residual
+public import Cedar.Data.Map
+import all Cedar.TPE.Residual -- unfolds `Residual.typeOf`, `Residual.evaluate`
 
 /-!
 This file contains well-typedness theorems of `Residual`
 -/
+
+public section
 
 namespace Cedar.Thm
 

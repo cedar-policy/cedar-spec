@@ -342,6 +342,10 @@ theorem type_lifting_preserves_instance_of_type {env : TypeEnv} {v : Value} {ty 
     exact @instance_of_lub_left env v ty.liftBoolTypes ty ty.liftBoolTypes heq h
   case _ => cases h'
 
+theorem qualifiedType_liftBoolTypes_getType (qty : QualifiedType) :
+  (QualifiedType.liftBoolTypes qty).getType = qty.getType.liftBoolTypes := by
+  cases qty <;> simp [QualifiedType.liftBoolTypes, Qualified.getType]
+
 theorem lift_bool_types_record_eq_map_on_values {rty : Data.Map Attr QualifiedType} :
   RecordType.liftBoolTypes rty = rty.mapOnValues QualifiedType.liftBoolTypes
 := by

@@ -14,15 +14,20 @@
  limitations under the License.
 -/
 
+module
 
-import Cedar.TPE
-import Cedar.Thm.WellTyped.Expr.Definition
-import Cedar.Thm.WellTyped.Residual.Definition
-import Cedar.Thm.Data.List.Lemmas
+public import Cedar.TPE
+public import Cedar.Thm.WellTyped.Expr.Definition
+public import Cedar.Thm.WellTyped.Residual.Definition
+public import Cedar.Thm.Data.List.Lemmas
+import all Cedar.TPE.Residual -- unfolds `Residual.evaluate`, `Residual.typeOf`, `TypedExpr.toResidual`
+import all Cedar.Validation.TypedExpr -- unfolds `TypedExpr.toExpr`, `TypedExpr.typeOf`
 
 /-!
 This file defines the main theorem of TPE soundness and its associated lemmas.
 -/
+
+public section
 
 namespace Cedar.Thm
 
@@ -452,8 +457,7 @@ theorem conversion_preserves_typedness:
     simp [TypedExpr.toResidual] at h ⊢
     cases h with
     | set h₁ h₂ h₃ =>
-      dsimp only [List.attachWith, List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.map₁, List.attach]
-      rw [List.map_pmap_subtype (fun x => TypedExpr.toResidual x)]
+      rw [List.map₁_eq_map]
       apply Residual.WellTyped.set
       · intro x hx
         simp [List.mem_map] at hx
@@ -512,8 +516,7 @@ theorem conversion_preserves_typedness:
     simp [TypedExpr.toResidual] at h ⊢
     cases h with
     | call h₁ h₂ =>
-      dsimp only [List.attachWith, List.mapM₁, List.attach, List.attach₂, List.mapM₂, List.mapM₁, List.map₁, List.attach]
-      rw [List.map_pmap_subtype (fun x => TypedExpr.toResidual x)]
+      rw [List.map₁_eq_map]
       apply Residual.WellTyped.call
       · intro x hx
         simp [List.mem_map] at hx
